@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project name="MariaDb" database="MariaDb" id="b802615b-2010-49eb-8326-217536925011" >
+	<schema name="lc_consumer" >
+		<table name="inbox" row_count="0" spec="" >
+			<column name="wf_id" prior="workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" />
+			<column name="payload_json" type="LONGTEXT" />
+			<column name="params_json" type="LONGTEXT" />
+			<column name="received_at" type="DATETIME" mandatory="y" >
+				<defo><![CDATA[current_timestamp()]]></defo>
+			</column>
+			<column name="modified" prior="processed_at" type="DATETIME" mandatory="y" >
+				<defo><![CDATA[current_timestamp()]]></defo>
+			</column>
+			<column name="status" prior="process_status" type="TINYINT" length="3" mandatory="y" unsigned="y" >
+				<defo><![CDATA[1]]></defo>
+				<comment><![CDATA[1=Received,2=Processing,3=Processed,4=Failed]]></comment>
+			</column>
+			<column name="attempt_count" type="INT" length="10" mandatory="y" unsigned="y" >
+				<defo><![CDATA[0]]></defo>
+			</column>
+			<column name="last_error" type="TEXT" />
+			<index name="pk_inbox" unique="PRIMARY_KEY" >
+				<column name="wf_id" />
+			</index>
+			<index name="idx_inbox_status" unique="NORMAL" >
+				<column name="status" />
+				<column name="received_at" />
+			</index>
+			<fk name="fk_inbox_workflow" to_schema="lc_consumer" to_table="workflow" delete_action="cascade" options="" >
+				<fk_column name="wf_id" pk="id" />
+			</fk>
+			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
+		</table>
+		<table name="inbox_step" row_count="0" spec="" >
+			<column name="id" type="BIGINT" length="20" mandatory="y" unsigned="y" >
+				<identity><![CDATA[AUTO_INCREMENT]]></identity>
+			</column>
+			<column name="inbox_id" prior="inbox_workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" />
+			<column name="step_code" type="INT" length="11" mandatory="y" >
+				<defo><![CDATA[0]]></defo>
+				<comment><![CDATA[what is the step that was executed (coming and aware only to the consumer)]]></comment>
+			</column>
+			<column name="status" type="TINYINT" length="3" mandatory="y" unsigned="y" >
+				<defo><![CDATA[1]]></defo>
+				<comment><![CDATA[1=Pending,2=Running,3=Completed,4=Failed]]></comment>
+			</column>
+			<column name="started_at" type="DATETIME" length="6" />
+			<column name="completed_at" type="DATETIME" length="6" />
+			<column name="result_json" type="LONGTEXT" />
+			<column name="last_error" type="TEXT" />
+			<index name="pk_inbox_step" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="unq_inbox_step_code" unique="UNIQUE_KEY" >
+				<column name="inbox_id" />
+				<column name="step_code" />
+			</index>
+			<index name="idx_inbox_step_status" unique="NORMAL" >
+				<column name="status" />
+			</index>
+			<fk name="fk_inbox_step_inbox" to_schema="lc_consumer" to_table="inbox" delete_action="cascade" options="" >
+				<fk_column name="inbox_id" pk="wf_id" />
+			</fk>
+			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
+		</table>
+		<table name="outbox" row_count="0" spec="" >
+			<column name="wf_id" prior="workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" />
+			<column name="current_outcome" type="TINYINT" length="3" unsigned="y" >
+				<comment><![CDATA[1=Delivered,2=Processed,3=Retry,4=Failed]]></comment>
+			</column>
+			<column name="status" prior="send_status" type="TINYINT" length="3" mandatory="y" unsigned="y" >
+				<defo><![CDATA[1]]></defo>
+				<comment><![CDATA[1=Pending,2=Sent,3=Failed]]></comment>
+			</column>
+			<column name="next_retry_at" type="DATETIME" length="6" />
+			<column name="last_error" type="TEXT" />
+			<column name="modified" prior="modified_at" type="DATETIME" mandatory="y" >
+				<defo><![CDATA[current_timestamp()]]></defo>
+				<column_options><![CDATA[ON UPDATE current_timestamp()]]></column_options>
+			</column>
+			<index name="pk_outbox" unique="PRIMARY_KEY" >
+				<column name="wf_id" />
+			</index>
+			<index name="idx_outbox_send_status" unique="NORMAL" >
+				<column name="status" />
+				<column name="next_retry_at" />
+			</index>
+			<fk name="fk_outbox_workflow" to_schema="lc_consumer" to_table="workflow" delete_action="cascade" options="" >
+				<fk_column name="wf_id" pk="id" />
+			</fk>
+			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
+		</table>
+		<table name="outbox_history" row_count="0" spec="" >
+			<column name="id" type="BIGINT" length="20" mandatory="y" unsigned="y" >
+				<identity><![CDATA[AUTO_INCREMENT]]></identity>
+			</column>
+			<column name="outbox_id" prior="outbox_workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" />
+			<column name="outcome" type="TINYINT" length="3" mandatory="y" unsigned="y" >
+				<comment><![CDATA[1=Delivered,2=Processed,3=Retry,4=Failed]]></comment>
+			</column>
+			<column name="status" prior="send_status" type="TINYINT" length="3" mandatory="y" unsigned="y" >
+				<comment><![CDATA[1=Pending,2=Sent,3=Failed]]></comment>
+			</column>
+			<column name="attempt_no" prior="attempt_count" type="INT" length="10" mandatory="y" unsigned="y" />
+			<column name="modified" prior="sent_at" type="DATETIME" mandatory="y" >
+				<defo><![CDATA[current_timestamp()]]></defo>
+			</column>
+			<column name="response_payload_json" type="LONGTEXT" />
+			<column name="error" type="TEXT" />
+			<index name="pk_outbox_history" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="idx_outbox_history_outbox_sent" unique="NORMAL" >
+				<column name="outbox_id" />
+				<column name="modified" />
+			</index>
+			<index name="unq_outbox_attempt" unique="UNIQUE_KEY" >
+				<column name="outbox_id" />
+				<column name="attempt_no" />
+			</index>
+			<fk name="fk_outbox_history_outbox" to_schema="lc_consumer" to_table="outbox" delete_action="cascade" options="" >
+				<fk_column name="outbox_id" pk="wf_id" />
+			</fk>
+			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
+		</table>
+		<table name="route" prior="r" >
+			<column name="id" type="BIGINT" mandatory="y" >
+				<identity><![CDATA[AUTO_INCREMENT]]></identity>
+			</column>
+			<column name="name" type="VARCHAR" length="200" mandatory="y" />
+			<index name="pk_route" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="unq_route" unique="UNIQUE_KEY" >
+				<column name="name" />
+			</index>
+			<options><![CDATA[engine=InnoDB]]></options>
+		</table>
+		<table name="wf_hook" prior="wf_hoo" >
+			<column name="wf_id" type="BIGINT" mandatory="y" unsigned="y" />
+			<column name="route" type="BIGINT" mandatory="y" />
+			<index name="pk_wf_hook" unique="PRIMARY_KEY" >
+				<column name="wf_id" />
+			</index>
+			<index name="fk_wf_hook_route" unique="NORMAL" >
+				<column name="route" />
+			</index>
+			<fk name="fk_wf_hook_workflow" to_schema="lc_consumer" to_table="workflow" >
+				<fk_column name="wf_id" pk="id" />
+			</fk>
+			<fk name="fk_wf_hook_route" to_schema="lc_consumer" to_table="route" >
+				<fk_column name="route" pk="id" />
+			</fk>
+			<options><![CDATA[engine=InnoDB]]></options>
+		</table>
+		<table name="wf_info" prior="wf_" >
+			<column name="wf_id" type="BIGINT" mandatory="y" unsigned="y" />
+			<column name="def_version_id" type="INT" mandatory="y" />
+			<column name="instance_guid" type="VARCHAR" length="36" />
+			<column name="on_success" type="INT" />
+			<column name="on_failure" type="INT" >
+				<comment><![CDATA[even to raise on failure]]></comment>
+			</column>
+			<column name="occurred" type="DATETIME" mandatory="y" />
+			<column name="created" type="DATETIME" mandatory="y" >
+				<defo><![CDATA[current_timestamp()]]></defo>
+			</column>
+			<column name="modified" type="DATETIME" mandatory="y" >
+				<defo><![CDATA[current_timestamp()]]></defo>
+			</column>
+			<column name="handler_version" type="INT" mandatory="y" >
+				<defo><![CDATA[1]]></defo>
+				<comment><![CDATA[which version of the application code initiatlly started this. Because if it was version 1, then it might have only 3 steps.. version 2 might have 8 steps.. this is mainly for dedupe , idempotency, to ensure we dont endup with any side effects.]]></comment>
+			</column>
+			<column name="upgrade_policy" type="INT" mandatory="y" >
+				<defo><![CDATA[1]]></defo>
+				<comment><![CDATA[1=Pinned, 2=AllowUpgrade
+If pinned, the handler has to stick to whatever version is got registered with.
+if allow upgrde, we can allow this to upgrade to latest version presen in the application.. so new steps will be executed.]]></comment>
+			</column>
+			<index name="pk_wf_info" unique="PRIMARY_KEY" >
+				<column name="wf_id" />
+			</index>
+			<fk name="fk_wf_info_workflow" to_schema="lc_consumer" to_table="workflow" >
+				<fk_column name="wf_id" pk="id" />
+			</fk>
+			<options><![CDATA[engine=InnoDB]]></options>
+		</table>
+		<table name="wf_transition" prior="wf_transitio" >
+			<column name="wf_id" type="BIGINT" mandatory="y" unsigned="y" />
+			<column name="event_code" type="INT" mandatory="y" />
+			<index name="pk_wf_transition" unique="PRIMARY_KEY" >
+				<column name="wf_id" />
+			</index>
+			<fk name="fk_wf_transition_workflow" to_schema="lc_consumer" to_table="workflow" >
+				<fk_column name="wf_id" pk="id" />
+			</fk>
+			<options><![CDATA[engine=InnoDB]]></options>
+		</table>
+		<table name="workflow" row_count="0" spec="" >
+			<column name="id" type="BIGINT" length="20" mandatory="y" unsigned="y" >
+				<identity><![CDATA[AUTO_INCREMENT]]></identity>
+			</column>
+			<column name="ack_guid" type="VARCHAR" length="64" mandatory="y" />
+			<column name="entity_id" type="VARCHAR" length="160" mandatory="y" />
+			<column name="kind" type="TINYINT" length="3" mandatory="y" unsigned="y" >
+				<comment><![CDATA[1=Transition, 2=Hook]]></comment>
+			</column>
+			<column name="consumer_id" type="INT" length="10" mandatory="y" unsigned="y" />
+			<index name="pk_workflow" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="idx_workflow_entity_def" unique="NORMAL" >
+				<column name="entity_id" />
+			</index>
+			<index name="idx_workflow_consumer_status" unique="NORMAL" >
+				<column name="consumer_id" />
+			</index>
+			<index name="unq_workflow_ack_guid" unique="UNIQUE_KEY" >
+				<column name="consumer_id" />
+				<column name="ack_guid" />
+			</index>
+			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
+		</table>
+	</schema>
+	<diagram_group name="Default" id="095de0c8-e633-4185-a9b8-c31a8438aa5e" >
+		<diagram name="Main Diagram" id="9443b33f-5de4-42b2-a6d5-e59d764d8dba" joined_routing="y" show_relation="columns" >
+			<entity schema="lc_consumer" name="inbox" color="BED3F4" x="380" y="57" />
+			<entity schema="lc_consumer" name="inbox_step" color="BED3F4" x="494" y="285" />
+			<entity schema="lc_consumer" name="outbox" color="BED3F4" x="57" y="361" />
+			<entity schema="lc_consumer" name="outbox_history" color="BED3F4" x="57" y="551" />
+			<entity schema="lc_consumer" name="route" color="C1D8EE" x="513" y="551" />
+			<entity schema="lc_consumer" name="wf_hook" color="C1D8EE" x="342" y="532" />
+			<entity schema="lc_consumer" name="wf_info" color="C1D8EE" x="76" y="76" />
+			<entity schema="lc_consumer" name="wf_transition" color="C1D8EE" x="323" y="665" />
+			<entity schema="lc_consumer" name="workflow" color="BED3F4" x="323" y="304" />
+		</diagram>
+		<diagram name="~Diagram with Sample Tools" id="7b1b58be-c5e0-4dc7-8b1b-2ebc974d56ad" show_column_type="y" show_relation="columns" >
+			<entity schema="lc_consumer" name="consumer_checkpoint" color="3986C1" x="57" y="57" />
+			<entity schema="lc_consumer" name="inbox" color="BED3F4" x="456" y="380" />
+			<entity schema="lc_consumer" name="inbox_step" color="BED3F4" x="1197" y="57" />
+			<entity schema="lc_consumer" name="outbox" color="BED3F4" x="1520" y="57" />
+			<entity schema="lc_consumer" name="outbox_history" color="BED3F4" x="836" y="57" />
+			<entity schema="lc_consumer" name="workflow" color="BED3F4" x="836" y="380" />
+			<script name="SQL Editor" id="75c43169-e6d6-4966-b128-c272c8b66d52" language="SQL" >
+				<string><![CDATA[SELECT
+	workflow_id, payload_json, params_json, policy_json, prev_state_meta_json, received_at, processing_started_at, processed_at, 
+	process_status, attempt_count, last_error
+FROM
+	lc_consumer.inbox x;]]></string>
+			</script>
+			<browser id="54e85fec-00b6-49f2-a02c-bff9764ef8c1" name="Relational Data Editor" confirm_updates="y" >
+				<browse_table schema="lc_consumer" entity="inbox" fk_out="n" x="20" y="20" width="270" height="-60" >
+					<browse_table schema="lc_consumer" entity="workflow" fk="fk_inbox_workflow" fk_out="n" x="310" y="20" width="500" height="350" record_view="y" >
+						<browse_table schema="lc_consumer" entity="outbox" fk="fk_outbox_workflow" fk_out="y" x="830" y="20" width="500" height="350" />
+					</browse_table>
+				</browse_table>
+			</browser>
+			<query id="699ee0ee-4ee3-408c-9357-6eed3c67f61f" name="Query Builder" >
+				<query_table schema="lc_consumer" name="inbox" alias="i" x="57" y="57" >
+					<column name="wf_id" />
+					<column name="payload_json" />
+					<column name="params_json" />
+					<column name="received_at" />
+					<column name="modified" />
+					<column name="status" />
+					<column name="attempt_count" />
+					<column name="last_error" />
+					<query_table schema="lc_consumer" name="workflow" alias="w" x="342" y="57" fk="fk_inbox_workflow" type="Inner Join" >
+						<column name="id" />
+						<column name="ack_guid" />
+						<column name="kind" />
+						<column name="consumer_id" />
+						<column name="entity_id" />
+						<query_table schema="lc_consumer" name="outbox" alias="o" x="627" y="57" fk="fk_outbox_workflow" type="Inner Join" >
+							<column name="wf_id" />
+							<column name="current_outcome" />
+							<column name="status" />
+							<column name="attempt_count" />
+							<column name="next_retry_at" />
+							<column name="delivered_at" />
+							<column name="processed_at" />
+							<column name="failed_at" />
+							<column name="last_error" />
+							<column name="modified" />
+						</query_table>
+					</query_table>
+				</query_table>
+			</query>
+		</diagram>
+	</diagram_group>
+</project>
