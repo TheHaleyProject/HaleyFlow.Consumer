@@ -1,0 +1,76 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\HaleyProject\HaleyVersion.Props" />
+  <PropertyGroup>
+    <TargetFrameworks>net8.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Haley</RootNamespace>
+    <AssemblyName>Haley.Flow.Consumer</AssemblyName>
+    <SignAssembly>True</SignAssembly>
+    <IsPackable>true</IsPackable>
+    <AssemblyOriginatorKeyFile>..\..\HaleyProject\HaleyProject.snk</AssemblyOriginatorKeyFile>
+    <PackageIcon>Haley.png</PackageIcon>
+    <Version>$(HaleyFlowConsumerVersion)</Version>
+    <IncludeSymbols>True</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageReleaseNotes>Pilot release</PackageReleaseNotes>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/TheHaleyProject/HaleyFlow.Consumer</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/TheHaleyProject/HaleyFlow.Consumer</RepositoryUrl>
+    <OpenApiGenerateDocuments>false</OpenApiGenerateDocuments>
+    <Description>Workflow engine consumer to be used in the client side</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\HaleyLog\Haley.png" Link="Haley.png">
+      <PackagePath></PackagePath>
+      <Pack>True</Pack>
+    </None>
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DebugType>portable</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <WarningLevel>2</WarningLevel>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <Import Project="$(SolutionDir)ProjectReferences_$(SolutionName).txt" Condition="Exists('$(SolutionDir)ProjectReferences_$(SolutionName).txt')" />
+
+  <!--<Choose>
+    <When Condition="Exists($(HaleyEvents))">
+      <ItemGroup>
+        <ProjectReference Include="$(HaleyEvents)\HaleyEvents.csproj">
+          <Name>HaleyEvents</Name>
+        </ProjectReference>
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <PackageReference Include="Haley.Events" Version="$(HaleyEventsVersion)" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>-->
+
+  <Choose>
+    <When Condition="Exists($(HaleyHelpersDB))">
+      <ItemGroup>
+        <ProjectReference Include="$(HaleyHelpersDB)\HaleyHelpersDB.csproj">
+          <Name>HaleyHelpersDB</Name>
+        </ProjectReference>
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <PackageReference Include="Haley.Helpers.DB" Version="$(HaleyHelpersDBVersion)" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
+</Project>
