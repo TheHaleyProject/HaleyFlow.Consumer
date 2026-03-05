@@ -225,15 +225,15 @@ if allow upgrde, we can allow this to upgrade to latest version presen in the ap
 	</schema>
 	<diagram_group name="Default" id="095de0c8-e633-4185-a9b8-c31a8438aa5e" >
 		<diagram name="Main Diagram" id="9443b33f-5de4-42b2-a6d5-e59d764d8dba" joined_routing="y" show_relation="columns" >
-			<entity schema="lc_consumer" name="inbox" color="BED3F4" x="665" y="304" />
-			<entity schema="lc_consumer" name="inbox_step" color="BED3F4" x="684" y="57" />
-			<entity schema="lc_consumer" name="outbox" color="BED3F4" x="57" y="304" />
-			<entity schema="lc_consumer" name="outbox_history" color="BED3F4" x="95" y="57" />
-			<entity schema="lc_consumer" name="route" color="C1D8EE" x="475" y="608" />
-			<entity schema="lc_consumer" name="wf_hook" color="C1D8EE" x="494" y="494" />
-			<entity schema="lc_consumer" name="wf_info" color="C1D8EE" x="380" y="57" />
-			<entity schema="lc_consumer" name="wf_transition" color="C1D8EE" x="285" y="494" />
-			<entity schema="lc_consumer" name="workflow" color="BED3F4" x="380" y="304" />
+			<entity schema="lc_consumer" name="inbox" color="BED3F4" x="380" y="57" />
+			<entity schema="lc_consumer" name="inbox_step" color="BED3F4" x="494" y="285" />
+			<entity schema="lc_consumer" name="outbox" color="BED3F4" x="57" y="361" />
+			<entity schema="lc_consumer" name="outbox_history" color="BED3F4" x="57" y="551" />
+			<entity schema="lc_consumer" name="route" color="C1D8EE" x="513" y="551" />
+			<entity schema="lc_consumer" name="wf_hook" color="C1D8EE" x="342" y="532" />
+			<entity schema="lc_consumer" name="wf_info" color="C1D8EE" x="76" y="76" />
+			<entity schema="lc_consumer" name="wf_transition" color="C1D8EE" x="323" y="665" />
+			<entity schema="lc_consumer" name="workflow" color="BED3F4" x="323" y="304" />
 		</diagram>
 		<diagram name="~Diagram with Sample Tools" id="7b1b58be-c5e0-4dc7-8b1b-2ebc974d56ad" show_column_type="y" show_relation="columns" >
 			<entity schema="lc_consumer" name="consumer_checkpoint" color="3986C1" x="57" y="57" />

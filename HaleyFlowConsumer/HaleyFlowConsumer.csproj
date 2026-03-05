@@ -73,4 +73,19 @@
       </ItemGroup>
     </Otherwise>
   </Choose>
+
+  <Choose>
+    <When Condition="Exists($(HaleyAbstractionsCore))">
+      <ItemGroup>
+        <ProjectReference Include="$(HaleyAbstractionsCore)\HaleyAbstractionsCore.csproj">
+          <Name>HaleyAbstractionsCore</Name>
+        </ProjectReference>
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <PackageReference Include="Haley.Abstractions.Core" Version="$(HaleyAbstractionsCoreVersion)" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
 </Project>

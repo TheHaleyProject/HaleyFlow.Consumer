@@ -87,54 +87,6 @@ CREATE TABLE IF NOT EXISTS `outbox_history` (
 
 -- Data exporting was unselected.
 
--- Dumping structure for table lc_consumer.route
-CREATE TABLE IF NOT EXISTS `route` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `name` varchar(200) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `unq_route` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Data exporting was unselected.
-
--- Dumping structure for table lc_consumer.wf_hook
-CREATE TABLE IF NOT EXISTS `wf_hook` (
-  `wf_id` bigint(20) unsigned NOT NULL,
-  `route` bigint(20) NOT NULL,
-  PRIMARY KEY (`wf_id`),
-  KEY `fk_wf_hook_route` (`route`),
-  CONSTRAINT `fk_wf_hook_route` FOREIGN KEY (`route`) REFERENCES `route` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
-  CONSTRAINT `fk_wf_hook_workflow` FOREIGN KEY (`wf_id`) REFERENCES `workflow` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Data exporting was unselected.
-
--- Dumping structure for table lc_consumer.wf_info
-CREATE TABLE IF NOT EXISTS `wf_info` (
-  `wf_id` bigint(20) unsigned NOT NULL,
-  `def_version_id` int(11) NOT NULL,
-  `instance_guid` varchar(36) DEFAULT NULL,
-  `on_success` int(11) DEFAULT NULL,
-  `on_failure` int(11) DEFAULT NULL COMMENT 'even to raise on failure',
-  `occurred` datetime NOT NULL,
-  `created` datetime NOT NULL DEFAULT current_timestamp(),
-  `modified` datetime NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`wf_id`),
-  CONSTRAINT `fk_wf_info_workflow` FOREIGN KEY (`wf_id`) REFERENCES `workflow` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Data exporting was unselected.
-
--- Dumping structure for table lc_consumer.wf_transition
-CREATE TABLE IF NOT EXISTS `wf_transition` (
-  `wf_id` bigint(20) unsigned NOT NULL,
-  `event_code` int(11) NOT NULL,
-  PRIMARY KEY (`wf_id`),
-  CONSTRAINT `fk_wf_transition_workflow` FOREIGN KEY (`wf_id`) REFERENCES `workflow` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Data exporting was unselected.
-
 -- Dumping structure for table lc_consumer.workflow
 CREATE TABLE IF NOT EXISTS `workflow` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -142,6 +94,17 @@ CREATE TABLE IF NOT EXISTS `workflow` (
   `entity_id` varchar(160) NOT NULL,
   `kind` tinyint(3) unsigned NOT NULL COMMENT '1=Transition, 2=Hook',
   `consumer_id` int(10) unsigned NOT NULL,
+  `def_id` bigint(20) unsigned NOT NULL,
+  `def_version_id` bigint(20) unsigned NOT NULL,
+  `handler_version` int(11) DEFAULT NULL COMMENT 'pinned on first event.',
+  `instance_guid` varchar(36) DEFAULT NULL,
+  `on_success` int(11) DEFAULT NULL,
+  `on_failure` int(11) DEFAULT NULL,
+  `occurred` datetime NOT NULL,
+  `event_code` int(11) DEFAULT NULL COMMENT 'Null for hooks.. Which event raised this transition',
+  `route` varchar(200) DEFAULT NULL COMMENT 'route that needs to be invoked.. null for transition',
+  `created` datetime NOT NULL DEFAULT current_timestamp(),
+  `handler_upgrade` tinyint(4) NOT NULL DEFAULT 1 COMMENT '1=Pinned, 2=AllowUpgrade\nIf pinned, the handler has to stick to whatever version is got registered with.\nif allow upgrde, we can allow this to upgrade to latest version presen in the application.. so new steps will be executed.',
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_workflow_ack_guid` (`consumer_id`,`ack_guid`),
   KEY `idx_workflow_entity_def` (`entity_id`),

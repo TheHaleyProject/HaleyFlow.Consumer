@@ -123,80 +123,6 @@
 			</fk>
 			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
 		</table>
-		<table name="route" prior="r" >
-			<column name="id" type="BIGINT" mandatory="y" >
-				<identity><![CDATA[AUTO_INCREMENT]]></identity>
-			</column>
-			<column name="name" type="VARCHAR" length="200" mandatory="y" />
-			<index name="pk_route" unique="PRIMARY_KEY" >
-				<column name="id" />
-			</index>
-			<index name="unq_route" unique="UNIQUE_KEY" >
-				<column name="name" />
-			</index>
-			<options><![CDATA[engine=InnoDB]]></options>
-		</table>
-		<table name="wf_hook" prior="wf_hoo" >
-			<column name="wf_id" type="BIGINT" mandatory="y" unsigned="y" />
-			<column name="route" type="BIGINT" mandatory="y" />
-			<index name="pk_wf_hook" unique="PRIMARY_KEY" >
-				<column name="wf_id" />
-			</index>
-			<index name="fk_wf_hook_route" unique="NORMAL" >
-				<column name="route" />
-			</index>
-			<fk name="fk_wf_hook_workflow" to_schema="lc_consumer" to_table="workflow" >
-				<fk_column name="wf_id" pk="id" />
-			</fk>
-			<fk name="fk_wf_hook_route" to_schema="lc_consumer" to_table="route" >
-				<fk_column name="route" pk="id" />
-			</fk>
-			<options><![CDATA[engine=InnoDB]]></options>
-		</table>
-		<table name="wf_info" prior="wf_" >
-			<column name="wf_id" type="BIGINT" mandatory="y" unsigned="y" />
-			<column name="def_version_id" type="INT" mandatory="y" />
-			<column name="instance_guid" type="VARCHAR" length="36" />
-			<column name="on_success" type="INT" />
-			<column name="on_failure" type="INT" >
-				<comment><![CDATA[even to raise on failure]]></comment>
-			</column>
-			<column name="occurred" type="DATETIME" mandatory="y" />
-			<column name="created" type="DATETIME" mandatory="y" >
-				<defo><![CDATA[current_timestamp()]]></defo>
-			</column>
-			<column name="modified" type="DATETIME" mandatory="y" >
-				<defo><![CDATA[current_timestamp()]]></defo>
-			</column>
-			<column name="handler_version" type="INT" mandatory="y" >
-				<defo><![CDATA[1]]></defo>
-				<comment><![CDATA[which version of the application code initiatlly started this. Because if it was version 1, then it might have only 3 steps.. version 2 might have 8 steps.. this is mainly for dedupe , idempotency, to ensure we dont endup with any side effects.]]></comment>
-			</column>
-			<column name="upgrade_policy" type="INT" mandatory="y" >
-				<defo><![CDATA[1]]></defo>
-				<comment><![CDATA[1=Pinned, 2=AllowUpgrade
-If pinned, the handler has to stick to whatever version is got registered with.
-if allow upgrde, we can allow this to upgrade to latest version presen in the application.. so new steps will be executed.]]></comment>
-			</column>
-			<index name="pk_wf_info" unique="PRIMARY_KEY" >
-				<column name="wf_id" />
-			</index>
-			<fk name="fk_wf_info_workflow" to_schema="lc_consumer" to_table="workflow" >
-				<fk_column name="wf_id" pk="id" />
-			</fk>
-			<options><![CDATA[engine=InnoDB]]></options>
-		</table>
-		<table name="wf_transition" prior="wf_transitio" >
-			<column name="wf_id" type="BIGINT" mandatory="y" unsigned="y" />
-			<column name="event_code" type="INT" mandatory="y" />
-			<index name="pk_wf_transition" unique="PRIMARY_KEY" >
-				<column name="wf_id" />
-			</index>
-			<fk name="fk_wf_transition_workflow" to_schema="lc_consumer" to_table="workflow" >
-				<fk_column name="wf_id" pk="id" />
-			</fk>
-			<options><![CDATA[engine=InnoDB]]></options>
-		</table>
 		<table name="workflow" row_count="0" spec="" >
 			<column name="id" type="BIGINT" length="20" mandatory="y" unsigned="y" >
 				<identity><![CDATA[AUTO_INCREMENT]]></identity>
@@ -207,6 +133,30 @@ if allow upgrde, we can allow this to upgrade to latest version presen in the ap
 				<comment><![CDATA[1=Transition, 2=Hook]]></comment>
 			</column>
 			<column name="consumer_id" type="INT" length="10" mandatory="y" unsigned="y" />
+			<column name="def_id" type="BIGINT" mandatory="y" unsigned="y" />
+			<column name="def_version_id" type="BIGINT" mandatory="y" unsigned="y" />
+			<column name="handler_version" type="INT" >
+				<comment><![CDATA[pinned on first event.]]></comment>
+			</column>
+			<column name="instance_guid" type="VARCHAR" length="36" />
+			<column name="on_success" type="INT" />
+			<column name="on_failure" type="INT" />
+			<column name="occurred" type="DATETIME" mandatory="y" />
+			<column name="event_code" type="INT" >
+				<comment><![CDATA[Null for hooks.. Which event raised this transition]]></comment>
+			</column>
+			<column name="route" type="VARCHAR" length="200" >
+				<comment><![CDATA[route that needs to be invoked.. null for transition]]></comment>
+			</column>
+			<column name="created" type="DATETIME" mandatory="y" >
+				<defo><![CDATA[CURRENT_TIMESTAMP]]></defo>
+			</column>
+			<column name="handler_upgrade" type="TINYINT" mandatory="y" >
+				<defo><![CDATA[1]]></defo>
+				<comment><![CDATA[1=Pinned, 2=AllowUpgrade
+If pinned, the handler has to stick to whatever version is got registered with.
+if allow upgrde, we can allow this to upgrade to latest version presen in the application.. so new steps will be executed.]]></comment>
+			</column>
 			<index name="pk_workflow" unique="PRIMARY_KEY" >
 				<column name="id" />
 			</index>
@@ -225,15 +175,11 @@ if allow upgrde, we can allow this to upgrade to latest version presen in the ap
 	</schema>
 	<diagram_group name="Default" id="095de0c8-e633-4185-a9b8-c31a8438aa5e" >
 		<diagram name="Main Diagram" id="9443b33f-5de4-42b2-a6d5-e59d764d8dba" joined_routing="y" show_relation="columns" >
-			<entity schema="lc_consumer" name="inbox" color="BED3F4" x="380" y="57" />
-			<entity schema="lc_consumer" name="inbox_step" color="BED3F4" x="494" y="285" />
-			<entity schema="lc_consumer" name="outbox" color="BED3F4" x="57" y="361" />
-			<entity schema="lc_consumer" name="outbox_history" color="BED3F4" x="57" y="551" />
-			<entity schema="lc_consumer" name="route" color="C1D8EE" x="513" y="551" />
-			<entity schema="lc_consumer" name="wf_hook" color="C1D8EE" x="342" y="532" />
-			<entity schema="lc_consumer" name="wf_info" color="C1D8EE" x="76" y="76" />
-			<entity schema="lc_consumer" name="wf_transition" color="C1D8EE" x="323" y="665" />
-			<entity schema="lc_consumer" name="workflow" color="BED3F4" x="323" y="304" />
+			<entity schema="lc_consumer" name="inbox" color="BED3F4" x="589" y="57" />
+			<entity schema="lc_consumer" name="inbox_step" color="BED3F4" x="551" y="285" />
+			<entity schema="lc_consumer" name="outbox" color="BED3F4" x="57" y="57" />
+			<entity schema="lc_consumer" name="outbox_history" color="BED3F4" x="95" y="247" />
+			<entity schema="lc_consumer" name="workflow" color="BED3F4" x="323" y="57" />
 		</diagram>
 		<diagram name="~Diagram with Sample Tools" id="7b1b58be-c5e0-4dc7-8b1b-2ebc974d56ad" show_column_type="y" show_relation="columns" >
 			<entity schema="lc_consumer" name="consumer_checkpoint" color="3986C1" x="57" y="57" />
