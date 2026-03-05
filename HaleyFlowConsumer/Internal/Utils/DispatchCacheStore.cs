@@ -7,7 +7,7 @@ using System.Reflection;
 namespace Haley.Internal {
 
     internal static class DispatchCacheStore {
-        private static readonly Dictionary<Type, HandlerDispatchCache> _caches = new();
+        private static readonly Dictionary<Type, HandlerDispatchCache> _caches = new(); //one wrapper can have both transition and hook handlers.. so we dont' want two dictionaries.. clean way is to have one dictionary and a class containing the child diectionaries.
         private static readonly object _lock = new();
 
         internal static HandlerDispatchCache GetOrBuild(Type wrapperType) {
@@ -56,8 +56,6 @@ namespace Haley.Internal {
             var call = Expression.Call(castW, method, eParam, cParam);
             // If method returns Task (not Task<AckOutcome>), wrap it
             if (method.ReturnType == typeof(Task)) {
-                var wrapper = typeof(DispatchCacheStore)
-                    .GetMethod(nameof(WrapTaskTransition), BindingFlags.Static | BindingFlags.NonPublic)!;
                 var innerLambda = Expression.Lambda<Func<LifeCycleWrapper, ILifeCycleTransitionEvent, ConsumerContext, Task>>(call, wParam, eParam, cParam).Compile();
                 return (w, e, c) => WrapTaskTransition(innerLambda(w, e, c));
             }

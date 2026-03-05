@@ -21,6 +21,12 @@
     <OpenApiGenerateDocuments>false</OpenApiGenerateDocuments>
     <Description>Workflow engine consumer to be used in the client side</Description>
   </PropertyGroup>
+  <ItemGroup>
+    <None Remove="Scripts\consumer.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\consumer.sql" />
+  </ItemGroup>
 
   <ItemGroup>
     <None Include="..\..\HaleyLog\Haley.png" Link="Haley.png">

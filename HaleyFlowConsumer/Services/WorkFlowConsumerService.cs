@@ -11,15 +11,15 @@ namespace Haley.Services {
     /// Background consumer service. Polls the engine feed, dispatches events to registered
     /// <see cref="LifeCycleWrapper"/> handlers, and ACKs results via the transactional outbox.
     /// </summary>
-    public sealed class ConsumerService : IConsumerService {
+    public sealed class WorkFlowConsumerService : IWorkFlowConsumerService {
         private readonly ILifeCycleEventFeed _feed;
-        private readonly IConsumerDAL _dal;
+        private readonly IConsumerServiceDAL _dal;
         private readonly IServiceProvider _sp;
         private readonly ConsumerServiceOptions _opt;
         private readonly WrapperRegistry _registry = new();
         private CancellationTokenSource? _cts;
 
-        public ConsumerService(ILifeCycleEventFeed feed, IConsumerDAL dal, IServiceProvider sp, ConsumerServiceOptions? options = null) {
+        public WorkFlowConsumerService(ILifeCycleEventFeed feed, IConsumerServiceDAL dal, IServiceProvider sp, ConsumerServiceOptions? options = null) {
             _feed = feed ?? throw new ArgumentNullException(nameof(feed));
             _dal = dal ?? throw new ArgumentNullException(nameof(dal));
             _sp = sp ?? throw new ArgumentNullException(nameof(sp));
@@ -30,12 +30,12 @@ namespace Haley.Services {
         // Registration
         // ----------------------------------------------------------------
 
-        public ConsumerService Register<T>(long defId) where T : LifeCycleWrapper {
+        public WorkFlowConsumerService Register<T>(long defId) where T : LifeCycleWrapper {
             _registry.Register<T>(defId);
             return this;
         }
 
-        public ConsumerService Register(long defId, Type wrapperType) {
+        public WorkFlowConsumerService Register(long defId, Type wrapperType) {
             _registry.Register(defId, wrapperType);
             return this;
         }
