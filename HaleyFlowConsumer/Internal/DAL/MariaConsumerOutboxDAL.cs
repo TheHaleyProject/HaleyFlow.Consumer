@@ -24,8 +24,6 @@ namespace Haley.Internal {
                 (WF_ID, wfId),
                 (OUTCOME, (byte)outcome),
                 (STATUS, (byte)status),
-                // attempt_no computed inline via subquery in SQL — pass 0 as placeholder, actual SQL ignores this param
-                (ATTEMPT_NO, 0),
                 (RESPONSE_PAYLOAD, (object?)responsePayload ?? DBNull.Value),
                 (ERROR, (object?)error ?? DBNull.Value));
 

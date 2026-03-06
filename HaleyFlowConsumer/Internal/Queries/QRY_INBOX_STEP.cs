@@ -8,8 +8,11 @@ namespace Haley.Internal {
         /// completed_at when Completed (3) or Failed (4). Preserves existing values for result/error if null supplied.
         /// </summary>
         public const string UPSERT =
-            $@"INSERT INTO inbox_step (inbox_id, step_code, status, result_json, last_error)
-               VALUES ({INBOX_ID}, {STEP_CODE}, {STATUS}, {RESULT_JSON}, {LAST_ERROR})
+            $@"INSERT INTO inbox_step (inbox_id, step_code, status, started_at, completed_at, result_json, last_error)
+               VALUES ({INBOX_ID}, {STEP_CODE}, {STATUS},
+                       CASE WHEN {STATUS} = 2 THEN UTC_TIMESTAMP(6) END,
+                       CASE WHEN {STATUS} IN (3,4) THEN UTC_TIMESTAMP(6) END,
+                       {RESULT_JSON}, {LAST_ERROR})
                ON DUPLICATE KEY UPDATE
                    status       = VALUES(status),
                    started_at   = CASE WHEN VALUES(status) = 2 AND started_at IS NULL THEN UTC_TIMESTAMP(6) ELSE started_at END,

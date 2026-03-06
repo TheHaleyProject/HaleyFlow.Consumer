@@ -188,15 +188,21 @@ namespace Haley.Services {
 
             // 6. Write outbox, attempt inline ACK
             await _dal.Outbox.UpsertAsync(wfId, outcome, load);
-            try {
-                await _feed.AckAsync(_consumerId, item.AckGuid, outcome, ct: ct);
+            if (string.IsNullOrWhiteSpace(item.AckGuid)) {
+                // No ACK required — confirm directly without calling engine
                 await _dal.Outbox.SetStatusAsync(wfId, OutboxStatus.Confirmed, load: load);
                 await _dal.Outbox.AddHistoryAsync(wfId, outcome, OutboxStatus.Confirmed, null, null, load);
-            } catch (Exception ex) {
-                await _dal.Outbox.SetStatusAsync(wfId, OutboxStatus.Pending,
-                    error: ex.Message,
-                    nextRetryAt: DateTimeOffset.UtcNow + _opt.OutboxRetryDelay,
-                    load: load);
+            } else {
+                try {
+                    await _feed.AckAsync(_consumerId, item.AckGuid, outcome, ct: ct);
+                    await _dal.Outbox.SetStatusAsync(wfId, OutboxStatus.Confirmed, load: load);
+                    await _dal.Outbox.AddHistoryAsync(wfId, outcome, OutboxStatus.Confirmed, null, null, load);
+                } catch (Exception ex) {
+                    await _dal.Outbox.SetStatusAsync(wfId, OutboxStatus.Pending,
+                        error: ex.Message,
+                        nextRetryAt: DateTimeOffset.UtcNow + _opt.OutboxRetryDelay,
+                        load: load);
+                }
             }
         }
 
@@ -216,17 +222,21 @@ namespace Haley.Services {
                         var consumerId = r.GetLong("consumer_id");
                         var outcome = (AckOutcome)r.GetByte("current_outcome");
 
-                        await _dal.Outbox.SetStatusAsync(wfId, OutboxStatus.Sent, load: load);
-                        try {
-                            await _feed.AckAsync(consumerId, ackGuid, outcome, ct: ct);
+                        if (string.IsNullOrWhiteSpace(ackGuid)) {
                             await _dal.Outbox.SetStatusAsync(wfId, OutboxStatus.Confirmed, load: load);
                             await _dal.Outbox.AddHistoryAsync(wfId, outcome, OutboxStatus.Confirmed, null, null, load);
-                        } catch (Exception ex) {
-                            await _dal.Outbox.SetStatusAsync(wfId, OutboxStatus.Pending,
-                                error: ex.Message,
-                                nextRetryAt: DateTimeOffset.UtcNow + _opt.OutboxRetryDelay,
-                                load: load);
-                            await _dal.Outbox.AddHistoryAsync(wfId, outcome, OutboxStatus.Failed, null, ex.Message, load);
+                        } else {
+                            try {
+                                await _feed.AckAsync(consumerId, ackGuid, outcome, ct: ct);
+                                await _dal.Outbox.SetStatusAsync(wfId, OutboxStatus.Confirmed, load: load);
+                                await _dal.Outbox.AddHistoryAsync(wfId, outcome, OutboxStatus.Confirmed, null, null, load);
+                            } catch (Exception ex) {
+                                await _dal.Outbox.SetStatusAsync(wfId, OutboxStatus.Pending,
+                                    error: ex.Message,
+                                    nextRetryAt: DateTimeOffset.UtcNow + _opt.OutboxRetryDelay,
+                                    load: load);
+                                await _dal.Outbox.AddHistoryAsync(wfId, outcome, OutboxStatus.Failed, null, ex.Message, load);
+                            }
                         }
                     }
                     if (rows.Count == 0)

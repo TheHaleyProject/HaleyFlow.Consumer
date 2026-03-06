@@ -38,6 +38,8 @@ namespace Haley.Internal {
 
         public const string ADD_HISTORY =
             $@"INSERT INTO outbox_history (outbox_id, outcome, status, attempt_no, response_payload_json, error)
-               VALUES ({WF_ID}, {OUTCOME}, {STATUS}, {ATTEMPT_NO}, {RESPONSE_PAYLOAD}, {ERROR});";
+               VALUES ({WF_ID}, {OUTCOME}, {STATUS},
+                       COALESCE((SELECT MAX(attempt_no) FROM outbox_history WHERE outbox_id = {WF_ID}), 0) + 1,
+                       {RESPONSE_PAYLOAD}, {ERROR});";
     }
 }
