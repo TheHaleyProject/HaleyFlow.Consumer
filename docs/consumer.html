@@ -249,42 +249,42 @@
     <div class="nav-section">
       <button class="nav-group-btn" onclick="toggleGroup(this)">Getting Started <span class="caret">▾</span></button>
       <div class="nav-items">
-        <button class="nav-item" onclick="scrollTo('overview')">What is it?</button>
-        <button class="nav-item" onclick="scrollTo('quickstart')">Quick Start</button>
+        <button class="nav-item" onclick="gotoSection('overview')">What is it?</button>
+        <button class="nav-item" onclick="gotoSection('quickstart')">Quick Start</button>
       </div>
     </div>
 
     <div class="nav-section">
       <button class="nav-group-btn" onclick="toggleGroup(this)">Core Concepts <span class="caret">▾</span></button>
       <div class="nav-items">
-        <button class="nav-item" onclick="scrollTo('arch-loops')">Background Loops</button>
-        <button class="nav-item" onclick="scrollTo('arch-wrapper')">LifeCycleWrapper</button>
-        <button class="nav-item" onclick="scrollTo('arch-attrs')">Attributes</button>
-        <button class="nav-item" onclick="scrollTo('arch-registry')">WrapperRegistry</button>
-        <button class="nav-item" onclick="scrollTo('arch-dispatch')">Dispatch Flow</button>
-        <button class="nav-item" onclick="scrollTo('arch-steps')">Step Tracking</button>
-        <button class="nav-item" onclick="scrollTo('arch-versioning')">Handler Versioning</button>
-        <button class="nav-item" onclick="scrollTo('arch-outbox')">Outbox &amp; Reliability</button>
+        <button class="nav-item" onclick="gotoSection('arch-loops')">Background Loops</button>
+        <button class="nav-item" onclick="gotoSection('arch-wrapper')">LifeCycleWrapper</button>
+        <button class="nav-item" onclick="gotoSection('arch-attrs')">Attributes</button>
+        <button class="nav-item" onclick="gotoSection('arch-registry')">WrapperRegistry</button>
+        <button class="nav-item" onclick="gotoSection('arch-dispatch')">Dispatch Flow</button>
+        <button class="nav-item" onclick="gotoSection('arch-steps')">Step Tracking</button>
+        <button class="nav-item" onclick="gotoSection('arch-versioning')">Handler Versioning</button>
+        <button class="nav-item" onclick="gotoSection('arch-outbox')">Outbox &amp; Reliability</button>
       </div>
     </div>
 
     <div class="nav-section">
       <button class="nav-group-btn" onclick="toggleGroup(this)">Reference <span class="caret">▾</span></button>
       <div class="nav-items">
-        <button class="nav-item" onclick="scrollTo('ref-options')">ConsumerServiceOptions</button>
-        <button class="nav-item" onclick="scrollTo('ref-ackoutcome')">AckOutcome Values</button>
-        <button class="nav-item" onclick="scrollTo('ref-schema')">Consumer DB Schema</button>
+        <button class="nav-item" onclick="gotoSection('ref-options')">ConsumerServiceOptions</button>
+        <button class="nav-item" onclick="gotoSection('ref-ackoutcome')">AckOutcome Values</button>
+        <button class="nav-item" onclick="gotoSection('ref-schema')">Consumer DB Schema</button>
       </div>
     </div>
 
     <div class="nav-section">
       <button class="nav-group-btn" onclick="toggleGroup(this)">Examples <span class="caret">▾</span></button>
       <div class="nav-items">
-        <button class="nav-item" onclick="scrollTo('ex-setup')">1 — Minimal Setup</button>
-        <button class="nav-item" onclick="scrollTo('ex-transition')">2 — Transition Handler</button>
-        <button class="nav-item" onclick="scrollTo('ex-steps')">3 — Multi-Step (Idempotent)</button>
-        <button class="nav-item" onclick="scrollTo('ex-hook')">4 — Hook Handler</button>
-        <button class="nav-item" onclick="scrollTo('ex-versioning')">5 — Handler Versioning</button>
+        <button class="nav-item" onclick="gotoSection('ex-setup')">1 — Minimal Setup</button>
+        <button class="nav-item" onclick="gotoSection('ex-transition')">2 — Transition Handler</button>
+        <button class="nav-item" onclick="gotoSection('ex-steps')">3 — Multi-Step (Idempotent)</button>
+        <button class="nav-item" onclick="gotoSection('ex-hook')">4 — Hook Handler</button>
+        <button class="nav-item" onclick="gotoSection('ex-versioning')">5 — Handler Versioning</button>
       </div>
     </div>
 
@@ -379,15 +379,14 @@
 services.AddTransient&lt;<span class="ty">LoanApprovalHandler</span>&gt;();
 
 <span class="cm">// 3. Build + start consumer</span>
-<span class="kw">var</span> consumer = <span class="kw">new</span> <span class="ty">WorkFlowConsumerService</span>(
-    feed:    inProcessFeed,
-    dal:     consumerDal,
-    sp:      serviceProvider,
-    options: <span class="kw">new</span> <span class="ty">ConsumerServiceOptions</span> {
+<span class="kw">var</span> consumer = <span class="kw">await new</span> <span class="ty">WorkFlowConsumerMaker</span> {
+    EventFeed       = inProcessFeed,
+    ServiceProvider = serviceProvider,
+    Options         = <span class="kw">new</span> <span class="ty">ConsumerServiceOptions</span> {
         ConsumerGuid = <span class="st">"my-app-consumer"</span>,
         EnvCode      = <span class="jn">1</span>
     }
-);
+}.WithConnectionString(connectionString).Build(adapterGateway);
 consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
 <span class="kw">await</span> consumer.StartAsync(cancellationToken);</code><span class="lang-label">C#</span></pre>
   </section>
@@ -836,17 +835,16 @@ WorkFlowConsumerService
 services.AddTransient&lt;<span class="ty">LoanApprovalHandler</span>&gt;();
 
 <span class="cm">// Build consumer service</span>
-<span class="kw">var</span> consumer = <span class="kw">new</span> <span class="ty">WorkFlowConsumerService</span>(
-    feed:    inProcessFeed,     <span class="cm">// ILifeCycleEventFeed — bridges engine to consumer</span>
-    dal:     consumerDal,       <span class="cm">// IConsumerServiceDAL — consumer's own DB</span>
-    sp:      serviceProvider,
-    options: <span class="kw">new</span> <span class="ty">ConsumerServiceOptions</span> {
+<span class="kw">var</span> consumer = <span class="kw">await new</span> <span class="ty">WorkFlowConsumerMaker</span> {
+    EventFeed       = inProcessFeed,     <span class="cm">// ILifeCycleEventFeed — bridges engine to consumer</span>
+    ServiceProvider = serviceProvider,
+    Options         = <span class="kw">new</span> <span class="ty">ConsumerServiceOptions</span> {
         ConsumerGuid   = <span class="st">"loan-consumer-01"</span>,
         EnvCode        = <span class="jn">1</span>,
         MaxConcurrency = <span class="jn">10</span>,
         BatchSize      = <span class="jn">50</span>
     }
-);
+}.WithConnectionString(connectionString).Build(adapterGateway);
 
 consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
 <span class="kw">await</span> consumer.StartAsync(cancellationToken);</code><span class="lang-label">C#</span></pre>
@@ -1092,10 +1090,11 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
     el.style.maxHeight = el.scrollHeight + 'px';
   });
 
-  function scrollTo(id) {
+  function gotoSection(id) {
     const el = document.getElementById(id);
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const top = el.getBoundingClientRect().top - content.getBoundingClientRect().top + content.scrollTop;
+      content.scrollTo({ top, behavior: 'smooth' });
       setActive(id);
     }
   }
