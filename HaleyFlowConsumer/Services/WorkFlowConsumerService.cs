@@ -28,7 +28,7 @@ namespace Haley.Services {
             _dal = dal ?? throw new ArgumentNullException(nameof(dal));
             _sp = sp ?? throw new ArgumentNullException(nameof(sp));
             _opt = options ?? new ConsumerServiceOptions();
-            _throttle = new SemaphoreSlim(_opt.MaxConcurrency, _opt.MaxConcurrency);
+            _throttle = new SemaphoreSlim(_opt.MaxConcurrency, _opt.MaxConcurrency); //maximum processing, to save resources and threads.
         }
 
         // ----------------------------------------------------------------
@@ -66,9 +66,10 @@ namespace Haley.Services {
             _consumerId = await _feed.RegisterConsumerAsync(_opt.EnvCode, _opt.ConsumerGuid, ct);
 
             _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            //background threads
             var token = _cts.Token;
-            _ = Task.Run(() => HeartbeatLoopAsync(token), token);
-            _ = Task.Run(() => PollLoopAsync(token), token);
+            _ = Task.Run(() => HeartbeatLoopAsync(token), token); 
+            _ = Task.Run(() => PollLoopAsync(token), token); 
             _ = Task.Run(() => OutboxLoopAsync(token), token);
         }
 
@@ -76,10 +77,6 @@ namespace Haley.Services {
             _cts?.Cancel();
             return Task.CompletedTask;
         }
-
-        // ----------------------------------------------------------------
-        // Heartbeat loop
-        // ----------------------------------------------------------------
 
         private async Task HeartbeatLoopAsync(CancellationToken ct) {
             while (!ct.IsCancellationRequested) {
@@ -93,10 +90,6 @@ namespace Haley.Services {
                 }
             }
         }
-
-        // ----------------------------------------------------------------
-        // Poll loop (bounded parallel dispatch)
-        // ----------------------------------------------------------------
 
         private async Task PollLoopAsync(CancellationToken ct) {
             while (!ct.IsCancellationRequested) {
@@ -206,10 +199,6 @@ namespace Haley.Services {
             }
         }
 
-        // ----------------------------------------------------------------
-        // Outbox retry loop
-        // ----------------------------------------------------------------
-
         private async Task OutboxLoopAsync(CancellationToken ct) {
             while (!ct.IsCancellationRequested) {
                 try {
@@ -249,10 +238,7 @@ namespace Haley.Services {
             }
         }
 
-        // ----------------------------------------------------------------
         // Helpers
-        // ----------------------------------------------------------------
-
         private WorkflowRecord BuildWorkflowRecord(ILifeCycleDispatchItem item) {
             var evt = item.Event;
             var record = new WorkflowRecord {
