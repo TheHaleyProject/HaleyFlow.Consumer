@@ -8,10 +8,9 @@ namespace Haley.Internal {
     internal sealed class MariaConsumerInboxDAL : MariaDALBase, IConsumerInboxDAL {
         public MariaConsumerInboxDAL(IDALUtilBase db) : base(db) { }
 
-        public Task UpsertAsync(long wfId, string? payloadJson, string? paramsJson, DbExecutionLoad load = default)
+        public Task UpsertAsync(long wfId, string? paramsJson, DbExecutionLoad load = default)
             => Db.ExecAsync(QRY_INBOX.UPSERT, load,
                 (WF_ID, wfId),
-                (PAYLOAD_JSON, (object?)payloadJson ?? DBNull.Value),
                 (PARAMS_JSON, (object?)paramsJson ?? DBNull.Value));
 
         public Task SetStatusAsync(long wfId, InboxStatus status, string? error = null, DbExecutionLoad load = default)

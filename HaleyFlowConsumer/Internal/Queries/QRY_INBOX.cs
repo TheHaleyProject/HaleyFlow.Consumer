@@ -4,8 +4,8 @@ namespace Haley.Internal {
     internal static class QRY_INBOX {
 
         public const string UPSERT =
-            $@"INSERT IGNORE INTO inbox (wf_id, payload_json, params_json)
-               VALUES ({WF_ID}, {PAYLOAD_JSON}, {PARAMS_JSON});";
+            $@"INSERT IGNORE INTO inbox (wf_id, params_json)
+               VALUES ({WF_ID}, {PARAMS_JSON});";
 
         public const string SET_STATUS =
             $@"UPDATE inbox SET status = {STATUS}, last_error = {LAST_ERROR}, modified = UTC_TIMESTAMP()

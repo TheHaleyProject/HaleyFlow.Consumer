@@ -146,9 +146,8 @@ namespace Haley.Services {
             var effectiveVersion = _registry.ResolveHandlerVersion(evt.DefinitionId, wf.HandlerVersion ?? (int)evt.DefinitionVersionId, wf.HandlerUpgrade);
 
             // 3. Upsert inbox
-            var payloadJson = evt.Payload != null ? JsonSerializer.Serialize(evt.Payload) : null;
             var paramsJson = evt.Params != null ? JsonSerializer.Serialize(evt.Params) : null;
-            await _dal.Inbox.UpsertAsync(wfId, payloadJson, paramsJson, load);
+            await _dal.Inbox.UpsertAsync(wfId, paramsJson, load);
             await _dal.Inbox.SetStatusAsync(wfId, InboxStatus.Processing, load: load);
             await _dal.Inbox.IncrementAttemptAsync(wfId, load);
 

@@ -17,7 +17,6 @@ namespace Haley.Internal {
         public const string EVENT_CODE = "@EVENT_CODE";
         public const string ROUTE = "@ROUTE";
         // inbox
-        public const string PAYLOAD_JSON = "@PAYLOAD_JSON";
         public const string PARAMS_JSON = "@PARAMS_JSON";
         public const string STATUS = "@STATUS";
         public const string LAST_ERROR = "@LAST_ERROR";

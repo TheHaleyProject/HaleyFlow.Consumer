@@ -3,7 +3,6 @@
 	<schema name="lc_consumer" >
 		<table name="inbox" row_count="0" spec="" >
 			<column name="wf_id" prior="workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" />
-			<column name="payload_json" type="LONGTEXT" />
 			<column name="params_json" type="LONGTEXT" />
 			<column name="received_at" type="DATETIME" mandatory="y" >
 				<defo><![CDATA[current_timestamp()]]></defo>
@@ -170,7 +169,7 @@ if allow upgrde, we can allow this to upgrade to latest version presen in the ap
 	<diagram_group name="Default" id="095de0c8-e633-4185-a9b8-c31a8438aa5e" >
 		<diagram name="Main Diagram" id="9443b33f-5de4-42b2-a6d5-e59d764d8dba" joined_routing="y" show_relation="columns" >
 			<entity schema="lc_consumer" name="inbox" color="BED3F4" x="589" y="57" />
-			<entity schema="lc_consumer" name="inbox_step" color="BED3F4" x="551" y="285" />
+			<entity schema="lc_consumer" name="inbox_step" color="BED3F4" x="551" y="266" />
 			<entity schema="lc_consumer" name="outbox" color="BED3F4" x="57" y="57" />
 			<entity schema="lc_consumer" name="outbox_history" color="BED3F4" x="95" y="247" />
 			<entity schema="lc_consumer" name="workflow" color="BED3F4" x="323" y="57" />

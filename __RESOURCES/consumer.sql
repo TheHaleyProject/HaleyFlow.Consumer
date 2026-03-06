@@ -22,7 +22,6 @@ USE `lc_consumer`;
 -- Dumping structure for table lc_consumer.inbox
 CREATE TABLE IF NOT EXISTS `inbox` (
   `wf_id` bigint(20) unsigned NOT NULL,
-  `payload_json` longtext DEFAULT NULL,
   `params_json` longtext DEFAULT NULL,
   `received_at` datetime NOT NULL DEFAULT current_timestamp(),
   `modified` datetime NOT NULL DEFAULT current_timestamp(),
