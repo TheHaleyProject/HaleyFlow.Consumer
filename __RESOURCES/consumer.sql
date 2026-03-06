@@ -38,7 +38,6 @@ CREATE TABLE IF NOT EXISTS `inbox` (
 
 -- Dumping structure for table lc_consumer.inbox_step
 CREATE TABLE IF NOT EXISTS `inbox_step` (
-  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `inbox_id` bigint(20) unsigned NOT NULL,
   `step_code` int(11) NOT NULL DEFAULT 0 COMMENT 'what is the step that was executed (coming and aware only to the consumer)',
   `status` tinyint(3) unsigned NOT NULL DEFAULT 1 COMMENT '1=Pending,2=Running,3=Completed,4=Failed',
@@ -46,8 +45,7 @@ CREATE TABLE IF NOT EXISTS `inbox_step` (
   `completed_at` datetime(6) DEFAULT NULL,
   `result_json` longtext DEFAULT NULL,
   `last_error` text DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `unq_inbox_step_code` (`inbox_id`,`step_code`),
+  PRIMARY KEY (`inbox_id`,`step_code`),
   KEY `idx_inbox_step_status` (`status`),
   CONSTRAINT `fk_inbox_step_inbox` FOREIGN KEY (`inbox_id`) REFERENCES `inbox` (`wf_id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

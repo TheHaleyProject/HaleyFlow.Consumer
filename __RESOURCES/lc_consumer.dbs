@@ -32,9 +32,6 @@
 			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
 		</table>
 		<table name="inbox_step" row_count="0" spec="" >
-			<column name="id" type="BIGINT" length="20" mandatory="y" unsigned="y" >
-				<identity><![CDATA[AUTO_INCREMENT]]></identity>
-			</column>
 			<column name="inbox_id" prior="inbox_workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" />
 			<column name="step_code" type="INT" length="11" mandatory="y" >
 				<defo><![CDATA[0]]></defo>
@@ -48,15 +45,12 @@
 			<column name="completed_at" type="DATETIME" length="6" />
 			<column name="result_json" type="LONGTEXT" />
 			<column name="last_error" type="TEXT" />
-			<index name="pk_inbox_step" unique="PRIMARY_KEY" >
-				<column name="id" />
-			</index>
-			<index name="unq_inbox_step_code" unique="UNIQUE_KEY" >
-				<column name="inbox_id" />
-				<column name="step_code" />
-			</index>
 			<index name="idx_inbox_step_status" unique="NORMAL" >
 				<column name="status" />
+			</index>
+			<index name="pk_inbox_step" unique="PRIMARY_KEY" >
+				<column name="inbox_id" />
+				<column name="step_code" />
 			</index>
 			<fk name="fk_inbox_step_inbox" to_schema="lc_consumer" to_table="inbox" delete_action="cascade" options="" >
 				<fk_column name="inbox_id" pk="wf_id" />
@@ -149,7 +143,7 @@
 				<comment><![CDATA[route that needs to be invoked.. null for transition]]></comment>
 			</column>
 			<column name="created" type="DATETIME" mandatory="y" >
-				<defo><![CDATA[CURRENT_TIMESTAMP]]></defo>
+				<defo><![CDATA[current_timestamp()]]></defo>
 			</column>
 			<column name="handler_upgrade" type="TINYINT" mandatory="y" >
 				<defo><![CDATA[1]]></defo>
