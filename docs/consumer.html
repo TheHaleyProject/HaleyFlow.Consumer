@@ -260,6 +260,7 @@
         <button class="nav-item" onclick="gotoSection('arch-loops')">Background Loops</button>
         <button class="nav-item" onclick="gotoSection('arch-wrapper')">LifeCycleWrapper</button>
         <button class="nav-item" onclick="gotoSection('arch-attrs')">Attributes</button>
+        <button class="nav-item" onclick="gotoSection('arch-instance-data')">Instance Data <span class="badge-new" style="background:#2563eb;color:#fff;font-size:9px;border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:700;">NEW</span></button>
         <button class="nav-item" onclick="gotoSection('arch-registry')">WrapperRegistry</button>
         <button class="nav-item" onclick="gotoSection('arch-dispatch')">Dispatch Flow</button>
         <button class="nav-item" onclick="gotoSection('arch-steps')">Step Tracking</button>
@@ -524,7 +525,7 @@ WorkFlowConsumerService
           <tr><td><code>DefinitionId</code></td><td>long</td><td>Engine definition ID</td></tr>
           <tr><td><code>DefinitionVersionId</code></td><td>long</td><td>Engine def_version ID</td></tr>
           <tr><td><code>InstanceGuid</code></td><td>string?</td><td>Stable instance GUID (same as ExternalRef in most cases)</td></tr>
-          <tr><td><code>Payload</code></td><td>object?</td><td>Payload from the trigger request</td></tr>
+          <tr><td><code>Metadata</code></td><td>string?</td><td><span class="badge-new" style="background:#2563eb;color:#fff;font-size:9px;border-radius:3px;padding:1px 4px;margin-right:4px;font-weight:700;">NEW</span>Immutable instance metadata set at creation. Forwarded on every event. Opaque to the engine — consumer-defined structure.</td></tr>
           <tr><td><code>Params</code></td><td>object?</td><td>Params from matched policy rule</td></tr>
           <tr><td><code>OnSuccessEvent</code></td><td>string?</td><td>Event code to trigger on success (from policy <code>complete.success</code>)</td></tr>
           <tr><td><code>OnFailureEvent</code></td><td>string?</td><td>Event code to trigger on failure (from policy <code>complete.failure</code>)</td></tr>
@@ -560,6 +561,42 @@ WorkFlowConsumerService
     </div>
   </section>
 
+  <!-- ──────────────── INSTANCE DATA MODEL ──────────────── -->
+  <section class="doc-section" id="arch-instance-data">
+    <h3 class="sub-title">Instance Data — Consumer Perspective <span class="badge-new" style="background:#2563eb;color:#fff;font-size:9px;border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:700;">NEW</span></h3>
+    <p>The engine maintains three separate data layers per workflow instance. As a consumer you interact with each layer differently:</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Layer</th><th>How you access it</th><th>Key facts</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Trigger Payload</strong><br><code>lc_data.payload</code></td>
+            <td>You don't — it's not in events</td>
+            <td>What data caused a specific transition. Audit-only. Stored in the engine's <code>lc_data</code> table. <strong>Never forwarded to consumers.</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Instance Metadata</strong><br><code>instance.metadata</code></td>
+            <td><code>evt.Metadata</code> on every event</td>
+            <td>Immutable opaque string set by the initiator at creation via <code>LifeCycleTriggerRequest.Metadata</code>. Forwarded on every <code>ILifeCycleEvent</code>. Consumer-defined structure — plain string, CSV, JSON, etc.</td>
+          </tr>
+          <tr>
+            <td><strong>Instance Context</strong><br><code>instance.context</code></td>
+            <td>Explicit API call to engine</td>
+            <td>Mutable JSON bag. Consumers stamp results, decisions, or enrichment data here. Call <code>engine.GetInstanceContextAsync</code> to read, <code>engine.SetInstanceContextAsync</code> to write. Not forwarded in events.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout warn">
+      <div class="callout-title">Payload is not in your event</div>
+      If you are looking for the data that triggered a transition, note that <code>LifeCycleTriggerRequest.Payload</code> is <strong>not forwarded</strong> to consumers. It is stored in the engine's <code>lc_data</code> table for audit purposes only. Use <code>evt.Params</code> for policy-level parameters, or use <code>evt.Metadata</code> for instance-level tags set at creation.
+    </div>
+    <div class="callout tip">
+      <div class="callout-title">Using instance context across transitions</div>
+      Call <code>await engine.SetInstanceContextAsync(evt.EntityId, jsonString)</code> after completing a step to leave a decision for downstream consumers. Call <code>await engine.GetInstanceContextAsync(evt.EntityId)</code> to read it. The context is freeform JSON — define your own schema.
+    </div>
+  </section>
+
   <!-- ──────────────── WRAPPER REGISTRY ──────────────── -->
   <section class="doc-section" id="arch-registry">
     <h3 class="sub-title">WrapperRegistry — Auto-Discovery</h3>
@@ -586,7 +623,7 @@ WorkFlowConsumerService
     <ol class="step-list">
       <li><div class="step-num">1</div><div class="step-body"><strong>Upsert workflow row</strong> — inserts a row in <code>workflow</code> table keyed by <code>UNIQUE(consumer_id, ack_guid)</code>. Idempotent. Returns <code>(wfId, isNew)</code>.</div></li>
       <li><div class="step-num">2</div><div class="step-body"><strong>Pin handler version</strong> (first event only) — if <code>isNew</code>, looks up the most recent handler version already pinned for this definition+entity. Pins it permanently on the workflow row.</div></li>
-      <li><div class="step-num">3</div><div class="step-body"><strong>Upsert inbox</strong> — stores payload + params JSON in <code>inbox</code> table. Sets status to <code>Processing</code>, increments attempt count.</div></li>
+      <li><div class="step-num">3</div><div class="step-body"><strong>Upsert inbox</strong> — stores params JSON in <code>inbox</code> table. Sets status to <code>Processing</code>, increments attempt count.</div></li>
       <li><div class="step-num">4</div><div class="step-body"><strong>Build context</strong> — creates <code>ConsumerContext</code> with <code>WfId</code>, <code>AckGuid</code>, <code>HandlerVersion</code>, <code>CancellationToken</code>, etc.</div></li>
       <li><div class="step-num">5</div><div class="step-body"><strong>Resolve handler from DI</strong> — resolves the wrapper type from <code>IServiceProvider</code>. Falls back to <code>Activator.CreateInstance</code> if not registered. Injects the step DAL.</div></li>
       <li><div class="step-num">6</div><div class="step-body"><strong>Dispatch</strong> — calls <code>wrapper.DispatchTransitionAsync</code> or <code>wrapper.DispatchHookAsync</code>. The dispatcher selects the best-matching handler method by MinVersion. Returns <code>AckOutcome</code>.</div></li>
@@ -768,8 +805,8 @@ WorkFlowConsumerService
           </tr>
           <tr>
             <td><code>inbox</code></td>
-            <td>Stores payload + params for the current dispatch. Tracks processing status and attempt count.</td>
-            <td><code>wf_id FK→workflow</code>, <code>payload_json</code>, <code>params_json</code>, <code>status</code> (1=Received, 2=Processing, 3=Processed, 4=Failed), <code>attempt_count</code>, <code>last_error</code></td>
+            <td>Stores params for the current dispatch. Tracks processing status and attempt count.</td>
+            <td><code>wf_id FK→workflow</code>, <code>params_json</code>, <code>status</code> (1=Received, 2=Processing, 3=Processed, 4=Failed), <code>attempt_count</code>, <code>last_error</code></td>
           </tr>
           <tr>
             <td><code>inbox_step</code></td>
@@ -853,6 +890,10 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
   <section class="doc-section" id="ex-transition">
     <h3 class="sub-title">Example 2 — Transition Handler with Policy Params</h3>
     <p>Using <code>OnSuccessEvent</code> and <code>OnFailureEvent</code> from the policy to automatically trigger the next macro transition.</p>
+    <div class="callout tip" style="margin-bottom:16px">
+      <div class="callout-title">LifeCycleTriggerRequest.Metadata <span class="badge-new" style="background:#2563eb;color:#fff;font-size:9px;border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:700;">NEW</span></div>
+      When creating a new workflow instance, set <code>Metadata</code> to stamp an immutable tag on the instance. It is forwarded on every subsequent event via <code>evt.Metadata</code>. Example: <code>Metadata = "env=prod,tier=gold"</code>. On follow-up trigger calls the field is ignored — metadata is set once at creation only.
+    </div>
     <pre><code>[<span class="at">LifeCycleDefinition</span>(<span class="st">"loan-approval"</span>)]
 <span class="kw">public class</span> <span class="ty">LoanApprovalHandler</span> : <span class="ty">LifeCycleWrapper</span> {
     <span class="kw">private readonly</span> <span class="ty">IWorkFlowEngine</span> _engine;
