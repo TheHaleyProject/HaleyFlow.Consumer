@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HaleyFlow Consumer — Handler Framework</title>
+<style>
+  :root {
+    --brand: #2563eb;
+    --brand-dark: #1d4ed8;
+    --sidebar-bg: #111827;
+    --sidebar-text: #9ca3af;
+    --sidebar-active: #2563eb;
+    --sidebar-hover: #1f2937;
+    --sidebar-group: #6b7280;
+    --content-bg: #f9fafb;
+    --card-bg: #ffffff;
+    --text: #1f2937;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --code-bg: #0f172a;
+    --code-text: #e2e8f0;
+    --inline-code-bg: #f1f5f9;
+    --inline-code-text: #1d4ed8;
+    --badge-error: #dc2626;
+    --badge-warn: #d97706;
+    --badge-info: #2563eb;
+    --badge-ok: #059669;
+    --heading: #111827;
+    --accent-light: #eff6ff;
+    --tip-bg: #eff6ff;
+    --tip-border: #3b82f6;
+    --warn-bg: #fffbeb;
+    --warn-border: #f59e0b;
+    --new-bg: #f0fdf4;
+    --new-border: #22c55e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--content-bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: 280px; min-width: 280px; background: var(--sidebar-bg);
+    display: flex; flex-direction: column; overflow: hidden;
+    border-right: 1px solid #1f2937;
+  }
+  #sidebar-header { padding: 20px 16px 14px; border-bottom: 1px solid #1f2937; flex-shrink: 0; }
+  #sidebar-header .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  #sidebar-header .logo-icon {
+    width: 32px; height: 32px; background: var(--brand); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; color: #fff; font-size: 14px; font-style: italic;
+  }
+  #sidebar-header .logo-text { color: #fff; font-weight: 700; font-size: 14px; line-height: 1.2; }
+  #sidebar-header .logo-sub { color: var(--sidebar-text); font-size: 11px; }
+  #search-wrap { position: relative; }
+  #search { width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 6px;
+    padding: 7px 10px 7px 30px; color: #e5e7eb; font-size: 12px; outline: none; }
+  #search::placeholder { color: #6b7280; }
+  #search:focus { border-color: var(--brand); }
+  #search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%);
+    color: #6b7280; font-size: 12px; pointer-events: none; }
+
+  #nav { flex: 1; overflow-y: auto; padding: 8px 0 20px; }
+  #nav::-webkit-scrollbar { width: 4px; }
+  #nav::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+
+  .nav-section { margin-bottom: 4px; }
+  .nav-group-btn {
+    width: 100%; background: none; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 16px; color: var(--sidebar-group); font-size: 10px;
+    font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    transition: color .15s;
+  }
+  .nav-group-btn:hover { color: #9ca3af; }
+  .nav-group-btn .caret { transition: transform .2s; font-size: 9px; }
+  .nav-group-btn.collapsed .caret { transform: rotate(-90deg); }
+  .nav-items { overflow: hidden; transition: max-height .25s ease; }
+  .nav-items.collapsed { max-height: 0 !important; }
+
+  .nav-item {
+    display: block; padding: 6px 16px 6px 24px; color: var(--sidebar-text);
+    font-size: 12.5px; text-decoration: none; cursor: pointer;
+    border-left: 2px solid transparent; transition: all .15s; line-height: 1.4;
+    background: none; border-right: none; border-top: none; border-bottom: none;
+    width: 100%; text-align: left;
+  }
+  .nav-item:hover { background: var(--sidebar-hover); color: #e5e7eb; }
+  .nav-item.active { color: var(--brand); border-left-color: var(--brand); background: rgba(37,99,235,.08); }
+
+  /* ── Content ── */
+  #content { flex: 1; overflow-y: auto; padding: 0; }
+  #content::-webkit-scrollbar { width: 6px; }
+  #content::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+  .content-inner { max-width: 860px; margin: 0 auto; padding: 40px 48px 80px; }
+
+  /* Hero */
+  .hero { background: linear-gradient(135deg, #111827 0%, #1e3a8a 100%);
+    border-radius: 12px; padding: 36px 40px; margin-bottom: 40px;
+    display: flex; align-items: center; gap: 24px; }
+  .hero-logo { width: 56px; height: 56px; background: var(--brand); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; color: #fff; font-size: 24px; font-style: italic; flex-shrink: 0; }
+  .hero h1 { color: #fff; font-size: 28px; font-weight: 800; margin-bottom: 4px; }
+  .hero p { color: #9ca3af; font-size: 14px; line-height: 1.6; }
+  .hero-meta { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; }
+  .hero-tag { background: rgba(255,255,255,.08); color: #d1d5db;
+    font-size: 11px; padding: 3px 8px; border-radius: 4px; }
+
+  /* Sections */
+  .doc-section { margin-bottom: 56px; scroll-margin-top: 24px; }
+  .section-label { font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--brand); margin-bottom: 8px; }
+  h2.section-title { font-size: 24px; font-weight: 800; color: var(--heading);
+    border-bottom: 2px solid var(--border); padding-bottom: 12px; margin-bottom: 24px; }
+  h3.sub-title { font-size: 16px; font-weight: 700; color: var(--heading);
+    margin: 28px 0 12px; display: flex; align-items: center; gap: 8px; }
+  h3.sub-title .tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 3px; }
+  h4.mini-title { font-size: 13.5px; font-weight: 700; color: var(--heading); margin: 20px 0 8px; }
+
+  p { font-size: 14px; line-height: 1.75; color: var(--text); margin-bottom: 12px; }
+  ul, ol { padding-left: 20px; margin-bottom: 12px; }
+  li { font-size: 14px; line-height: 1.75; color: var(--text); margin-bottom: 3px; }
+  li ul { margin-top: 4px; margin-bottom: 4px; }
+
+  /* Callout boxes */
+  .callout { border-radius: 8px; padding: 14px 16px; margin: 16px 0; font-size: 13.5px; line-height: 1.65; }
+  .callout.tip { background: var(--tip-bg); border-left: 3px solid var(--tip-border); }
+  .callout.warn { background: var(--warn-bg); border-left: 3px solid var(--warn-border); }
+  .callout.new { background: var(--new-bg); border-left: 3px solid var(--new-border); }
+  .callout.danger { background: #fff5f5; border-left: 3px solid #e05252; }
+  .callout-title { font-weight: 700; margin-bottom: 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  .callout.tip .callout-title { color: #1d4ed8; }
+  .callout.warn .callout-title { color: #92400e; }
+  .callout.new .callout-title { color: #166534; }
+  .callout.danger .callout-title { color: #be123c; }
+
+  /* Code */
+  code { font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace; }
+  p code, li code, td code {
+    background: var(--inline-code-bg); color: var(--inline-code-text);
+    padding: 1px 5px; border-radius: 3px; font-size: 12.5px;
+  }
+  pre {
+    background: var(--code-bg); border-radius: 10px; padding: 20px 22px;
+    overflow-x: auto; margin: 16px 0; position: relative;
+  }
+  pre code { color: var(--code-text); font-size: 12.5px; line-height: 1.7; background: none; padding: 0; }
+  .lang-label { position: absolute; top: 8px; right: 12px;
+    font-size: 10px; color: #475569; font-family: sans-serif; font-weight: 600; letter-spacing: .05em; }
+
+  /* Syntax tokens */
+  .kw { color: #c792ea; }
+  .ty { color: #82aaff; }
+  .st { color: #c3e88d; }
+  .cm { color: #546e7a; font-style: italic; }
+  .nm { color: #ffcb6b; }
+  .fn { color: #82aaff; }
+  .nb { color: #f78c6c; }
+  .op { color: #89ddff; }
+  .jk { color: #89ddff; }
+  .jv { color: #c3e88d; }
+  .jn { color: #f78c6c; }
+  .at { color: #ffcb6b; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; margin: 16px 0; border-radius: 8px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { background: #f1f5f9; font-weight: 700; color: #374151;
+    padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+  tbody td { padding: 9px 14px; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.55; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #f9fafb; }
+
+  /* Badges */
+  .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px;
+    border-radius: 3px; text-transform: uppercase; letter-spacing: .04em; }
+  .badge.error { background: #fee2e2; color: var(--badge-error); }
+  .badge.warn  { background: #fef3c7; color: var(--badge-warn); }
+  .badge.info  { background: #dbeafe; color: var(--badge-info); }
+  .badge.ok    { background: #d1fae5; color: var(--badge-ok); }
+  .badge.new   { background: #dcfce7; color: #166534; }
+
+  /* Step list */
+  .step-list { list-style: none; padding: 0; }
+  .step-list li { display: flex; gap: 12px; margin-bottom: 10px; align-items: flex-start; }
+  .step-num { width: 24px; height: 24px; border-radius: 50%; background: var(--brand);
+    color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .step-body { flex: 1; font-size: 13.5px; line-height: 1.65; }
+  .step-body strong { color: var(--heading); }
+
+  /* Grid cards */
+  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; }
+  .card-title { font-weight: 700; font-size: 13px; color: var(--heading); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .card-icon { color: var(--brand); font-size: 16px; }
+  .card ul { padding-left: 16px; margin: 0; }
+  .card li { font-size: 12.5px; color: var(--text-muted); margin-bottom: 3px; }
+
+  /* Flow diagram */
+  .flow { background: var(--code-bg); border-radius: 10px; padding: 20px 22px; margin: 16px 0; overflow-x: auto; }
+  .flow pre { background: none; padding: 0; margin: 0; border-radius: 0; }
+  .flow pre code { color: #94a3b8; font-size: 12px; }
+  .flow .flow-hl { color: #c3e88d; }
+  .flow .flow-blue { color: #82aaff; }
+
+  dl { margin: 12px 0; }
+  dt { font-weight: 700; font-size: 13.5px; color: var(--heading); margin-top: 10px; }
+  dd { margin-left: 16px; font-size: 13.5px; line-height: 1.65; color: var(--text); margin-top: 2px; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  #back-top { position: fixed; bottom: 24px; right: 24px; width: 38px; height: 38px;
+    background: var(--brand); color: #fff; border: none; border-radius: 50%; font-size: 16px;
+    cursor: pointer; display: none; align-items: center; justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2); z-index: 100; }
+  #back-top.show { display: flex; }
+
+  @media (max-width: 900px) {
+    #sidebar { display: none; }
+    .content-inner { padding: 24px 20px 60px; }
+    .card-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ SIDEBAR ═══════════════════════════════ -->
+<nav id="sidebar">
+  <div id="sidebar-header">
+    <div class="logo">
+      <div class="logo-icon">h.</div>
+      <div>
+        <div class="logo-text">HaleyFlow Consumer</div>
+        <div class="logo-sub">Handler Framework &amp; Usage Guide</div>
+      </div>
+    </div>
+    <div id="search-wrap">
+      <span id="search-icon">🔍</span>
+      <input id="search" type="text" placeholder="Search sections…" autocomplete="off">
+    </div>
+  </div>
+
+  <div id="nav">
+
+    <div class="nav-section">
+      <button class="nav-group-btn" onclick="toggleGroup(this)">Getting Started <span class="caret">▾</span></button>
+      <div class="nav-items">
+        <button class="nav-item" onclick="scrollTo('overview')">What is it?</button>
+        <button class="nav-item" onclick="scrollTo('quickstart')">Quick Start</button>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <button class="nav-group-btn" onclick="toggleGroup(this)">Core Concepts <span class="caret">▾</span></button>
+      <div class="nav-items">
+        <button class="nav-item" onclick="scrollTo('arch-loops')">Background Loops</button>
+        <button class="nav-item" onclick="scrollTo('arch-wrapper')">LifeCycleWrapper</button>
+        <button class="nav-item" onclick="scrollTo('arch-attrs')">Attributes</button>
+        <button class="nav-item" onclick="scrollTo('arch-registry')">WrapperRegistry</button>
+        <button class="nav-item" onclick="scrollTo('arch-dispatch')">Dispatch Flow</button>
+        <button class="nav-item" onclick="scrollTo('arch-steps')">Step Tracking</button>
+        <button class="nav-item" onclick="scrollTo('arch-versioning')">Handler Versioning</button>
+        <button class="nav-item" onclick="scrollTo('arch-outbox')">Outbox &amp; Reliability</button>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <button class="nav-group-btn" onclick="toggleGroup(this)">Reference <span class="caret">▾</span></button>
+      <div class="nav-items">
+        <button class="nav-item" onclick="scrollTo('ref-options')">ConsumerServiceOptions</button>
+        <button class="nav-item" onclick="scrollTo('ref-ackoutcome')">AckOutcome Values</button>
+        <button class="nav-item" onclick="scrollTo('ref-schema')">Consumer DB Schema</button>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <button class="nav-group-btn" onclick="toggleGroup(this)">Examples <span class="caret">▾</span></button>
+      <div class="nav-items">
+        <button class="nav-item" onclick="scrollTo('ex-setup')">1 — Minimal Setup</button>
+        <button class="nav-item" onclick="scrollTo('ex-transition')">2 — Transition Handler</button>
+        <button class="nav-item" onclick="scrollTo('ex-steps')">3 — Multi-Step (Idempotent)</button>
+        <button class="nav-item" onclick="scrollTo('ex-hook')">4 — Hook Handler</button>
+        <button class="nav-item" onclick="scrollTo('ex-versioning')">5 — Handler Versioning</button>
+      </div>
+    </div>
+
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════ CONTENT ═══════════════════════════════ -->
+<main id="content">
+<div class="content-inner">
+
+  <!-- Hero -->
+  <div class="hero" id="overview">
+    <div class="hero-logo">h.</div>
+    <div>
+      <h1>HaleyFlow Consumer</h1>
+      <p>An attribute-driven handler framework for processing engine events. Write a class, decorate methods — the consumer library handles polling, dispatch, step tracking, ACK retry, and the transactional outbox automatically.</p>
+      <div class="hero-meta">
+        <span class="hero-tag">MariaDB</span>
+        <span class="hero-tag">C# / .NET</span>
+        <span class="hero-tag">Attribute-Driven</span>
+        <span class="hero-tag">At-Least-Once</span>
+        <span class="hero-tag">Step Tracking</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────────── WHAT IS IT ──────────────── -->
+  <section class="doc-section" id="overview-detail">
+    <div class="section-label">Overview</div>
+    <h2 class="section-title">What is HaleyFlow Consumer?</h2>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title"><span class="card-icon">✅</span> What the consumer does</div>
+        <ul>
+          <li>Polls the engine for due transition and hook events</li>
+          <li>Dispatches events to the correct handler method by attribute</li>
+          <li>Tracks per-event sub-steps in <code>inbox_step</code> (idempotent)</li>
+          <li>ACKs the engine via a transactional outbox (survives crashes)</li>
+          <li>Pins a handler version per entity instance on first event</li>
+          <li>Sends heartbeats to keep the engine's liveness check passing</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="card-icon">🚫</span> What you do not need to do</div>
+        <ul>
+          <li>Call <code>AckAsync</code> yourself — just return <code>AckOutcome</code></li>
+          <li>Poll the engine — the consumer loops do that</li>
+          <li>Handle retry backoff — the outbox loop retries failed ACKs</li>
+          <li>Register by definition ID — names are resolved from the engine at startup</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout tip">
+      <div class="callout-title">Key difference from the raw engine API</div>
+      When using the engine directly, you subscribe to <code>engine.EventRaised</code> and call <code>engine.AckAsync(…)</code> yourself. With the consumer library, you write a <code>LifeCycleWrapper</code> subclass, return <code>AckOutcome</code> from your handler, and the library handles everything else — polling, delivery tracking, outbox retry, and ACK.
+    </div>
+  </section>
+
+  <!-- ──────────────── QUICK START ──────────────── -->
+  <section class="doc-section" id="quickstart">
+    <div class="section-label">Getting Started</div>
+    <h2 class="section-title">Quick Start</h2>
+    <ol class="step-list">
+      <li><div class="step-num">1</div><div class="step-body"><strong>Decorate your class</strong> — apply <code>[LifeCycleDefinition("my-workflow")]</code> to a <code>LifeCycleWrapper</code> subclass.</div></li>
+      <li><div class="step-num">2</div><div class="step-body"><strong>Add handler methods</strong> — decorate with <code>[TransitionHandler(eventCode)]</code> or <code>[HookHandler("route")]</code>.</div></li>
+      <li><div class="step-num">3</div><div class="step-body"><strong>Implement abstract methods</strong> — <code>OnUnhandledTransitionAsync</code> and <code>OnUnhandledHookAsync</code> for unregistered events.</div></li>
+      <li><div class="step-num">4</div><div class="step-body"><strong>Register with DI</strong> — add <code>services.AddTransient&lt;MyHandler&gt;()</code>.</div></li>
+      <li><div class="step-num">5</div><div class="step-body"><strong>Build and start</strong> — create <code>WorkFlowConsumerService</code>, call <code>RegisterAssembly</code>, then <code>StartAsync</code>.</div></li>
+    </ol>
+    <pre><code><span class="cm">// 1. Handler class</span>
+[<span class="at">LifeCycleDefinition</span>(<span class="st">"loan-approval"</span>)]
+<span class="kw">public class</span> <span class="ty">LoanApprovalHandler</span> : <span class="ty">LifeCycleWrapper</span> {
+    <span class="kw">private readonly</span> <span class="ty">IEmailService</span> _email;
+    <span class="kw">public</span> LoanApprovalHandler(<span class="ty">IEmailService</span> email) { _email = email; }
+
+    [<span class="at">TransitionHandler</span>(<span class="jn">100</span>)]  <span class="cm">// event code 100 = "submit"</span>
+    <span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnSubmitAsync(<span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
+        <span class="kw">await</span> _email.SendConfirmationAsync(evt.EntityId, ctx.CancellationToken);
+        <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;
+    }
+
+    <span class="kw">protected override</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnUnhandledTransitionAsync(
+        <span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)
+        =&gt; Task.FromResult(<span class="ty">AckOutcome</span>.Processed);  <span class="cm">// or Retry/Failed as needed</span>
+
+    <span class="kw">protected override</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnUnhandledHookAsync(
+        <span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)
+        =&gt; Task.FromResult(<span class="ty">AckOutcome</span>.Processed);
+}
+
+<span class="cm">// 2. DI registration</span>
+services.AddTransient&lt;<span class="ty">LoanApprovalHandler</span>&gt;();
+
+<span class="cm">// 3. Build + start consumer</span>
+<span class="kw">var</span> consumer = <span class="kw">new</span> <span class="ty">WorkFlowConsumerService</span>(
+    feed:    inProcessFeed,
+    dal:     consumerDal,
+    sp:      serviceProvider,
+    options: <span class="kw">new</span> <span class="ty">ConsumerServiceOptions</span> {
+        ConsumerGuid = <span class="st">"my-app-consumer"</span>,
+        EnvCode      = <span class="jn">1</span>
+    }
+);
+consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
+<span class="kw">await</span> consumer.StartAsync(cancellationToken);</code><span class="lang-label">C#</span></pre>
+  </section>
+
+  <!-- ──────────────── BACKGROUND LOOPS ──────────────── -->
+  <section class="doc-section" id="arch-loops">
+    <div class="section-label">Core Concepts</div>
+    <h2 class="section-title">Architecture</h2>
+    <h3 class="sub-title">Background Loops</h3>
+    <p><code>WorkFlowConsumerService.StartAsync</code> launches three independent background loops on the thread pool:</p>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">HeartbeatLoop</div>
+        <ul>
+          <li>Calls <code>engine.BeatConsumerAsync</code> on a timer</li>
+          <li>Default interval: every 30 seconds</li>
+          <li>Keeps the consumer "alive" from the engine's perspective</li>
+          <li>If heartbeat goes stale, engine stops dispatching to this consumer</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">PollLoop</div>
+        <ul>
+          <li>Calls <code>engine.GetDueTransitionsAsync</code> + <code>GetDueHooksAsync</code></li>
+          <li>Dispatches each item via a semaphore-bounded concurrency pool</li>
+          <li>If no events: sleeps for <code>PollInterval</code> (default 5s)</li>
+          <li>If events found: polls again immediately</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card-grid" style="margin-top:0">
+      <div class="card">
+        <div class="card-title">OutboxLoop</div>
+        <ul>
+          <li>Retries ACKs that failed to reach the engine</li>
+          <li>Reads pending rows from <code>outbox</code> table where <code>next_retry_at &lt;= now</code></li>
+          <li>If empty: sleeps for <code>OutboxInterval</code> (default 15s)</li>
+          <li>Survives process crashes — outbox is durable</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">Startup sequence</div>
+        <ul>
+          <li>Scan all loaded assemblies for <code>[LifeCycleDefinition]</code> classes</li>
+          <li>Query engine to resolve definition names → IDs</li>
+          <li>Register consumer with engine, receive assigned consumer ID</li>
+          <li>Start the three loops</li>
+        </ul>
+      </div>
+    </div>
+    <div class="flow">
+      <pre><code>Engine DB (ack_consumer)
+    │
+    ▼ PollLoop — GetDueTransitionsAsync / GetDueHooksAsync
+WorkFlowConsumerService
+    │
+    ├─ Semaphore (MaxConcurrency) ──► ProcessItemAsync
+    │       ├─ Upsert workflow row    (consumer DB: workflow)
+    │       ├─ Pin handler version    (first event only)
+    │       ├─ Upsert inbox record    (consumer DB: inbox)
+    │       ├─ LifeCycleWrapper.Dispatch ──► [TransitionHandler] / [HookHandler] method
+    │       │       └─ Returns <span class="flow-hl">AckOutcome</span>
+    │       └─ Write outbox row ──► OutboxLoop ──► engine.AckAsync
+    │
+    └─ HeartbeatLoop ──► engine.BeatConsumerAsync</code></pre>
+    </div>
+  </section>
+
+  <!-- ──────────────── LIFECYCLE WRAPPER ──────────────── -->
+  <section class="doc-section" id="arch-wrapper">
+    <h3 class="sub-title">LifeCycleWrapper — The Handler Base Class</h3>
+    <p>All workflow handlers inherit from <code>LifeCycleWrapper</code>. This base class provides step tracking helpers and the internal dispatch machinery. Subclasses are resolved from DI per event dispatch — constructor-inject your dependencies normally.</p>
+
+    <h4 class="mini-title">Step tracking methods (protected)</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Method</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>StartStepAsync(ctx, stepCode)</code></td><td>Marks step as Running (2) in <code>inbox_step</code>; records <code>started_at</code></td></tr>
+          <tr><td><code>CompleteStepAsync(ctx, stepCode, result?)</code></td><td>Marks step as Completed (3); records <code>completed_at</code> and optional result JSON</td></tr>
+          <tr><td><code>FailStepAsync(ctx, stepCode, error?)</code></td><td>Marks step as Failed (4); records <code>completed_at</code> and optional error message</td></tr>
+          <tr><td><code>IsStepCompletedAsync(ctx, stepCode)</code></td><td>Returns <code>true</code> if the step is already in Completed state — use to skip idempotently</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4 class="mini-title">Required abstract methods</h4>
+    <p>Implement these to handle events that have no matching <code>[TransitionHandler]</code> or <code>[HookHandler]</code> attribute:</p>
+    <pre><code><span class="kw">protected abstract</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnUnhandledTransitionAsync(
+    <span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx);
+
+<span class="kw">protected abstract</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnUnhandledHookAsync(
+    <span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx);</code><span class="lang-label">C#</span></pre>
+    <div class="callout warn">
+      <div class="callout-title">Do not return Processed by default blindly</div>
+      If you return <code>Processed</code> for all unhandled events, silently-ignored events will never re-deliver. Consider logging an alert and returning <code>Failed</code> for truly unexpected events, or <code>Processed</code> only if your handler deliberately handles all events.
+    </div>
+  </section>
+
+  <!-- ──────────────── ATTRIBUTES ──────────────── -->
+  <section class="doc-section" id="arch-attrs">
+    <h3 class="sub-title">Attributes</h3>
+
+    <h4 class="mini-title">[LifeCycleDefinition("name")] — Class-level</h4>
+    <p>Maps a <code>LifeCycleWrapper</code> subclass to a specific workflow definition by name. The name must match the <code>defName</code> field in the engine's definition JSON exactly (case-insensitive lookup).</p>
+    <pre><code>[<span class="at">LifeCycleDefinition</span>(<span class="st">"loan-approval"</span>)]
+<span class="kw">public class</span> <span class="ty">LoanApprovalHandler</span> : <span class="ty">LifeCycleWrapper</span> { ... }</code><span class="lang-label">C#</span></pre>
+
+    <h4 class="mini-title">[TransitionHandler(eventCode, minVersion?)] — Method-level</h4>
+    <p>Marks a method as the handler for a specific transition event code. The method signature must be:</p>
+    <pre><code>Task&lt;<span class="ty">AckOutcome</span>&gt; MethodName(<span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)</code><span class="lang-label">C#</span></pre>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Parameter</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>eventCode</code></td><td>The integer event code from the engine's definition JSON (e.g. <code>100</code> for "submit")</td></tr>
+          <tr><td><code>minVersion</code></td><td>Minimum handler version for this method to be selected. Default <code>0</code> = matches any version. See Handler Versioning section.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4 class="mini-title">[HookHandler("route", minVersion?)] — Method-level</h4>
+    <p>Marks a method as the handler for a hook with the given route name. The route must match the <code>"event"</code> field in the policy emit entry.</p>
+    <pre><code>[<span class="at">HookHandler</span>(<span class="st">"app.loan.notify_reviewer"</span>)]
+<span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnNotifyReviewerAsync(<span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)
+    { ... }</code><span class="lang-label">C#</span></pre>
+
+    <h4 class="mini-title">ILifeCycleTransitionEvent — available fields</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>EventCode</code></td><td>int</td><td>The event code that fired the transition</td></tr>
+          <tr><td><code>EntityId</code></td><td>string</td><td>The <code>external_ref</code> — stable business key for the workflow instance</td></tr>
+          <tr><td><code>DefinitionId</code></td><td>long</td><td>Engine definition ID</td></tr>
+          <tr><td><code>DefinitionVersionId</code></td><td>long</td><td>Engine def_version ID</td></tr>
+          <tr><td><code>InstanceGuid</code></td><td>string?</td><td>Stable instance GUID (same as ExternalRef in most cases)</td></tr>
+          <tr><td><code>Payload</code></td><td>object?</td><td>Payload from the trigger request</td></tr>
+          <tr><td><code>Params</code></td><td>object?</td><td>Params from matched policy rule</td></tr>
+          <tr><td><code>OnSuccessEvent</code></td><td>string?</td><td>Event code to trigger on success (from policy <code>complete.success</code>)</td></tr>
+          <tr><td><code>OnFailureEvent</code></td><td>string?</td><td>Event code to trigger on failure (from policy <code>complete.failure</code>)</td></tr>
+          <tr><td><code>OccurredAt</code></td><td>DateTimeOffset</td><td>Real-world event time (set by trigger caller; may be backdated)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4 class="mini-title">ILifeCycleHookEvent — additional fields</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>Route</code></td><td>The hook route name (e.g. <code>"app.loan.notify_reviewer"</code>) — matches <code>HookHandlerAttribute.Route</code></td></tr>
+          <tr><td><code>Params</code></td><td>Params from the emit entry or matched policy rule</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4 class="mini-title">ConsumerContext — per-dispatch context</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Property</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>WfId</code></td><td>Consumer-local workflow row ID (used internally by step tracking methods)</td></tr>
+          <tr><td><code>ConsumerId</code></td><td>Engine-assigned consumer ID for this process</td></tr>
+          <tr><td><code>AckGuid</code></td><td>Engine-issued ACK GUID for this event — passed back to engine when ACKing</td></tr>
+          <tr><td><code>HandlerVersion</code></td><td>Handler version pinned for this entity instance. Used by MinVersion picker.</td></tr>
+          <tr><td><code>HandlerUpgrade</code></td><td><code>Pinned</code> or <code>AllowUpgrade</code> — whether newer handler methods can be used</td></tr>
+          <tr><td><code>CancellationToken</code></td><td>Honour this in async operations — cancelled when consumer stops</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ──────────────── WRAPPER REGISTRY ──────────────── -->
+  <section class="doc-section" id="arch-registry">
+    <h3 class="sub-title">WrapperRegistry — Auto-Discovery</h3>
+    <p>The registry maps definition IDs (engine-assigned) to handler types. It works in two phases:</p>
+    <ol class="step-list">
+      <li><div class="step-num">1</div><div class="step-body"><strong>Assembly scan</strong> (<code>RegisterAssembly</code>) — finds all non-abstract types inheriting <code>LifeCycleWrapper</code> with <code>[LifeCycleDefinition]</code>. Stores them by definition name.</div></li>
+      <li><div class="step-num">2</div><div class="step-body"><strong>Engine resolution</strong> (on <code>StartAsync</code>) — for each discovered name, calls <code>engine.GetDefinitionIdAsync</code>. Binds the returned def_id to the handler type.</div></li>
+    </ol>
+    <p>At dispatch time, <code>TryGetRegistration(defId)</code> looks up the handler type. If no registration exists for an incoming definition ID, the event is silently skipped.</p>
+    <div class="callout tip">
+      <div class="callout-title">Multiple assemblies</div>
+      Call <code>RegisterAssembly</code> for each assembly that contains handler classes before <code>StartAsync</code>. <code>StartAsync</code> also auto-scans all currently loaded assemblies as a fallback.
+    </div>
+    <pre><code>consumer
+    .RegisterAssembly(Assembly.GetExecutingAssembly())
+    .RegisterAssembly(<span class="st">"OtherHandlers.Assembly"</span>);  <span class="cm">// name or already-loaded assembly</span>
+<span class="kw">await</span> consumer.StartAsync(ct);</code><span class="lang-label">C#</span></pre>
+  </section>
+
+  <!-- ──────────────── DISPATCH FLOW ──────────────── -->
+  <section class="doc-section" id="arch-dispatch">
+    <h3 class="sub-title">Dispatch Flow (ProcessItemAsync)</h3>
+    <p>When an event item is dequeued from the engine, <code>ProcessItemAsync</code> runs the following steps:</p>
+    <ol class="step-list">
+      <li><div class="step-num">1</div><div class="step-body"><strong>Upsert workflow row</strong> — inserts a row in <code>workflow</code> table keyed by <code>UNIQUE(consumer_id, ack_guid)</code>. Idempotent. Returns <code>(wfId, isNew)</code>.</div></li>
+      <li><div class="step-num">2</div><div class="step-body"><strong>Pin handler version</strong> (first event only) — if <code>isNew</code>, looks up the most recent handler version already pinned for this definition+entity. Pins it permanently on the workflow row.</div></li>
+      <li><div class="step-num">3</div><div class="step-body"><strong>Upsert inbox</strong> — stores payload + params JSON in <code>inbox</code> table. Sets status to <code>Processing</code>, increments attempt count.</div></li>
+      <li><div class="step-num">4</div><div class="step-body"><strong>Build context</strong> — creates <code>ConsumerContext</code> with <code>WfId</code>, <code>AckGuid</code>, <code>HandlerVersion</code>, <code>CancellationToken</code>, etc.</div></li>
+      <li><div class="step-num">5</div><div class="step-body"><strong>Resolve handler from DI</strong> — resolves the wrapper type from <code>IServiceProvider</code>. Falls back to <code>Activator.CreateInstance</code> if not registered. Injects the step DAL.</div></li>
+      <li><div class="step-num">6</div><div class="step-body"><strong>Dispatch</strong> — calls <code>wrapper.DispatchTransitionAsync</code> or <code>wrapper.DispatchHookAsync</code>. The dispatcher selects the best-matching handler method by MinVersion. Returns <code>AckOutcome</code>.</div></li>
+      <li><div class="step-num">7</div><div class="step-body"><strong>Write outbox + attempt ACK</strong> — writes outcome to <code>outbox</code> table. Attempts to call <code>engine.AckAsync</code> immediately. If ACK fails, sets <code>next_retry_at</code> and the OutboxLoop retries later.</div></li>
+    </ol>
+    <div class="callout new">
+      <div class="callout-title">AckRequired = false</div>
+      If the engine dispatched the event with no <code>ack_guid</code> (AckRequired was false), the consumer marks the outbox row as Confirmed immediately without calling the engine. No <code>UNIQUE(consumer_id, ack_guid)</code> deduplication occurs for these events — each arrives as a separate workflow row.
+    </div>
+  </section>
+
+  <!-- ──────────────── STEP TRACKING ──────────────── -->
+  <section class="doc-section" id="arch-steps">
+    <h3 class="sub-title">Step Tracking (inbox_step)</h3>
+    <p>Each event dispatch can be broken into named steps stored in the <code>inbox_step</code> table. The primary key is <code>(inbox_id, step_code)</code> — so each step is idempotent across re-deliveries.</p>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">Why use steps?</div>
+        <ul>
+          <li>At-least-once delivery means your handler may run multiple times</li>
+          <li>Steps let you skip already-completed work on re-delivery</li>
+          <li>Each step tracks <code>started_at</code>, <code>completed_at</code>, result, and error</li>
+          <li>Step codes are arbitrary integers — define them as constants in your handler</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">Step status values</div>
+        <ul>
+          <li><code>1</code> — Pending (initial)</li>
+          <li><code>2</code> — Running (<code>StartStepAsync</code>)</li>
+          <li><code>3</code> — Completed (<code>CompleteStepAsync</code>)</li>
+          <li><code>4</code> — Failed (<code>FailStepAsync</code>)</li>
+        </ul>
+      </div>
+    </div>
+    <pre><code><span class="cm">// Idempotent step pattern — safe to run multiple times on re-delivery</span>
+<span class="kw">const int</span> STEP_VALIDATE = <span class="jn">1</span>;
+<span class="kw">const int</span> STEP_NOTIFY   = <span class="jn">2</span>;
+
+<span class="kw">if</span> (!<span class="kw">await</span> IsStepCompletedAsync(ctx, STEP_VALIDATE)) {
+    <span class="kw">await</span> StartStepAsync(ctx, STEP_VALIDATE);
+    <span class="kw">try</span> {
+        <span class="kw">await</span> ValidateAsync(evt.EntityId);
+        <span class="kw">await</span> CompleteStepAsync(ctx, STEP_VALIDATE, <span class="st">"ok"</span>);
+    } <span class="kw">catch</span> (<span class="ty">Exception</span> ex) {
+        <span class="kw">await</span> FailStepAsync(ctx, STEP_VALIDATE, ex.Message);
+        <span class="kw">return</span> <span class="ty">AckOutcome</span>.Retry;  <span class="cm">// engine will re-deliver</span>
+    }
+}</code><span class="lang-label">C#</span></pre>
+  </section>
+
+  <!-- ──────────────── HANDLER VERSIONING ──────────────── -->
+  <section class="doc-section" id="arch-versioning">
+    <h3 class="sub-title">Handler Versioning</h3>
+    <p>Each entity instance has a <strong>handler version</strong> pinned on first event. This lets you deploy new handler logic without breaking in-flight instances running on older code.</p>
+
+    <h4 class="mini-title">How pinning works</h4>
+    <ol>
+      <li>First event for an entity arrives. The service checks if any prior entity in this definition already has a pinned version (for consistency across a batch).</li>
+      <li>The handler version is stored in the <code>workflow</code> row and never changes for that entity (unless <code>HandlerUpgrade = AllowUpgrade</code>).</li>
+      <li>On every subsequent event, the pinned version from the <code>workflow</code> row is loaded into <code>ctx.HandlerVersion</code>.</li>
+    </ol>
+
+    <h4 class="mini-title">MinVersion picker algorithm</h4>
+    <p>For an event, the dispatcher collects all methods decorated with a matching attribute and picks the one with the <strong>highest <code>MinVersion</code> that is ≤ <code>ctx.HandlerVersion</code></strong>.</p>
+    <pre><code><span class="cm">// Example: three versions of the same event handler</span>
+[<span class="at">TransitionHandler</span>(<span class="jn">100</span>, minVersion: <span class="jn">0</span>)]   <span class="cm">// selected when HandlerVersion = 0 or 1</span>
+<span class="kw">public</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnSubmitV1Async(...) { ... }
+
+[<span class="at">TransitionHandler</span>(<span class="jn">100</span>, minVersion: <span class="jn">2</span>)]   <span class="cm">// selected when HandlerVersion = 2 or 3</span>
+<span class="kw">public</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnSubmitV2Async(...) { ... }
+
+[<span class="at">TransitionHandler</span>(<span class="jn">100</span>, minVersion: <span class="jn">4</span>)]   <span class="cm">// selected when HandlerVersion >= 4</span>
+<span class="kw">public</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnSubmitV4Async(...) { ... }</code><span class="lang-label">C#</span></pre>
+
+    <h4 class="mini-title">HandlerUpgrade policy</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Value</th><th>Behaviour</th></tr></thead>
+        <tbody>
+          <tr><td><code>Pinned</code> (default)</td><td>Instance always uses its originally pinned version. Deploying new handler versions does not affect existing instances.</td></tr>
+          <tr><td><code>AllowUpgrade</code></td><td>If the wrapper now declares a higher <code>MaxDeclaredVersion</code>, the effective version is bumped to <code>max(pinned, MaxDeclaredVersion)</code>. Existing instances pick up new handler methods on next delivery.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <pre><code><span class="cm">// Set upgrade policy in options (applies to new instances):</span>
+<span class="kw">new</span> <span class="ty">ConsumerServiceOptions</span> {
+    DefaultHandlerUpgrade = <span class="ty">HandlerUpgrade</span>.Pinned  <span class="cm">// default</span>
+}</code><span class="lang-label">C#</span></pre>
+  </section>
+
+  <!-- ──────────────── OUTBOX ──────────────── -->
+  <section class="doc-section" id="arch-outbox">
+    <h3 class="sub-title">Outbox &amp; Reliability</h3>
+    <p>The consumer uses a <strong>transactional outbox</strong> to guarantee ACK delivery even if the process crashes between completing work and sending the ACK to the engine.</p>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">Happy path</div>
+        <ul>
+          <li>Handler runs, returns <code>AckOutcome</code></li>
+          <li>Consumer writes outbox row (Pending)</li>
+          <li>Consumer calls <code>engine.AckAsync</code> immediately</li>
+          <li>On success: outbox row → Confirmed</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">ACK failure path</div>
+        <ul>
+          <li>Handler completes but <code>engine.AckAsync</code> fails (network, timeout)</li>
+          <li>Outbox row stays Pending with <code>next_retry_at</code></li>
+          <li>OutboxLoop retries on schedule (<code>OutboxRetryDelay</code>)</li>
+          <li>Each attempt is recorded in <code>outbox_history</code></li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout tip">
+      <div class="callout-title">Crash safety</div>
+      If the process crashes after the handler completes but before ACK is sent, the outbox row is durable in the consumer DB. When the process restarts, the OutboxLoop will pick up the pending row and ACK the engine. The engine will not re-deliver the event to this consumer as long as the ACK arrives within the engine's retry window.
+    </div>
+  </section>
+
+  <!-- ──────────────── OPTIONS ──────────────── -->
+  <section class="doc-section" id="ref-options">
+    <div class="section-label">Reference</div>
+    <h2 class="section-title">ConsumerServiceOptions</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Property</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>ConsumerGuid</code></td><td><em>required</em></td><td>Stable identity string for this consumer process. Used for engine registration and heartbeat. Must be unique per logical consumer.</td></tr>
+          <tr><td><code>EnvCode</code></td><td><em>required</em></td><td>Environment code this consumer operates in. Matches the engine's <code>EnvCode</code>.</td></tr>
+          <tr><td><code>MaxConcurrency</code></td><td><code>5</code></td><td>Maximum number of events processed concurrently. Backed by a <code>SemaphoreSlim</code>.</td></tr>
+          <tr><td><code>BatchSize</code></td><td><code>20</code></td><td>How many events to pull per poll cycle (per type: transitions + hooks).</td></tr>
+          <tr><td><code>AckStatus</code></td><td><code>1</code> (Pending)</td><td>ACK status to query for due events. Usually leave at default.</td></tr>
+          <tr><td><code>TtlSeconds</code></td><td><code>120</code></td><td>Consumer TTL window in seconds passed to the engine's liveness check.</td></tr>
+          <tr><td><code>HeartbeatInterval</code></td><td>30 seconds</td><td>How often to call <code>BeatConsumerAsync</code>. Keep well below engine's <code>ConsumerTtlSeconds</code>.</td></tr>
+          <tr><td><code>PollInterval</code></td><td>5 seconds</td><td>Sleep delay between poll cycles when no events are found.</td></tr>
+          <tr><td><code>OutboxInterval</code></td><td>15 seconds</td><td>Sleep delay between outbox retry cycles when no pending rows exist.</td></tr>
+          <tr><td><code>OutboxRetryDelay</code></td><td>2 minutes</td><td>How long to wait before re-attempting a failed outbox ACK.</td></tr>
+          <tr><td><code>DefaultHandlerUpgrade</code></td><td><code>Pinned</code></td><td>Handler upgrade policy for new instances. See Handler Versioning section.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ──────────────── ACK OUTCOME ──────────────── -->
+  <section class="doc-section" id="ref-ackoutcome">
+    <h3 class="sub-title">AckOutcome — Return Values</h3>
+    <p>Your handler returns one of these values. The consumer service translates this into an ACK call to the engine.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Value</th><th>Engine effect</th><th>When to use</th></tr></thead>
+        <tbody>
+          <tr><td><code>Delivered</code></td><td>ACK status → Delivered</td><td>You received the event but haven't finished processing yet. Use for two-phase ACK patterns.</td></tr>
+          <tr><td><code>Processed</code></td><td>ACK status → Processed (terminal)</td><td>Work is fully done. No more re-delivery for this consumer.</td></tr>
+          <tr><td><code>Retry</code></td><td>ACK status → Pending + reschedule</td><td>Transient fault (network error, service down). Engine will re-deliver after <code>AckPendingResendAfter</code>.</td></tr>
+          <tr><td><code>Failed</code></td><td>ACK status → Failed (terminal)</td><td>Permanent failure — you cannot process this event. If the hook was <code>blocking</code>, the engine may suspend the instance.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout warn">
+      <div class="callout-title">Retry count matters</div>
+      If your handler returns <code>Retry</code> too many times, the engine's monitor will exceed <code>MaxRetryCount</code> and either suspend the instance (blocking hook) or fire <code>ACK_FAIL</code> (non-blocking hook). Investigate the root cause of transient failures rather than retrying indefinitely.
+    </div>
+  </section>
+
+  <!-- ──────────────── SCHEMA ──────────────── -->
+  <section class="doc-section" id="ref-schema">
+    <h3 class="sub-title">Consumer Database Schema</h3>
+    <p>The consumer maintains its own MariaDB database (separate from the engine DB). It tracks the local processing state of each dispatched event.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Table</th><th>Purpose</th><th>Key Columns</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>workflow</code></td>
+            <td>One row per dispatched event. The consumer's local record of each engine event.</td>
+            <td><code>id</code>, <code>ack_guid</code>, <code>entity_id</code>, <code>kind</code> (1=Transition, 2=Hook), <code>consumer_id</code>, <code>def_id</code>, <code>handler_version</code>, <code>handler_upgrade</code>, <code>on_success</code>, <code>on_failure</code></td>
+          </tr>
+          <tr>
+            <td><code>inbox</code></td>
+            <td>Stores payload + params for the current dispatch. Tracks processing status and attempt count.</td>
+            <td><code>wf_id FK→workflow</code>, <code>payload_json</code>, <code>params_json</code>, <code>status</code> (1=Received, 2=Processing, 3=Processed, 4=Failed), <code>attempt_count</code>, <code>last_error</code></td>
+          </tr>
+          <tr>
+            <td><code>inbox_step</code></td>
+            <td>Fine-grained step tracking within a single dispatch. PK = <code>(inbox_id, step_code)</code>.</td>
+            <td><code>inbox_id FK→inbox</code>, <code>step_code</code>, <code>status</code> (1=Pending, 2=Running, 3=Completed, 4=Failed), <code>started_at</code>, <code>completed_at</code>, <code>result_json</code>, <code>last_error</code></td>
+          </tr>
+          <tr>
+            <td><code>outbox</code></td>
+            <td>Transactional outbox — one row per workflow. Tracks the outcome waiting to be ACK'd to the engine.</td>
+            <td><code>wf_id FK→workflow</code>, <code>current_outcome</code> (AckOutcome), <code>status</code> (1=Pending, 3=Confirmed), <code>next_retry_at</code>, <code>last_error</code></td>
+          </tr>
+          <tr>
+            <td><code>outbox_history</code></td>
+            <td>Audit log of every ACK attempt. Each row is one attempt with outcome, status, and optional response/error.</td>
+            <td><code>outbox_id FK→outbox</code>, <code>outcome</code>, <code>status</code>, <code>attempt_no</code> (auto-computed), <code>response_payload_json</code>, <code>error</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ──────────────── EXAMPLES ──────────────── -->
+  <section class="doc-section" id="ex-setup">
+    <div class="section-label">Examples</div>
+    <h2 class="section-title">Code Examples</h2>
+    <h3 class="sub-title">Example 1 — Minimal Setup</h3>
+    <p>The smallest working consumer — a single handler class plus service startup.</p>
+    <pre><code><span class="cm">// ─────────────────────────────────────────────────────────────
+// Handler class
+// ─────────────────────────────────────────────────────────────</span>
+[<span class="at">LifeCycleDefinition</span>(<span class="st">"loan-approval"</span>)]
+<span class="kw">public class</span> <span class="ty">LoanApprovalHandler</span> : <span class="ty">LifeCycleWrapper</span> {
+    <span class="kw">private readonly</span> <span class="ty">IEmailService</span> _email;
+    <span class="kw">public</span> LoanApprovalHandler(<span class="ty">IEmailService</span> email) { _email = email; }
+
+    [<span class="at">TransitionHandler</span>(<span class="jn">100</span>)]  <span class="cm">// submit</span>
+    <span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnSubmitAsync(
+        <span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
+        <span class="kw">await</span> _email.SendConfirmationAsync(evt.EntityId, ctx.CancellationToken);
+        <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;
+    }
+
+    [<span class="at">TransitionHandler</span>(<span class="jn">200</span>)]  <span class="cm">// approve</span>
+    <span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnApproveAsync(
+        <span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
+        <span class="kw">await</span> _email.SendApprovalAsync(evt.EntityId, ctx.CancellationToken);
+        <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;
+    }
+
+    <span class="cm">// Required: handle events without a matching [TransitionHandler]</span>
+    <span class="kw">protected override</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnUnhandledTransitionAsync(
+        <span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)
+        =&gt; Task.FromResult(<span class="ty">AckOutcome</span>.Processed);
+
+    <span class="kw">protected override</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnUnhandledHookAsync(
+        <span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)
+        =&gt; Task.FromResult(<span class="ty">AckOutcome</span>.Processed);
+}
+
+<span class="cm">// ─────────────────────────────────────────────────────────────
+// DI + startup (e.g. Program.cs / Startup.cs)
+// ─────────────────────────────────────────────────────────────</span>
+services.AddTransient&lt;<span class="ty">LoanApprovalHandler</span>&gt;();
+
+<span class="cm">// Build consumer service</span>
+<span class="kw">var</span> consumer = <span class="kw">new</span> <span class="ty">WorkFlowConsumerService</span>(
+    feed:    inProcessFeed,     <span class="cm">// ILifeCycleEventFeed — bridges engine to consumer</span>
+    dal:     consumerDal,       <span class="cm">// IConsumerServiceDAL — consumer's own DB</span>
+    sp:      serviceProvider,
+    options: <span class="kw">new</span> <span class="ty">ConsumerServiceOptions</span> {
+        ConsumerGuid   = <span class="st">"loan-consumer-01"</span>,
+        EnvCode        = <span class="jn">1</span>,
+        MaxConcurrency = <span class="jn">10</span>,
+        BatchSize      = <span class="jn">50</span>
+    }
+);
+
+consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
+<span class="kw">await</span> consumer.StartAsync(cancellationToken);</code><span class="lang-label">C#</span></pre>
+  </section>
+
+  <section class="doc-section" id="ex-transition">
+    <h3 class="sub-title">Example 2 — Transition Handler with Policy Params</h3>
+    <p>Using <code>OnSuccessEvent</code> and <code>OnFailureEvent</code> from the policy to automatically trigger the next macro transition.</p>
+    <pre><code>[<span class="at">LifeCycleDefinition</span>(<span class="st">"loan-approval"</span>)]
+<span class="kw">public class</span> <span class="ty">LoanApprovalHandler</span> : <span class="ty">LifeCycleWrapper</span> {
+    <span class="kw">private readonly</span> <span class="ty">IWorkFlowEngine</span> _engine;
+    <span class="kw">private readonly</span> <span class="ty">IReviewService</span>   _review;
+
+    <span class="kw">public</span> LoanApprovalHandler(<span class="ty">IWorkFlowEngine</span> engine, <span class="ty">IReviewService</span> review) {
+        _engine = engine; _review = review;
+    }
+
+    [<span class="at">TransitionHandler</span>(<span class="jn">100</span>)]  <span class="cm">// submit → UnderReview</span>
+    <span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnSubmitAsync(
+        <span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
+
+        <span class="cm">// Read policy params (from policy JSON "params" block)</span>
+        <span class="kw">var</span> slaHours = evt.Params?[<span class="st">"sla_hours"</span>]?.ToString() ?? <span class="st">"48"</span>;
+
+        <span class="cm">// Perform review work</span>
+        <span class="kw">var</span> approved = <span class="kw">await</span> _review.RunAsync(evt.EntityId, slaHours, ctx.CancellationToken);
+
+        <span class="cm">// Use OnSuccessEvent / OnFailureEvent from policy to know the next event code</span>
+        <span class="kw">var</span> nextEvent = approved ? evt.OnSuccessEvent : evt.OnFailureEvent;
+        <span class="kw">if</span> (!<span class="ty">string</span>.IsNullOrWhiteSpace(nextEvent)) {
+            <span class="kw">await</span> _engine.TriggerAsync(<span class="kw">new</span> <span class="ty">LifeCycleTriggerRequest</span> {
+                EnvCode     = ctx.ConsumerId, <span class="cm">// use your env code</span>
+                DefName     = <span class="st">"loan-approval"</span>,
+                ExternalRef = evt.EntityId,
+                Event       = nextEvent,
+                RequestId   = $<span class="st">"auto-{evt.EntityId}-{nextEvent}"</span>,
+                AckRequired = <span class="nb">true</span>
+            }, ctx.CancellationToken);
+        }
+
+        <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;
+    }
+
+    <span class="kw">protected override</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnUnhandledTransitionAsync(
+        <span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)
+        =&gt; Task.FromResult(<span class="ty">AckOutcome</span>.Processed);
+    <span class="kw">protected override</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnUnhandledHookAsync(
+        <span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)
+        =&gt; Task.FromResult(<span class="ty">AckOutcome</span>.Processed);
+}</code><span class="lang-label">C#</span></pre>
+  </section>
+
+  <section class="doc-section" id="ex-steps">
+    <h3 class="sub-title">Example 3 — Multi-Step Handler (Idempotent)</h3>
+    <p>Break work into numbered steps. On re-delivery, completed steps are skipped automatically via <code>IsStepCompletedAsync</code>.</p>
+    <pre><code><span class="cm">// Step code constants — define as an enum or const int</span>
+<span class="kw">private const int</span> STEP_VALIDATE = <span class="jn">1</span>;
+<span class="kw">private const int</span> STEP_RESERVE  = <span class="jn">2</span>;
+<span class="kw">private const int</span> STEP_NOTIFY   = <span class="jn">3</span>;
+
+[<span class="at">TransitionHandler</span>(<span class="jn">100</span>)]
+<span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnSubmitAsync(
+    <span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
+
+    <span class="cm">// ── Step 1: Validate ──────────────────────────────────────</span>
+    <span class="kw">if</span> (!<span class="kw">await</span> IsStepCompletedAsync(ctx, STEP_VALIDATE)) {
+        <span class="kw">await</span> StartStepAsync(ctx, STEP_VALIDATE);
+        <span class="kw">try</span> {
+            <span class="kw">await</span> _validator.CheckAsync(evt.EntityId, ctx.CancellationToken);
+            <span class="kw">await</span> CompleteStepAsync(ctx, STEP_VALIDATE, <span class="st">"valid"</span>);
+        } <span class="kw">catch</span> (<span class="ty">ValidationException</span> ex) {
+            <span class="kw">await</span> FailStepAsync(ctx, STEP_VALIDATE, ex.Message);
+            <span class="kw">return</span> <span class="ty">AckOutcome</span>.Failed;  <span class="cm">// permanent — bad data, no retry</span>
+        } <span class="kw">catch</span> (<span class="ty">Exception</span> ex) {
+            <span class="kw">await</span> FailStepAsync(ctx, STEP_VALIDATE, ex.Message);
+            <span class="kw">return</span> <span class="ty">AckOutcome</span>.Retry;   <span class="cm">// transient — retry later</span>
+        }
+    }
+
+    <span class="cm">// ── Step 2: Reserve inventory ─────────────────────────────</span>
+    <span class="kw">if</span> (!<span class="kw">await</span> IsStepCompletedAsync(ctx, STEP_RESERVE)) {
+        <span class="kw">await</span> StartStepAsync(ctx, STEP_RESERVE);
+        <span class="kw">try</span> {
+            <span class="kw">var</span> reservationId = <span class="kw">await</span> _inventory.ReserveAsync(evt.EntityId, ctx.CancellationToken);
+            <span class="kw">await</span> CompleteStepAsync(ctx, STEP_RESERVE, reservationId);
+        } <span class="kw">catch</span> (<span class="ty">Exception</span> ex) {
+            <span class="kw">await</span> FailStepAsync(ctx, STEP_RESERVE, ex.Message);
+            <span class="kw">return</span> <span class="ty">AckOutcome</span>.Retry;
+        }
+    }
+
+    <span class="cm">// ── Step 3: Notify applicant ──────────────────────────────</span>
+    <span class="kw">if</span> (!<span class="kw">await</span> IsStepCompletedAsync(ctx, STEP_NOTIFY)) {
+        <span class="kw">await</span> StartStepAsync(ctx, STEP_NOTIFY);
+        <span class="kw">try</span> {
+            <span class="kw">await</span> _email.SendSubmittedAsync(evt.EntityId, ctx.CancellationToken);
+            <span class="kw">await</span> CompleteStepAsync(ctx, STEP_NOTIFY);
+        } <span class="kw">catch</span> (<span class="ty">Exception</span> ex) {
+            <span class="cm">// Non-critical — log but don't fail the whole event</span>
+            <span class="kw">await</span> FailStepAsync(ctx, STEP_NOTIFY, ex.Message);
+        }
+    }
+
+    <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;
+}</code><span class="lang-label">C#</span></pre>
+    <div class="callout tip">
+      <div class="callout-title">On re-delivery</div>
+      If the process crashes after Step 2 completes but before Step 3, the engine will re-deliver the event. Steps 1 and 2 are skipped (already Completed in <code>inbox_step</code>). Only Step 3 executes again. This makes multi-step handlers safe to re-run.
+    </div>
+  </section>
+
+  <section class="doc-section" id="ex-hook">
+    <h3 class="sub-title">Example 4 — Hook Handler</h3>
+    <p>Handle hook events emitted by the engine's policy. The route name in <code>[HookHandler]</code> must match the <code>"event"</code> field in the policy emit entry exactly.</p>
+    <pre><code>[<span class="at">LifeCycleDefinition</span>(<span class="st">"loan-approval"</span>)]
+<span class="kw">public class</span> <span class="ty">LoanHookHandler</span> : <span class="ty">LifeCycleWrapper</span> {
+    <span class="kw">private readonly</span> <span class="ty">IEmailService</span>  _email;
+    <span class="kw">private readonly</span> <span class="ty">ICreditService</span> _credit;
+
+    <span class="kw">public</span> LoanHookHandler(<span class="ty">IEmailService</span> email, <span class="ty">ICreditService</span> credit) {
+        _email = email; _credit = credit;
+    }
+
+    <span class="cm">// Handles: "emit": [{ "event": "app.loan.notify_reviewer", ... }]</span>
+    [<span class="at">HookHandler</span>(<span class="st">"app.loan.notify_reviewer"</span>)]
+    <span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnNotifyReviewerAsync(
+        <span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
+        <span class="cm">// Params come from the policy "params" block</span>
+        <span class="kw">var</span> email = evt.Params?[<span class="st">"reviewer_email"</span>]?.ToString();
+        <span class="kw">if</span> (<span class="ty">string</span>.IsNullOrWhiteSpace(email)) <span class="kw">return</span> <span class="ty">AckOutcome</span>.Failed;
+
+        <span class="kw">await</span> _email.SendReviewRequestAsync(email, evt.EntityId, ctx.CancellationToken);
+        <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;
+    }
+
+    <span class="cm">// Handles: "emit": [{ "event": "app.loan.run_credit_check", "blocking": true }]</span>
+    [<span class="at">HookHandler</span>(<span class="st">"app.loan.run_credit_check"</span>)]
+    <span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnCreditCheckAsync(
+        <span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
+        <span class="kw">try</span> {
+            <span class="kw">var</span> passed = <span class="kw">await</span> _credit.CheckAsync(evt.EntityId, ctx.CancellationToken);
+            <span class="cm">// Return Retry if transient; Processed/Failed for permanent outcomes.
+            // If Failed on a blocking hook, engine may suspend the instance.</span>
+            <span class="kw">return</span> passed ? <span class="ty">AckOutcome</span>.Processed : <span class="ty">AckOutcome</span>.Failed;
+        } <span class="kw">catch</span> {
+            <span class="kw">return</span> <span class="ty">AckOutcome</span>.Retry;
+        }
+    }
+
+    <span class="cm">// Non-blocking audit log hook — failure is safe</span>
+    [<span class="at">HookHandler</span>(<span class="st">"app.loan.audit_log"</span>)]
+    <span class="kw">public</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnAuditLogAsync(
+        <span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
+        _logger.LogInformation(<span class="st">"Loan {id} entered review state"</span>, evt.EntityId);
+        <span class="kw">return</span> Task.FromResult(<span class="ty">AckOutcome</span>.Processed);
+    }
+
+    <span class="kw">protected override</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnUnhandledTransitionAsync(
+        <span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)
+        =&gt; Task.FromResult(<span class="ty">AckOutcome</span>.Processed);
+    <span class="kw">protected override</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnUnhandledHookAsync(
+        <span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)
+        =&gt; Task.FromResult(<span class="ty">AckOutcome</span>.Processed);
+}</code><span class="lang-label">C#</span></pre>
+  </section>
+
+  <section class="doc-section" id="ex-versioning">
+    <h3 class="sub-title">Example 5 — Handler Versioning</h3>
+    <p>Deploy new logic for the same event code while keeping in-flight entities on their pinned version. Old entities continue using <code>OnSubmitV1Async</code>; new entities (with higher pinned versions) use the newer methods.</p>
+    <pre><code>[<span class="at">LifeCycleDefinition</span>(<span class="st">"loan-approval"</span>)]
+<span class="kw">public class</span> <span class="ty">LoanApprovalHandler</span> : <span class="ty">LifeCycleWrapper</span> {
+
+    <span class="cm">// ── Dispatch rules for event code 100 ──────────────────────────
+    // HandlerVersion 0-1: use V1 (legacy flow)
+    // HandlerVersion 2-3: use V2 (enhanced validation added)
+    // HandlerVersion 4+ : use V4 (new credit pre-check)
+    // The dispatcher picks the highest MinVersion that is ≤ HandlerVersion.</span>
+
+    [<span class="at">TransitionHandler</span>(<span class="jn">100</span>, minVersion: <span class="jn">0</span>)]
+    <span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnSubmitV1Async(
+        <span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
+        <span class="cm">// Original logic — existing in-flight entities still run this</span>
+        <span class="kw">await</span> _validator.BasicCheckAsync(evt.EntityId);
+        <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;
+    }
+
+    [<span class="at">TransitionHandler</span>(<span class="jn">100</span>, minVersion: <span class="jn">2</span>)]
+    <span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnSubmitV2Async(
+        <span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
+        <span class="cm">// New entities (HandlerVersion >= 2) run enhanced validation</span>
+        <span class="kw">await</span> _validator.EnhancedCheckAsync(evt.EntityId);
+        <span class="kw">await</span> _notifier.SendReceiptAsync(evt.EntityId);
+        <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;
+    }
+
+    [<span class="at">TransitionHandler</span>(<span class="jn">100</span>, minVersion: <span class="jn">4</span>)]
+    <span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnSubmitV4Async(
+        <span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
+        <span class="cm">// Entities created after version 4 also run the credit pre-check</span>
+        <span class="kw">await</span> _validator.EnhancedCheckAsync(evt.EntityId);
+        <span class="kw">await</span> _credit.PreCheckAsync(evt.EntityId);
+        <span class="kw">await</span> _notifier.SendReceiptAsync(evt.EntityId);
+        <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;
+    }
+
+    <span class="cm">// ── AllowUpgrade: let existing entities pick up new logic ──────
+    // Set in ConsumerServiceOptions.DefaultHandlerUpgrade = AllowUpgrade
+    // Entity with HandlerVersion=1 + AllowUpgrade will use V4 (max declared).
+    // Only do this when the new logic is backwards-compatible.</span>
+
+    <span class="kw">protected override</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnUnhandledTransitionAsync(
+        <span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)
+        =&gt; Task.FromResult(<span class="ty">AckOutcome</span>.Processed);
+    <span class="kw">protected override</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnUnhandledHookAsync(
+        <span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)
+        =&gt; Task.FromResult(<span class="ty">AckOutcome</span>.Processed);
+}</code><span class="lang-label">C#</span></pre>
+    <div class="callout tip">
+      <div class="callout-title">Version pinning in practice</div>
+      On first event for a new entity, the consumer looks up the highest handler version already in use for the same definition+entity. This means all events for one entity are processed consistently even when new handler versions are deployed mid-flight.
+    </div>
+  </section>
+
+  <hr class="divider">
+  <p style="text-align:center;color:var(--text-muted);font-size:12px">HaleyFlow Consumer — Handler Framework — March 2026</p>
+
+</div><!-- content-inner -->
+</main>
+
+<button id="back-top" onclick="document.getElementById('content').scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+  function toggleGroup(btn) {
+    btn.classList.toggle('collapsed');
+    const items = btn.nextElementSibling;
+    if (btn.classList.contains('collapsed')) {
+      items.style.maxHeight = '0';
+    } else {
+      items.style.maxHeight = items.scrollHeight + 'px';
+    }
+  }
+  document.querySelectorAll('.nav-items').forEach(el => {
+    el.style.maxHeight = el.scrollHeight + 'px';
+  });
+
+  function scrollTo(id) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setActive(id);
+    }
+  }
+
+  function setActive(id) {
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => {
+      if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + id + "'")) {
+        b.classList.add('active');
+      }
+    });
+  }
+
+  const content = document.getElementById('content');
+  content.addEventListener('scroll', () => {
+    document.getElementById('back-top').classList.toggle('show', content.scrollTop > 300);
+    let current = '';
+    document.querySelectorAll('[id]').forEach(el => {
+      const rect = el.getBoundingClientRect();
+      if (rect.top < 120) current = el.id;
+    });
+    if (current) setActive(current);
+  });
+
+  document.getElementById('search').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('.nav-item').forEach(btn => {
+      btn.style.display = btn.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+    if (!q) {
+      document.querySelectorAll('.nav-group-btn').forEach(b => {
+        b.classList.remove('collapsed');
+        b.nextElementSibling.style.maxHeight = b.nextElementSibling.scrollHeight + 'px';
+      });
+    }
+  });
+</script>
+</body>
+</html>
