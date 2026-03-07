@@ -4,6 +4,7 @@ using Haley.Utils;
 using System.Linq.Expressions;
 using System.Reflection;
 using Haley.Internal;
+using static Haley.Internal.KeyConstants;
 
 namespace Haley.Abstractions {
 
@@ -87,7 +88,7 @@ namespace Haley.Abstractions {
         protected async Task<bool> IsStepCompletedAsync(ConsumerContext ctx, int stepCode) {
             var row = await StepDal.GetStepAsync(ctx.WfId, stepCode,
                 new DbExecutionLoad(ctx.CancellationToken));
-            return row != null && row.GetInt("status") == (int)InboxStepStatus.Completed;
+            return row != null && row.GetInt(KEY_STATUS) == (int)InboxStepStatus.Completed;
         }
 
         // ── Unhandled event fallbacks ──────────────────────────────────────────
@@ -179,3 +180,5 @@ namespace Haley.Abstractions {
         }
     }
 }
+
+

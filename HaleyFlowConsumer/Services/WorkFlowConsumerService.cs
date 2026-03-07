@@ -1,6 +1,7 @@
 using Haley.Abstractions;
 using Haley.Enums;
 using Haley.Internal;
+using static Haley.Internal.KeyConstants;
 using Haley.Models;
 using Haley.Utils;
 using System.Reflection;
@@ -292,10 +293,10 @@ namespace Haley.Services {
                     foreach (var r in rows) {
                         ct.ThrowIfCancellationRequested();
                         var load = new DbExecutionLoad(ct);
-                        var wfId = r.GetLong("wf_id");
-                        var ackGuid = r.GetString("ack_guid") ?? string.Empty;
-                        var consumerId = r.GetLong("consumer_id");
-                        var outcome = (AckOutcome)r.GetByte("current_outcome");
+                        var wfId = r.GetLong(KEY_WF_ID);
+                        var ackGuid = r.GetString(KEY_ACK_GUID) ?? string.Empty;
+                        var consumerId = r.GetLong(KEY_CONSUMER_ID);
+                        var outcome = (AckOutcome)r.GetByte(KEY_CURRENT_OUTCOME);
 
                         if (string.IsNullOrWhiteSpace(ackGuid)) {
                             await _dal.Outbox.SetStatusAsync(wfId, OutboxStatus.Confirmed, load: load);
@@ -350,3 +351,5 @@ namespace Haley.Services {
             => int.TryParse(code, out var v) ? v : null;
     }
 }
+
+

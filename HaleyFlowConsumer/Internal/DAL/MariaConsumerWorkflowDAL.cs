@@ -3,6 +3,7 @@ using Haley.Enums;
 using Haley.Models;
 using Haley.Utils;
 using static Haley.Internal.QueryFields;
+using static Haley.Internal.KeyConstants;
 
 namespace Haley.Internal {
     internal sealed class MariaConsumerWorkflowDAL : MariaDALBase, IConsumerWorkflowDAL {
@@ -49,22 +50,24 @@ namespace Haley.Internal {
                 (HANDLER_UPGRADE, (byte)upgrade));
 
         private static WorkflowRecord MapRow(DbRow r) => new WorkflowRecord {
-            Id = r.GetLong("id"),
-            AckGuid = r.GetString("ack_guid") ?? string.Empty,
-            EntityId = r.GetString("entity_id") ?? string.Empty,
-            Kind = (WorkflowKind)r.GetByte("kind"),
-            ConsumerId = r.GetLong("consumer_id"),
-            DefId = r.GetLong("def_id"),
-            DefVersionId = r.GetLong("def_version_id"),
-            HandlerVersion = r.GetNullableInt("handler_version"),
-            InstanceGuid = r.GetString("instance_guid"),
-            OnSuccess = r.GetNullableInt("on_success"),
-            OnFailure = r.GetNullableInt("on_failure"),
-            Occurred = r.GetDateTime("occurred") ?? DateTime.UtcNow,
-            EventCode = r.GetNullableInt("event_code"),
-            Route = r.GetString("route"),
-            Created = r.GetDateTime("created") ?? DateTime.UtcNow,
-            HandlerUpgrade = (HandlerUpgrade)(r.GetNullableByte("handler_upgrade") ?? (byte)HandlerUpgrade.Pinned)
+            Id = r.GetLong(KEY_ID),
+            AckGuid = r.GetString(KEY_ACK_GUID) ?? string.Empty,
+            EntityId = r.GetString(KEY_ENTITY_ID) ?? string.Empty,
+            Kind = (WorkflowKind)r.GetByte(KEY_KIND),
+            ConsumerId = r.GetLong(KEY_CONSUMER_ID),
+            DefId = r.GetLong(KEY_DEF_ID),
+            DefVersionId = r.GetLong(KEY_DEF_VERSION_ID),
+            HandlerVersion = r.GetNullableInt(KEY_HANDLER_VERSION),
+            InstanceGuid = r.GetString(KEY_INSTANCE_GUID),
+            OnSuccess = r.GetNullableInt(KEY_ON_SUCCESS),
+            OnFailure = r.GetNullableInt(KEY_ON_FAILURE),
+            Occurred = r.GetDateTime(KEY_OCCURRED) ?? DateTime.UtcNow,
+            EventCode = r.GetNullableInt(KEY_EVENT_CODE),
+            Route = r.GetString(KEY_ROUTE),
+            Created = r.GetDateTime(KEY_CREATED) ?? DateTime.UtcNow,
+            HandlerUpgrade = (HandlerUpgrade)(r.GetNullableByte(KEY_HANDLER_UPGRADE) ?? (byte)HandlerUpgrade.Pinned)
         };
     }
 }
+
+
