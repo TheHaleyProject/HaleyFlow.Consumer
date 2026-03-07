@@ -524,7 +524,7 @@ WorkFlowConsumerService
           <tr><td><code>EntityId</code></td><td>string</td><td>The <code>external_ref</code> — stable business key for the workflow instance</td></tr>
           <tr><td><code>DefinitionId</code></td><td>long</td><td>Engine definition ID</td></tr>
           <tr><td><code>DefinitionVersionId</code></td><td>long</td><td>Engine def_version ID</td></tr>
-          <tr><td><code>InstanceGuid</code></td><td>string?</td><td>Stable instance GUID (same as ExternalRef in most cases)</td></tr>
+          <tr><td><code>InstanceGuid</code></td><td>string?</td><td>Stable engine-assigned GUID for this instance. Use this in <code>LifeCycleInstanceKey.InstanceGuid</code> for fastest lookups.</td></tr>
           <tr><td><code>Metadata</code></td><td>string?</td><td><span class="badge-new" style="background:#2563eb;color:#fff;font-size:9px;border-radius:3px;padding:1px 4px;margin-right:4px;font-weight:700;">NEW</span>Immutable instance metadata set at creation. Forwarded on every event. Opaque to the engine — consumer-defined structure.</td></tr>
           <tr><td><code>Params</code></td><td>object?</td><td>Params from matched policy rule</td></tr>
           <tr><td><code>OnSuccessEvent</code></td><td>string?</td><td>Event code to trigger on success (from policy <code>complete.success</code>)</td></tr>
@@ -593,7 +593,7 @@ WorkFlowConsumerService
     </div>
     <div class="callout tip">
       <div class="callout-title">Using instance context across transitions</div>
-      Call <code>await engine.SetInstanceContextAsync(evt.EntityId, jsonString)</code> after completing a step to leave a decision for downstream consumers. Call <code>await engine.GetInstanceContextAsync(evt.EntityId)</code> to read it. The context is freeform JSON — define your own schema.
+      Call <code>await engine.SetInstanceContextAsync(new LifeCycleInstanceKey { InstanceGuid = evt.InstanceGuid }, jsonString)</code> after completing a step to leave a decision for downstream consumers. Call <code>await engine.GetInstanceContextAsync(new LifeCycleInstanceKey { InstanceGuid = evt.InstanceGuid })</code> to read it. The context is freeform JSON — define your own schema.
     </div>
   </section>
 
@@ -917,11 +917,10 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
         <span class="kw">var</span> nextEvent = approved ? evt.OnSuccessEvent : evt.OnFailureEvent;
         <span class="kw">if</span> (!<span class="ty">string</span>.IsNullOrWhiteSpace(nextEvent)) {
             <span class="kw">await</span> _engine.TriggerAsync(<span class="kw">new</span> <span class="ty">LifeCycleTriggerRequest</span> {
-                EnvCode     = ctx.ConsumerId, <span class="cm">// use your env code</span>
+                EnvCode     = ctx.EnvCode, <span class="cm">// use your env code</span>
                 DefName     = <span class="st">"loan-approval"</span>,
-                ExternalRef = evt.EntityId,
+                EntityId    = evt.EntityId,
                 Event       = nextEvent,
-                RequestId   = $<span class="st">"auto-{evt.EntityId}-{nextEvent}"</span>,
                 AckRequired = <span class="nb">true</span>
             }, ctx.CancellationToken);
         }

@@ -8,20 +8,39 @@ using System.Text.Json;
 
 namespace Haley.Services {
 
+    // WorkFlowConsumerService is the consumer-side counterpart to WorkFlowEngine.
+    // It runs as a background service in the consumer process (microservice / worker).
+    //
+    // The big picture of how the consumer fits in:
+    //   - WorkFlowEngine (host A, e.g. an API) fires events via EventRaised after each state transition.
+    //   - WorkFlowConsumerService (host B, e.g. a worker process) receives those events and processes them.
+    //   - "Processing" means: run the application's business logic (e.g. send an email, call a payment API)
+    //     and then ACK the engine with the outcome (Processed / Retry / Dead).
+    //
+    // Three background loops run in parallel:
+    //   HeartbeatLoop — keeps this consumer's row alive so the engine monitor doesn't skip it
+    //   PollLoop      — polls the engine DB for events due for delivery and dispatches them
+    //   OutboxLoop    — retries any ACKs that failed to reach the engine on the first attempt
+    //
+    // Handler discovery:
+    //   Application code decorates wrapper classes with [LifeCycleDefinition("loan-approval")].
+    //   StartAsync auto-discovers all such classes at startup, resolves their def_ids from the engine,
+    //   and builds a WrapperRegistry. When an event arrives for def_id X, the registry finds the right
+    //   wrapper type and the service dispatches the event to it.
     /// <summary>
     /// Background consumer service. Auto-scans assemblies for <see cref="LifeCycleWrapper"/> handlers,
     /// registers with the engine on startup, dispatches events with bounded concurrency,
     /// and ACKs results via the transactional outbox.
     /// </summary>
     public sealed class WorkFlowConsumerService : IWorkFlowConsumerService {
-        private readonly ILifeCycleEventFeed _feed;
-        private readonly IConsumerServiceDAL _dal;
-        private readonly IServiceProvider _sp;
+        private readonly ILifeCycleEventFeed _feed;    // thin client over the engine's ACK+dispatch DB tables
+        private readonly IConsumerServiceDAL _dal;     // consumer-side DB: workflow, inbox, outbox, step tables
+        private readonly IServiceProvider _sp;         // DI container — used to resolve wrapper instances
         private readonly ConsumerServiceOptions _opt;
-        private readonly WrapperRegistry _registry = new();
-        private readonly SemaphoreSlim _throttle;
+        private readonly WrapperRegistry _registry = new();  // def_id → wrapper type mapping, built at startup
+        private readonly SemaphoreSlim _throttle;      // bounds concurrent event processing to MaxConcurrency
         private CancellationTokenSource? _cts;
-        private long _consumerId;
+        private long _consumerId;                      // numeric ID assigned by engine after RegisterConsumerAsync
 
         public WorkFlowConsumerService(ILifeCycleEventFeed feed, IConsumerServiceDAL dal, IServiceProvider sp, ConsumerServiceOptions? options = null) {
             _feed = feed ?? throw new ArgumentNullException(nameof(feed));
@@ -51,6 +70,23 @@ namespace Haley.Services {
         // Lifecycle
         // ----------------------------------------------------------------
 
+        // Startup sequence — called once when the host starts.
+        //
+        //   Step 1: Scan all loaded assemblies for classes decorated with [LifeCycleDefinition].
+        //           Those classes are the application's workflow handlers (e.g. LoanApprovalWrapper).
+        //           They are registered by definition name into WrapperRegistry.
+        //
+        //   Step 2: Resolve each discovered definition name → engine-assigned def_id.
+        //           The consumer knows its handlers by name ("loan-approval") but the engine uses numeric IDs
+        //           internally. We call GetDefinitionIdAsync to translate. After this, the registry maps
+        //           def_id → wrapper type, ready for fast O(1) lookup at dispatch time.
+        //
+        //   Step 3: Register this consumer process with the engine (idempotent — safe every restart).
+        //           The engine assigns a numeric consumerId which we store; it's used in all ACK calls.
+        //           Note: registering gives the engine a row — but it still doesn't know which definitions
+        //           this consumer handles. That subscription mapping lives in Hub (ResolveConsumers callback).
+        //
+        //   Step 4: Start the three background loops (heartbeat, poll, outbox).
         public async Task StartAsync(CancellationToken ct = default) {
             // 1. Auto-scan all currently loaded assemblies for [LifeCycleDefinition] wrappers
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
@@ -66,11 +102,10 @@ namespace Haley.Services {
             _consumerId = await _feed.RegisterConsumerAsync(_opt.EnvCode, _opt.ConsumerGuid, ct);
 
             _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            //background threads
             var token = _cts.Token;
-            _ = Task.Run(() => HeartbeatLoopAsync(token), token); 
-            _ = Task.Run(() => PollLoopAsync(token), token); 
-            _ = Task.Run(() => OutboxLoopAsync(token), token);
+            _ = Task.Run(() => HeartbeatLoopAsync(token), token);  // keeps consumer row alive
+            _ = Task.Run(() => PollLoopAsync(token), token);        // fetches and dispatches due events
+            _ = Task.Run(() => OutboxLoopAsync(token), token);      // retries failed ACK deliveries
         }
 
         public Task StopAsync(CancellationToken ct = default) {
@@ -78,6 +113,10 @@ namespace Haley.Services {
             return Task.CompletedTask;
         }
 
+        // Sends a heartbeat to the engine every HeartbeatInterval.
+        // The engine monitor uses the last-beat timestamp to decide if this consumer is "down" —
+        // if it is, the monitor postpones resending events rather than firing to a dead process.
+        // If the beat call fails (network glitch), we swallow the exception and retry on the next tick.
         private async Task HeartbeatLoopAsync(CancellationToken ct) {
             while (!ct.IsCancellationRequested) {
                 try {
@@ -86,11 +125,20 @@ namespace Haley.Services {
                 } catch (OperationCanceledException) {
                     break;
                 } catch {
-                    // keep loop alive; next iteration will retry
+                    // keep loop alive; next beat will retry
                 }
             }
         }
 
+        // Polls the engine DB for events that are due for delivery to this consumer.
+        // "Due" means: ack_consumer row is Pending or Delivered AND next_due <= now AND consumer is alive.
+        //
+        // Two separate queries: one for lifecycle transition events, one for hook events.
+        // If there's nothing due, we back off by PollInterval to avoid hammering the DB.
+        // Any exception is swallowed (network blip, transient DB error) — the loop retries on the next tick.
+        //
+        // Note: this polling is the consumer-side pull. The engine also pushes via EventRaised at trigger time.
+        // The poll catches anything the push missed (process was down, push failed, monitor resend).
         private async Task PollLoopAsync(CancellationToken ct) {
             while (!ct.IsCancellationRequested) {
                 try {
@@ -101,17 +149,19 @@ namespace Haley.Services {
                     foreach (var item in hooks) await DispatchAsync(item, ct);
 
                     if (transitions.Count == 0 && hooks.Count == 0)
-                        await Task.Delay(_opt.PollInterval, ct);
+                        await Task.Delay(_opt.PollInterval, ct);  // nothing to do — sleep before next poll
                 } catch (OperationCanceledException) {
                     break;
                 } catch {
-                    await Task.Delay(_opt.PollInterval, ct);
+                    await Task.Delay(_opt.PollInterval, ct);  // error — back off before retrying
                 }
             }
         }
 
-        // Acquire a throttle slot then fire-and-forget the processing task.
-        // If MaxConcurrency slots are all busy, this awaits until one frees up.
+        // Acquires a throttle slot then fires ProcessItemAsync as a background task.
+        // The semaphore limits how many events are processed at the same time (MaxConcurrency).
+        // If all slots are busy, this awaits until one frees up — applying natural back-pressure.
+        // We don't await the processing task itself — that would hold up the poll loop.
         private async Task DispatchAsync(ILifeCycleDispatchItem item, CancellationToken ct) {
             await _throttle.WaitAsync(ct);
             _ = Task.Run(async () => {
@@ -124,6 +174,28 @@ namespace Haley.Services {
         // Dispatch one item
         // ----------------------------------------------------------------
 
+        // Processes one event from start to finish. This is the core of the consumer service.
+        //
+        //   Step 1: Check the registry — do we have a wrapper for this definition? If not, ignore it.
+        //           (Events for definitions this consumer doesn't handle will be dispatched to other consumers.)
+        //
+        //   Step 2: Upsert the workflow row — UNIQUE(consumer_id, ack_guid) makes this idempotent.
+        //           If the same event is delivered twice (monitor resend), we get the existing row, not a duplicate.
+        //
+        //   Step 3: Pin the handler version on first delivery for this entity.
+        //           Handler versioning lets the wrapper evolve (add/remove steps) without breaking in-flight
+        //           workflows. The entity is pinned to the handler version active when it first arrived.
+        //
+        //   Step 4: Upsert the inbox row — records the params JSON for this specific delivery attempt.
+        //           Mark it Processing + increment the attempt counter so we can track retries.
+        //
+        //   Step 5: Resolve the wrapper from DI (or activate directly), inject the step DAL, dispatch.
+        //           The wrapper's DispatchTransitionAsync / DispatchHookAsync returns the AckOutcome.
+        //           If the wrapper throws, we catch and set outcome=Retry (let the monitor try again).
+        //
+        //   Step 6: Write the outbox row with the outcome, then try to ACK the engine immediately.
+        //           If the AckAsync call to the engine fails (network error, engine down), the outbox row
+        //           stays Pending — the OutboxLoop will retry it until it gets through.
         private async Task ProcessItemAsync(ILifeCycleDispatchItem item, CancellationToken ct) {
             var evt = item.Event;
             if (!_registry.TryGetRegistration(evt.DefinitionId, out var reg) || reg == null) return;
@@ -133,7 +205,9 @@ namespace Haley.Services {
             var wfRecord = BuildWorkflowRecord(item);
             var (wfId, isNew) = await _dal.Workflow.UpsertAsync(wfRecord, load);
 
-            // 2. Pin handler version on first event for this entity
+            // 2. Pin handler version on first event for this entity.
+            //    GetPinnedHandlerVersionAsync checks if another consumer of the same def+entity already
+            //    established a version — if so, match it for consistency across consumers.
             if (isNew) {
                 var pinned = await _dal.Workflow.GetPinnedHandlerVersionAsync(evt.DefinitionId, evt.EntityId, load);
                 var handlerVersion = pinned ?? (int)evt.DefinitionVersionId;
@@ -143,15 +217,18 @@ namespace Haley.Services {
             var wf = await _dal.Workflow.GetByIdAsync(wfId, load);
             if (wf == null) return;
 
+            // Resolve the effective handler version — accounts for manual upgrades (HandlerUpgrade flag).
             var effectiveVersion = _registry.ResolveHandlerVersion(evt.DefinitionId, wf.HandlerVersion ?? (int)evt.DefinitionVersionId, wf.HandlerUpgrade);
 
-            // 3. Upsert inbox
+            // 3. Upsert inbox row with the params for this delivery. Each attempt overwrites the params
+            //    (they should be the same on resend) and bumps the attempt counter.
             var paramsJson = evt.Params != null ? JsonSerializer.Serialize(evt.Params) : null;
             await _dal.Inbox.UpsertAsync(wfId, paramsJson, load);
             await _dal.Inbox.SetStatusAsync(wfId, InboxStatus.Processing, load: load);
             await _dal.Inbox.IncrementAttemptAsync(wfId, load);
 
-            // 4. Build context
+            // 4. Build the context object passed to the wrapper — contains all the IDs the wrapper
+            //    needs to call back into the consumer DAL (step recording, etc.).
             var ctx = new ConsumerContext {
                 WfId = wfId,
                 ConsumerId = _consumerId,
@@ -161,7 +238,9 @@ namespace Haley.Services {
                 CancellationToken = ct
             };
 
-            // 5. Resolve wrapper from DI, inject step DAL, dispatch
+            // 5. Resolve wrapper from DI, inject step DAL, dispatch.
+            //    The wrapper contains the application's business logic. It may call external APIs,
+            //    send emails, write to other DBs, etc. We don't care — we just want an AckOutcome back.
             AckOutcome outcome;
             try {
                 var wrapper = (LifeCycleWrapper)_sp.GetService(reg.WrapperType)
@@ -174,14 +253,16 @@ namespace Haley.Services {
 
                 await _dal.Inbox.SetStatusAsync(wfId, InboxStatus.Processed, load: load);
             } catch (Exception ex) {
+                // Wrapper threw — treat as transient failure. The monitor will resend after back-off.
                 outcome = AckOutcome.Retry;
                 await _dal.Inbox.SetStatusAsync(wfId, InboxStatus.Failed, ex.Message, load);
             }
 
-            // 6. Write outbox, attempt inline ACK
+            // 6. Write outbox with the outcome, then try to ACK the engine right now (inline fast path).
+            //    If the engine is unreachable, the outbox row stays Pending — OutboxLoop retries it.
             await _dal.Outbox.UpsertAsync(wfId, outcome, load);
             if (string.IsNullOrWhiteSpace(item.AckGuid)) {
-                // No ACK required — confirm directly without calling engine
+                // No ACK required on this event — just mark confirmed locally, nothing to tell the engine.
                 await _dal.Outbox.SetStatusAsync(wfId, OutboxStatus.Confirmed, load: load);
                 await _dal.Outbox.AddHistoryAsync(wfId, outcome, OutboxStatus.Confirmed, null, null, load);
             } else {
@@ -190,6 +271,7 @@ namespace Haley.Services {
                     await _dal.Outbox.SetStatusAsync(wfId, OutboxStatus.Confirmed, load: load);
                     await _dal.Outbox.AddHistoryAsync(wfId, outcome, OutboxStatus.Confirmed, null, null, load);
                 } catch (Exception ex) {
+                    // ACK call to engine failed — save error and next retry time. OutboxLoop will resend.
                     await _dal.Outbox.SetStatusAsync(wfId, OutboxStatus.Pending,
                         error: ex.Message,
                         nextRetryAt: DateTimeOffset.UtcNow + _opt.OutboxRetryDelay,
@@ -198,6 +280,11 @@ namespace Haley.Services {
             }
         }
 
+        // The outbox is a safety net for ACK delivery failures.
+        // When ProcessItemAsync successfully completes the business logic but fails to reach the engine
+        // (AckAsync throws), the outbox row stays Pending with a next_retry_at timestamp.
+        // This loop periodically scans for those rows and retries the ACK call until it succeeds.
+        // This ensures "at-least-once ACK delivery" — the engine will eventually know the outcome.
         private async Task OutboxLoopAsync(CancellationToken ct) {
             while (!ct.IsCancellationRequested) {
                 try {

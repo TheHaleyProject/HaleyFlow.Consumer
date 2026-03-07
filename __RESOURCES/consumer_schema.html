@@ -143,7 +143,7 @@
 <a name='layout1' style='position:sticky; top:0;'></a><h4>Main Diagram</h4>
 <input type='text' placeholder='Highlight in Diagram' oninput='searchSVG(this.value)' class='text-start my-2'/>
 <div class='svgContainer'>
-<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'   width='798' height='642' viewBox='0 0 798 642' >
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'   width='798' height='623' viewBox='0 0 798 623' >
   <script type='text/ecmascript'>
   <![CDATA[
   function hghl(el) { for ( var i in el ){ var elem = document.getElementById(el[i]); if ( elem != null ) elem.setAttribute('class','highlight');  }  }
@@ -393,7 +393,7 @@
 
 <!-- == Shape Colors == -->
 <!-- == Desktop == -->
-<rect x='0' y='0' width='798' height='642' rx='10' ry='10' style='fill:url(#layoutBgA); stroke:#ccc; stroke-width:.7px; cursor:move;' />
+<rect x='0' y='0' width='798' height='623' rx='10' ry='10' style='fill:url(#layoutBgA); stroke:#ccc; stroke-width:.7px; cursor:move;' />
 
 <!-- == Legend == -->
 <g transform='translate(10,10)'>
@@ -402,7 +402,7 @@
 Zoom with CTRL+whell mouse button, pan by dragging the diagram with the right-mouse button</title><use x='349' y='28' href='#bulb' width='24' height='24'/></g>
   <g><title>DbSchema Database Designer</title><use x='20' y='40' href='#logo'/></g>  <text x='20' y='30' class='legendTitle' >Main Diagram</text> 
   <text x='57' y='47' class='legendSubTitle'><tspan>Read schema comments as mouse-over tooltips</tspan></text>
-  <a href='https://dbschema.com'><text x='57' y='61' class='legendSubTitle'><tspan>DbSchema.com © 2026-03-06 Wise Coders<title>DbSchema.com © 2026-03-06 Wise Coders</title></tspan></text></a> 
+  <a href='https://dbschema.com'><text x='57' y='61' class='legendSubTitle'><tspan>DbSchema.com © 2026-03-07 Wise Coders<title>DbSchema.com © 2026-03-07 Wise Coders</title></tspan></text></a> 
 </g>
 
 <g transform='translate(0,110)'>
@@ -437,15 +437,15 @@ inbox &#10132; workflow ( wf_id -&gt; id )
 on delete cascade</title></path>
 <text x='548' y='89' transform='rotate(0 548,89)' class='relName'>wf&#95;id</text>
 <!-- == Fk 'inbox_step_fk_inbox_step_inbox' == -->
-<path id='inbox_step_fk_inbox_step_inbox'  onmouseover="hghl(['inbox_step_fk_inbox_step_inbox','lc_consumer.inbox_step.inbox_id','lc_consumer.inbox.wf_id'])" onmouseout="uhghl(['inbox_step_fk_inbox_step_inbox','lc_consumer.inbox_step.inbox_id','lc_consumer.inbox.wf_id'])" transform='translate(10,0)' class='unhighlight' d='M 684,323L 751,323Q 760,323 760,314L 760,105Q 760,95 751,95L 741,95' >
+<path id='inbox_step_fk_inbox_step_inbox'  onmouseover="hghl(['inbox_step_fk_inbox_step_inbox','lc_consumer.inbox_step.inbox_id','lc_consumer.inbox.wf_id'])" onmouseout="uhghl(['inbox_step_fk_inbox_step_inbox','lc_consumer.inbox_step.inbox_id','lc_consumer.inbox.wf_id'])" transform='translate(10,0)' class='unhighlight' d='M 684,304L 751,304Q 760,304 760,295L 760,105Q 760,95 751,95L 741,95' >
 	<title>&#x1F517;  Foreign Key fk_inbox_step_inbox
 inbox_step &#10132; inbox ( inbox_id -&gt; wf_id )
 on delete cascade</title>
 </path>
-<path transform='translate(10,0)' marker-start='url(#OneMore)' marker-end='url(#One)'    d='M 684,323L 751,323Q 760,323 760,314L 760,105Q 760,95 751,95L 741,95' ><title>&#x1F517;  Foreign Key fk_inbox_step_inbox
+<path transform='translate(10,0)' marker-start='url(#OneMore)' marker-end='url(#One)'    d='M 684,304L 751,304Q 760,304 760,295L 760,105Q 760,95 751,95L 741,95' ><title>&#x1F517;  Foreign Key fk_inbox_step_inbox
 inbox_step &#10132; inbox ( inbox_id -&gt; wf_id )
 on delete cascade</title></path>
-<text x='693' y='317' transform='rotate(0 693,317)' class='relName'>inbox&#95;id</text>
+<text x='693' y='298' transform='rotate(0 693,298)' class='relName'>inbox&#95;id</text>
 <!-- == Table 'workflow' == -->
 <rect id='depict_lc&#95;consumer&#46;workflow' class='entity' style='stroke:#F9FAFC' x='323' y='48' width='171' height='361' rx='4' ry='4' />
 <rect x='323' y='48' width='171' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_BED3F4);'/>
@@ -555,7 +555,7 @@ Referred by outbox_history ( outbox_id -&gt; wf_id ) </title><use x='214' y='90'
      text</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;error' x='118' y='427'>error</text></g></a>
 <text x='281' y='423' text-anchor='end' class='colType'>t</text>
 <!-- == Table 'inbox' == -->
-<rect id='depict_lc&#95;consumer&#46;inbox' class='entity' style='stroke:#F9FAFC' x='589' y='48' width='152' height='209' rx='4' ry='4' />
+<rect id='depict_lc&#95;consumer&#46;inbox' class='entity' style='stroke:#F9FAFC' x='589' y='48' width='152' height='190' rx='4' ry='4' />
 <rect x='589' y='48' width='152' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_BED3F4);'/>
 <rect x='589' y='52' width='152' height='29' style='stroke-width:0;fill:url(#tbg_BED3F4);'/>
 <a href='#lc_consumer.inbox'><g><title>Table lc_consumer.inbox</title><text id='depict&#45;lc&#95;consumer&#46;inbox' x='644' y='70' class='tableHeader' style='fill:#414348;'>inbox</text></g></a>
@@ -565,49 +565,47 @@ Referred by outbox_history ( outbox_id -&gt; wf_id ) </title><use x='214' y='90'
  &#8601; inbox_step( inbox_id )</title><text id='lc&#95;consumer&#46;inbox&#46;wf&#95;id' x='612' y='104' onmouseover="hghl(['inbox_fk_inbox_workflow','lc_consumer.workflow.id','inbox_step_fk_inbox_step_inbox','lc_consumer.inbox_step.inbox_id'])" onmouseout="uhghl(['inbox_fk_inbox_workflow','lc_consumer.workflow.id','inbox_step_fk_inbox_step_inbox','lc_consumer.inbox_step.inbox_id'])" class='colPk'>wf&#95;id</text></g></a>
 <a href='#lc_consumer.inbox.wf_id'><g><title>&#x1F517;  References workflow ( wf_id -&gt; id ) 
 Referred by inbox_step ( inbox_id -&gt; wf_id ) </title><use x='727' y='90' href='#fk'/></g></a>
-  <a href='#lc_consumer.inbox.payload_json'><g><title>&#10697;  payload_json
-     longtext</title><text id='lc&#95;consumer&#46;inbox&#46;payload&#95;json' x='612' y='123'>payload&#95;json</text></g></a>
-<text x='737' y='119' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.inbox.params_json'><g><title>&#10697;  params_json
-     longtext</title><text id='lc&#95;consumer&#46;inbox&#46;params&#95;json' x='612' y='142'>params&#95;json</text></g></a>
-<text x='737' y='138' text-anchor='end' class='colType'>t</text>  <use x='590' y='148' href='#nn'/><g><title>&#x1F50D;  idx_inbox_status ( status, received_at ) </title><use x='591' y='147' href='#idx'/></g><a href='#lc_consumer.inbox.received_at'><g><title>&#10697;  received_at
-     * datetime default current_timestamp()</title><text id='lc&#95;consumer&#46;inbox&#46;received&#95;at' x='612' y='161'>received&#95;at</text></g></a>
-<text x='737' y='157' text-anchor='end' class='colType'>t</text>  <use x='590' y='167' href='#nn'/><a href='#lc_consumer.inbox.modified'><g><title>&#10697;  modified
-     * datetime default current_timestamp()</title><text id='lc&#95;consumer&#46;inbox&#46;modified' x='612' y='180'>modified</text></g></a>
-<text x='737' y='176' text-anchor='end' class='colType'>t</text>  <use x='590' y='186' href='#nn'/><g><title>&#x1F50D;  idx_inbox_status ( status, received_at ) </title><use x='591' y='185' href='#idx'/></g><a href='#lc_consumer.inbox.status'><g><title>&#10697;  status
+  <a href='#lc_consumer.inbox.params_json'><g><title>&#10697;  params_json
+     longtext</title><text id='lc&#95;consumer&#46;inbox&#46;params&#95;json' x='612' y='123'>params&#95;json</text></g></a>
+<text x='737' y='119' text-anchor='end' class='colType'>t</text>  <use x='590' y='129' href='#nn'/><g><title>&#x1F50D;  idx_inbox_status ( status, received_at ) </title><use x='591' y='128' href='#idx'/></g><a href='#lc_consumer.inbox.received_at'><g><title>&#10697;  received_at
+     * datetime default current_timestamp()</title><text id='lc&#95;consumer&#46;inbox&#46;received&#95;at' x='612' y='142'>received&#95;at</text></g></a>
+<text x='737' y='138' text-anchor='end' class='colType'>t</text>  <use x='590' y='148' href='#nn'/><a href='#lc_consumer.inbox.modified'><g><title>&#10697;  modified
+     * datetime default current_timestamp()</title><text id='lc&#95;consumer&#46;inbox&#46;modified' x='612' y='161'>modified</text></g></a>
+<text x='737' y='157' text-anchor='end' class='colType'>t</text>  <use x='590' y='167' href='#nn'/><g><title>&#x1F50D;  idx_inbox_status ( status, received_at ) </title><use x='591' y='166' href='#idx'/></g><a href='#lc_consumer.inbox.status'><g><title>&#10697;  status
      * tinyint default 1
  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      1=Received,2=Processing,3=Processed,4=Failed</title><text id='lc&#95;consumer&#46;inbox&#46;status' x='612' y='199'>status</text></g></a>
-<text x='737' y='195' text-anchor='end' class='colType'>&#35;</text>  <use x='590' y='205' href='#nn'/><a href='#lc_consumer.inbox.attempt_count'><g><title>&#10697;  attempt_count
-     * int default 0</title><text id='lc&#95;consumer&#46;inbox&#46;attempt&#95;count' x='612' y='218'>attempt&#95;count</text></g></a>
-<text x='737' y='214' text-anchor='end' class='colType'>&#35;</text>  <a href='#lc_consumer.inbox.last_error'><g><title>&#10697;  last_error
-     text</title><text id='lc&#95;consumer&#46;inbox&#46;last&#95;error' x='612' y='237'>last&#95;error</text></g></a>
-<text x='737' y='233' text-anchor='end' class='colType'>t</text>
+      1=Received,2=Processing,3=Processed,4=Failed</title><text id='lc&#95;consumer&#46;inbox&#46;status' x='612' y='180'>status</text></g></a>
+<text x='737' y='176' text-anchor='end' class='colType'>&#35;</text>  <use x='590' y='186' href='#nn'/><a href='#lc_consumer.inbox.attempt_count'><g><title>&#10697;  attempt_count
+     * int default 0</title><text id='lc&#95;consumer&#46;inbox&#46;attempt&#95;count' x='612' y='199'>attempt&#95;count</text></g></a>
+<text x='737' y='195' text-anchor='end' class='colType'>&#35;</text>  <a href='#lc_consumer.inbox.last_error'><g><title>&#10697;  last_error
+     text</title><text id='lc&#95;consumer&#46;inbox&#46;last&#95;error' x='612' y='218'>last&#95;error</text></g></a>
+<text x='737' y='214' text-anchor='end' class='colType'>t</text>
 <!-- == Table 'inbox_step' == -->
-<rect id='depict_lc&#95;consumer&#46;inbox&#95;step' class='entity' style='stroke:#F9FAFC' x='551' y='276' width='133' height='190' rx='4' ry='4' />
-<rect x='551' y='276' width='133' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_BED3F4);'/>
-<rect x='551' y='280' width='133' height='29' style='stroke-width:0;fill:url(#tbg_BED3F4);'/>
-<a href='#lc_consumer.inbox_step'><g><title>Table lc_consumer.inbox_step</title><text id='depict&#45;lc&#95;consumer&#46;inbox&#95;step' x='581' y='298' class='tableHeader' style='fill:#414348;'>inbox&#95;step</text></g></a>
-  <use x='552' y='319' href='#nn'/><g><title>&#x1F511;  Pk pk_inbox_step ( inbox_id, step_code ) </title><use x='553' y='318' href='#pk'/></g><a href='#lc_consumer.inbox_step.inbox_id'><g><title>&#10697;  inbox_id
+<rect id='depict_lc&#95;consumer&#46;inbox&#95;step' class='entity' style='stroke:#F9FAFC' x='551' y='257' width='133' height='190' rx='4' ry='4' />
+<rect x='551' y='257' width='133' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_BED3F4);'/>
+<rect x='551' y='261' width='133' height='29' style='stroke-width:0;fill:url(#tbg_BED3F4);'/>
+<a href='#lc_consumer.inbox_step'><g><title>Table lc_consumer.inbox_step</title><text id='depict&#45;lc&#95;consumer&#46;inbox&#95;step' x='581' y='279' class='tableHeader' style='fill:#414348;'>inbox&#95;step</text></g></a>
+  <use x='552' y='300' href='#nn'/><g><title>&#x1F511;  Pk pk_inbox_step ( inbox_id, step_code ) </title><use x='553' y='299' href='#pk'/></g><a href='#lc_consumer.inbox_step.inbox_id'><g><title>&#10697;  inbox_id
      * bigint
- &#8599; inbox( wf_id )</title><text id='lc&#95;consumer&#46;inbox&#95;step&#46;inbox&#95;id' x='574' y='332' onmouseover="hghl(['inbox_step_fk_inbox_step_inbox','lc_consumer.inbox.wf_id'])" onmouseout="uhghl(['inbox_step_fk_inbox_step_inbox','lc_consumer.inbox.wf_id'])" class='colPk'>inbox&#95;id</text></g></a>
-<a href='#lc_consumer.inbox_step.inbox_id'><g><title>&#x1F517;  References inbox ( inbox_id -&gt; wf_id ) </title><use x='670' y='318' href='#fk'/></g></a>
-  <use x='552' y='338' href='#nn'/><g><title>&#x1F511;  Pk pk_inbox_step ( inbox_id, step_code ) </title><use x='553' y='337' href='#pk'/></g><a href='#lc_consumer.inbox_step.step_code'><g><title>&#10697;  step_code
+ &#8599; inbox( wf_id )</title><text id='lc&#95;consumer&#46;inbox&#95;step&#46;inbox&#95;id' x='574' y='313' onmouseover="hghl(['inbox_step_fk_inbox_step_inbox','lc_consumer.inbox.wf_id'])" onmouseout="uhghl(['inbox_step_fk_inbox_step_inbox','lc_consumer.inbox.wf_id'])" class='colPk'>inbox&#95;id</text></g></a>
+<a href='#lc_consumer.inbox_step.inbox_id'><g><title>&#x1F517;  References inbox ( inbox_id -&gt; wf_id ) </title><use x='670' y='299' href='#fk'/></g></a>
+  <use x='552' y='319' href='#nn'/><g><title>&#x1F511;  Pk pk_inbox_step ( inbox_id, step_code ) </title><use x='553' y='318' href='#pk'/></g><a href='#lc_consumer.inbox_step.step_code'><g><title>&#10697;  step_code
      * int default 0
  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      what is the step that was executed (coming and aware only to the consumer)</title><text id='lc&#95;consumer&#46;inbox&#95;step&#46;step&#95;code' x='574' y='351' class='colPk'>step&#95;code</text></g></a>
-<text x='680' y='347' text-anchor='end' class='colType'>&#35;</text>  <use x='552' y='357' href='#nn'/><g><title>&#x1F50D;  idx_inbox_step_status ( status ) </title><use x='553' y='356' href='#idx'/></g><a href='#lc_consumer.inbox_step.status'><g><title>&#10697;  status
+      what is the step that was executed (coming and aware only to the consumer)</title><text id='lc&#95;consumer&#46;inbox&#95;step&#46;step&#95;code' x='574' y='332' class='colPk'>step&#95;code</text></g></a>
+<text x='680' y='328' text-anchor='end' class='colType'>&#35;</text>  <use x='552' y='338' href='#nn'/><g><title>&#x1F50D;  idx_inbox_step_status ( status ) </title><use x='553' y='337' href='#idx'/></g><a href='#lc_consumer.inbox_step.status'><g><title>&#10697;  status
      * tinyint default 1
  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      1=Pending,2=Running,3=Completed,4=Failed</title><text id='lc&#95;consumer&#46;inbox&#95;step&#46;status' x='574' y='370'>status</text></g></a>
-<text x='680' y='366' text-anchor='end' class='colType'>&#35;</text>  <a href='#lc_consumer.inbox_step.started_at'><g><title>&#10697;  started_at
-     datetime(6)</title><text id='lc&#95;consumer&#46;inbox&#95;step&#46;started&#95;at' x='574' y='389'>started&#95;at</text></g></a>
-<text x='680' y='385' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.inbox_step.completed_at'><g><title>&#10697;  completed_at
-     datetime(6)</title><text id='lc&#95;consumer&#46;inbox&#95;step&#46;completed&#95;at' x='574' y='408'>completed&#95;at</text></g></a>
-<text x='680' y='404' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.inbox_step.result_json'><g><title>&#10697;  result_json
-     longtext</title><text id='lc&#95;consumer&#46;inbox&#95;step&#46;result&#95;json' x='574' y='427'>result&#95;json</text></g></a>
-<text x='680' y='423' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.inbox_step.last_error'><g><title>&#10697;  last_error
-     text</title><text id='lc&#95;consumer&#46;inbox&#95;step&#46;last&#95;error' x='574' y='446'>last&#95;error</text></g></a>
-<text x='680' y='442' text-anchor='end' class='colType'>t</text>
+      1=Pending,2=Running,3=Completed,4=Failed</title><text id='lc&#95;consumer&#46;inbox&#95;step&#46;status' x='574' y='351'>status</text></g></a>
+<text x='680' y='347' text-anchor='end' class='colType'>&#35;</text>  <a href='#lc_consumer.inbox_step.started_at'><g><title>&#10697;  started_at
+     datetime(6)</title><text id='lc&#95;consumer&#46;inbox&#95;step&#46;started&#95;at' x='574' y='370'>started&#95;at</text></g></a>
+<text x='680' y='366' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.inbox_step.completed_at'><g><title>&#10697;  completed_at
+     datetime(6)</title><text id='lc&#95;consumer&#46;inbox&#95;step&#46;completed&#95;at' x='574' y='389'>completed&#95;at</text></g></a>
+<text x='680' y='385' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.inbox_step.result_json'><g><title>&#10697;  result_json
+     longtext</title><text id='lc&#95;consumer&#46;inbox&#95;step&#46;result&#95;json' x='574' y='408'>result&#95;json</text></g></a>
+<text x='680' y='404' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.inbox_step.last_error'><g><title>&#10697;  last_error
+     text</title><text id='lc&#95;consumer&#46;inbox&#95;step&#46;last&#95;error' x='574' y='427'>last&#95;error</text></g></a>
+<text x='680' y='423' text-anchor='end' class='colType'>t</text>
 </g></svg></div>
 <script type='text/javascript'>
 var svgContainers = document.getElementsByClassName("svgContainer");
@@ -721,12 +719,6 @@ function searchSVG( searchValue) {
 	</tr>
 	<tr>
 		<td>&nbsp;</td>
-		<td><a name='lc_consumer.inbox.payload_json'>payload&#95;json</a></td>
-		<td class='dataType'> LONGTEXT  </td>
-		<td>  </td>
-	</tr>
-	<tr>
-		<td>&nbsp;</td>
 		<td><a name='lc_consumer.inbox.params_json'>params&#95;json</a></td>
 		<td class='dataType'> LONGTEXT  </td>
 		<td>  </td>
@@ -779,7 +771,7 @@ function searchSVG( searchValue) {
 <tr><th colspan='4'>Referring Foreign Key</th></tr>
 	<tr>
 		<td><svg xmlns="http://www.w3.org/2000/svg" width='14' height='14'><use href='#ref'/></svg></td><td>fk_inbox_step_inbox</td>
-		<td > wf&#95;id &#8601; <a href='#lc&#95;consumer&#46;inbox&#95;step'  onclick="window.scrollTo(351, 285);var nodes = document.getElementsByClassName('palpable');for (var i = 0; i < nodes.length; i++) { nodes[i].classList.remove('palpable');}; document.getElementById('depict_lc_consumer.inbox_step').classList.add('palpable'); return false;">&#10063; inbox&#95;step</a>(inbox&#95;id) on delete cascade </td>
+		<td > wf&#95;id &#8601; <a href='#lc&#95;consumer&#46;inbox&#95;step'  onclick="window.scrollTo(351, 266);var nodes = document.getElementsByClassName('palpable');for (var i = 0; i < nodes.length; i++) { nodes[i].classList.remove('palpable');}; document.getElementById('depict_lc_consumer.inbox_step').classList.add('palpable'); return false;">&#10063; inbox&#95;step</a>(inbox&#95;id) on delete cascade </td>
 		<td>  </td>
 	</tr>
 <tr><th colspan='4'>Options</th></tr>
@@ -788,7 +780,7 @@ function searchSVG( searchValue) {
 </table></div></div>
 
 <br><br>
-<div class='card custom-card'><div class='card-body'><a name='lc_consumer.inbox_step'  onclick="window.scrollTo(351, 285);var nodes = document.getElementsByClassName('palpable');for (var i = 0; i < nodes.length; i++) { nodes[i].classList.remove('palpable');}; document.getElementById('depict_lc_consumer.inbox_step').classList.add('palpable'); return false;" style='cursor:pointer;'><h5 class='card-title text-center'>Table inbox_step</h5></a>
+<div class='card custom-card'><div class='card-body'><a name='lc_consumer.inbox_step'  onclick="window.scrollTo(351, 266);var nodes = document.getElementsByClassName('palpable');for (var i = 0; i < nodes.length; i++) { nodes[i].classList.remove('palpable');}; document.getElementById('depict_lc_consumer.inbox_step').classList.add('palpable'); return false;" style='cursor:pointer;'><h5 class='card-title text-center'>Table inbox_step</h5></a>
 <table class='table table-sm small' style='table-layout: fixed; word-wrap: break-word;'>
 <thead>
 <tr><th style='width:5%'>Idx</th><th style='width:20%'>Column Name</th><th style='width:23%'>Definition</th><th style='width:52%'>Description</th></tr>
