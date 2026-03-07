@@ -121,8 +121,8 @@ namespace Haley.Services {
         private async Task HeartbeatLoopAsync(CancellationToken ct) {
             while (!ct.IsCancellationRequested) {
                 try {
-                    await Task.Delay(_opt.HeartbeatInterval, ct);
                     await _feed.BeatConsumerAsync(_opt.EnvCode, _opt.ConsumerGuid, ct);
+                    await Task.Delay(_opt.HeartbeatInterval, ct); //Beat and wait
                 } catch (OperationCanceledException) {
                     break;
                 } catch {

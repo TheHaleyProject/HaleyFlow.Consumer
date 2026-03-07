@@ -62,6 +62,9 @@ namespace Haley.Services {
             // arrive here synchronously inside the engine's own call. We return immediately
             // (TryWrite is non-blocking) so we never hold up the engine's thread.
             _engine.EventRaised += OnEventRaised;
+
+            ////Also startthe monitor in the engine.
+            //_engine.StartMonitorAsync(); //important , we can also stop wheneve rneeded.. 
         }
 
         // ── Event ingress ──────────────────────────────────────────────────────────
