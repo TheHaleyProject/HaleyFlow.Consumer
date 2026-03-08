@@ -9,5 +9,7 @@ namespace Haley.Internal {
         Task SetStatusAsync(long wfId, InboxStatus status, string? error = null, DbExecutionLoad load = default);
         Task IncrementAttemptAsync(long wfId, DbExecutionLoad load = default);
         Task<DbRow?> GetByWfIdAsync(long wfId, DbExecutionLoad load = default);
+        Task<DbRows> ListPagedAsync(int? status, int skip, int take, DbExecutionLoad load = default);
+        Task<long> CountPendingAsync(DbExecutionLoad load = default);
     }
 }

@@ -49,6 +49,9 @@ namespace Haley.Internal {
                 (HANDLER_VERSION, handlerVersion),
                 (HANDLER_UPGRADE, (byte)upgrade));
 
+        public Task<DbRows> ListPagedAsync(int skip, int take, DbExecutionLoad load = default)
+            => Db.RowsAsync(QRY_WORKFLOW.LIST_PAGED, load, (TAKE, take), (SKIP, skip));
+
         private static WorkflowRecord MapRow(DbRow r) => new WorkflowRecord {
             Id = r.GetLong(KEY_ID),
             AckGuid = r.GetString(KEY_ACK_GUID) ?? string.Empty,

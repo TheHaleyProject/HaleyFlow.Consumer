@@ -16,5 +16,11 @@ namespace Haley.Utils {
             var dal = new MariaConsumerServiceDAL(agw, adapterKey);
             return new WorkFlowConsumerService(input.EngineProxy,dal,input.ServiceProvider, input.Options);
         }
+
+        public static async Task<IConsumerAdminService> BuildAdmin(this WorkFlowConsumerMaker input, IAdapterGateway agw) {
+            var adapterKey = await input.Initialize(agw);
+            var dal = new MariaConsumerServiceDAL(agw, adapterKey);
+            return new ConsumerAdminService(dal);
+        }
     }
 }

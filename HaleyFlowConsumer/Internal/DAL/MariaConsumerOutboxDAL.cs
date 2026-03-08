@@ -29,5 +29,14 @@ namespace Haley.Internal {
 
         public Task<DbRows> ListDuePendingAsync(int take, DbExecutionLoad load = default)
             => Db.RowsAsync(QRY_OUTBOX.LIST_DUE_PENDING, load, (TAKE, take));
+
+        public Task<DbRows> ListPagedAsync(int? status, int skip, int take, DbExecutionLoad load = default)
+            => Db.RowsAsync(QRY_OUTBOX.LIST_PAGED, load,
+                (STATUS, status ?? -1),
+                (SKIP, skip),
+                (TAKE, take));
+
+        public Task<long> CountPendingAsync(DbExecutionLoad load = default)
+            => Db.ScalarAsync<long>(QRY_OUTBOX.COUNT_PENDING, load);
     }
 }

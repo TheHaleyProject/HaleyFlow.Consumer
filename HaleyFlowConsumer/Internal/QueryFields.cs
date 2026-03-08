@@ -32,5 +32,6 @@ namespace Haley.Internal {
         public const string ATTEMPT_NO = "@ATTEMPT_NO";
         // paging
         public const string TAKE = "@TAKE";
+        public const string SKIP = "@SKIP";
     }
 }

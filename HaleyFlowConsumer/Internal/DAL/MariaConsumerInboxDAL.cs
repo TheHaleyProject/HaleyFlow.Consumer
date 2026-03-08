@@ -24,5 +24,14 @@ namespace Haley.Internal {
 
         public Task<DbRow?> GetByWfIdAsync(long wfId, DbExecutionLoad load = default)
             => Db.RowAsync(QRY_INBOX.SELECT_BY_WF_ID, load, (WF_ID, wfId));
+
+        public Task<DbRows> ListPagedAsync(int? status, int skip, int take, DbExecutionLoad load = default)
+            => Db.RowsAsync(QRY_INBOX.LIST_PAGED, load,
+                (STATUS, status ?? -1),
+                (SKIP, skip),
+                (TAKE, take));
+
+        public Task<long> CountPendingAsync(DbExecutionLoad load = default)
+            => Db.ScalarAsync<long>(QRY_INBOX.COUNT_PENDING, load);
     }
 }

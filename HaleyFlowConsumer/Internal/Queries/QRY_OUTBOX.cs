@@ -41,5 +41,17 @@ namespace Haley.Internal {
                VALUES ({WF_ID}, {OUTCOME}, {STATUS},
                        COALESCE((SELECT MAX(attempt_no) FROM outbox_history WHERE outbox_id = {WF_ID}), 0) + 1,
                        {RESPONSE_PAYLOAD}, {ERROR});";
+
+        public const string LIST_PAGED =
+            $@"SELECT o.wf_id, o.current_outcome, o.status, o.next_retry_at, o.last_error, o.modified,
+              w.entity_id, w.instance_guid, w.kind, w.route, w.event_code
+       FROM outbox o
+       JOIN workflow w ON w.id = o.wf_id
+       WHERE ({STATUS} < 0 OR o.status = {STATUS})
+       ORDER BY o.modified DESC
+       LIMIT {TAKE} OFFSET {SKIP};";
+
+        public const string COUNT_PENDING =
+            @"SELECT COUNT(*) FROM outbox WHERE status = 1;";
     }
 }

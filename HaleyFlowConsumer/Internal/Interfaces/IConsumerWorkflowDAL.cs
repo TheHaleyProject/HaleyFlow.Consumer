@@ -17,5 +17,6 @@ namespace Haley.Internal {
         /// </summary>
         Task<int?> GetPinnedHandlerVersionAsync(long defId, string entityId, DbExecutionLoad load = default);
         Task SetHandlerVersionAsync(long wfId, int handlerVersion, HandlerUpgrade upgrade, DbExecutionLoad load = default);
+        Task<DbRows> ListPagedAsync(int skip, int take, DbExecutionLoad load = default);
     }
 }
