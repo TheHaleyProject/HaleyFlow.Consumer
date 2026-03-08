@@ -6,15 +6,15 @@ using System.Threading.Channels;
 namespace Haley.Services {
 
     /// <summary>
-    /// In-process implementation of <see cref="ILifeCycleEventFeed"/> — the "short wire" between
+    /// In-process implementation of <see cref="ILifeCycleEngineProxy"/> — the "short wire" between
     /// the engine and the consumer when they run in the same process.
     ///
     /// BACKGROUND: The consumer service is designed to be deployment-agnostic. In production the
     /// consumer typically runs in a separate process (or even a separate machine) and receives
-    /// events over a message broker (Kafka, RabbitMQ, etc.). In that case a "remote" feed
+    /// events over a message broker (Kafka, RabbitMQ, etc.). In that case a "remote" proxy
     /// implementation reads from the broker. But during development, testing, or lightweight
     /// deployments you may want the engine and the consumer in the same .NET process — that is
-    /// exactly what InProcessEventFeed enables.
+    /// exactly what InProcessEngineProxy enables.
     ///
     /// HOW IT WORKS:
     /// Rather than publishing to a broker and reading back from it, we subscribe directly to the
@@ -24,7 +24,7 @@ namespace Haley.Services {
     ///
     /// The consumer service's poll loop then calls <see cref="GetDueTransitionsAsync"/> and
     /// <see cref="GetDueHooksAsync"/> on each tick, which drain whatever items are ready in the
-    /// channels. This keeps the polling contract identical whether the feed is in-process or
+    /// channels. This keeps the polling contract identical whether the proxy is in-process or
     /// remote — the consumer service doesn't need to know the difference.
     ///
     /// TRADE-OFFS:
@@ -32,7 +32,7 @@ namespace Haley.Services {
     ///   the event is lost from the channel. The engine's monitor will eventually re-send it, so
     ///   at-least-once delivery is still guaranteed — just with a longer tail latency.
     /// - No fan-out: each event goes into this one channel. If you need multiple independent
-    ///   consumer services in the same process, you would need multiple InProcessEventFeed
+    ///   consumer services in the same process, you would need multiple InProcessEngineProxy
     ///   instances, each subscribed to the engine separately.
     /// - No broker overhead: events are delivered with essentially zero latency, which makes
     ///   this ideal for integration tests where you want fast, deterministic execution.
@@ -43,7 +43,7 @@ namespace Haley.Services {
     /// Here they delegate directly to the engine. From the engine's perspective there is no
     /// difference — it just receives method calls.
     /// </summary>
-    public sealed class InProcessEventFeed : ILifeCycleEventFeed {
+    public sealed class InProcessEngineProxy : ILifeCycleEngineProxy {
 
         private readonly IWorkFlowEngine _engine;
 
@@ -60,7 +60,7 @@ namespace Haley.Services {
         /// its own NoticeRaised event without requiring a separate engine subscription.
         public event Func<LifeCycleNotice, Task>? NoticeRaised;
 
-        public InProcessEventFeed(IWorkFlowEngine engine) {
+        public InProcessEngineProxy(IWorkFlowEngine engine) {
             _engine = engine ?? throw new ArgumentNullException(nameof(engine));
             // Wire up to the engine's broadcast delegate. Every event the engine raises —
             // whether from TriggerAsync, monitor resend, or hook order advancement — will
@@ -71,9 +71,6 @@ namespace Haley.Services {
             // Relay engine notices through our own NoticeRaised so the consumer service
             // can surface them without a separate subscription to the engine.
             _engine.NoticeRaised += OnEngineNoticeRaised;
-
-            ////Also startthe monitor in the engine.
-            //_engine.StartMonitorAsync(); //important , we can also stop wheneve rneeded..
         }
 
         // ── Event ingress ──────────────────────────────────────────────────────────
@@ -106,7 +103,7 @@ namespace Haley.Services {
         // ── Polling — drain available items; returns immediately (no blocking).
         // The consumer service's poll loop handles the delay when both return empty.
         //
-        // The consumer service calls these on every poll tick. For remote feeds these
+        // The consumer service calls these on every poll tick. For remote proxies these
         // would issue a database or broker query with skip/take paging — here we simply
         // drain up to `take` items from the in-memory channel. The `consumerId`,
         // `ackStatus`, `ttlSeconds`, and `skip` parameters are ignored because:
@@ -169,7 +166,7 @@ namespace Haley.Services {
 
         // ── Private adapter ────────────────────────────────────────────────────
         // The consumer service's dispatch pipeline expects ILifeCycleDispatchItem, which
-        // is the shape returned by remote feed queries (it carries DB-level metadata like
+        // is the shape returned by remote proxy queries (it carries DB-level metadata like
         // ack_id, trigger count, next_due, etc.). For in-process events we don't have
         // that DB metadata — we adapt the engine's ILifeCycleEvent into the contract
         // with sensible defaults:

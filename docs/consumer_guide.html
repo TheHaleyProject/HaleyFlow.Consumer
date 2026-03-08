@@ -381,7 +381,7 @@ services.AddTransient&lt;<span class="ty">LoanApprovalHandler</span>&gt;();
 
 <span class="cm">// 3. Build + start consumer</span>
 <span class="kw">var</span> consumer = <span class="kw">await new</span> <span class="ty">WorkFlowConsumerMaker</span> {
-    EventFeed       = inProcessFeed,
+    EngineProxy     = inProcessFeed,
     ServiceProvider = serviceProvider,
     Options         = <span class="kw">new</span> <span class="ty">ConsumerServiceOptions</span> {
         ConsumerGuid = <span class="st">"my-app-consumer"</span>,
@@ -873,7 +873,7 @@ services.AddTransient&lt;<span class="ty">LoanApprovalHandler</span>&gt;();
 
 <span class="cm">// Build consumer service</span>
 <span class="kw">var</span> consumer = <span class="kw">await new</span> <span class="ty">WorkFlowConsumerMaker</span> {
-    EventFeed       = inProcessFeed,     <span class="cm">// ILifeCycleEventFeed — bridges engine to consumer</span>
+    EngineProxy     = inProcessFeed,     <span class="cm">// ILifeCycleEngineProxy — bridges engine to consumer</span>
     ServiceProvider = serviceProvider,
     Options         = <span class="kw">new</span> <span class="ty">ConsumerServiceOptions</span> {
         ConsumerGuid   = <span class="st">"loan-consumer-01"</span>,

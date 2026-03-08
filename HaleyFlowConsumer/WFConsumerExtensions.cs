@@ -14,7 +14,7 @@ namespace Haley.Utils {
             //replace the sql contents, as only we know that.
             var adapterKey = await input.Initialize(agw); //Base names are already coming from the concrete implementation of DBInstanceMaker
             var dal = new MariaConsumerServiceDAL(agw, adapterKey);
-            return new WorkFlowConsumerService(input.EventFeed,dal,input.ServiceProvider, input.Options);
+            return new WorkFlowConsumerService(input.EngineProxy,dal,input.ServiceProvider, input.Options);
         }
     }
 }

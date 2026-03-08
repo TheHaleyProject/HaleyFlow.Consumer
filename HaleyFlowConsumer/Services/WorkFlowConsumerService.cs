@@ -34,7 +34,7 @@ namespace Haley.Services {
     /// and ACKs results via the transactional outbox.
     /// </summary>
     public sealed class WorkFlowConsumerService : IWorkFlowConsumerService {
-        private readonly ILifeCycleEventFeed _feed;    // thin client over the engine's ACK+dispatch DB tables
+        private readonly ILifeCycleEngineProxy _feed;    // thin client over the engine's ACK+dispatch DB tables
         private readonly IConsumerServiceDAL _dal;     // consumer-side DB: workflow, inbox, outbox, step tables
         private readonly IServiceProvider _sp;         // DI container — used to resolve wrapper instances
         private readonly ConsumerServiceOptions _opt;
@@ -46,7 +46,7 @@ namespace Haley.Services {
         /// <inheritdoc/>
         public event Func<LifeCycleNotice, Task>? NoticeRaised;
 
-        public WorkFlowConsumerService(ILifeCycleEventFeed feed, IConsumerServiceDAL dal, IServiceProvider sp, ConsumerServiceOptions? options = null) {
+        public WorkFlowConsumerService(ILifeCycleEngineProxy feed, IConsumerServiceDAL dal, IServiceProvider sp, ConsumerServiceOptions? options = null) {
             _feed = feed ?? throw new ArgumentNullException(nameof(feed));
             _dal = dal ?? throw new ArgumentNullException(nameof(dal));
             _sp = sp ?? throw new ArgumentNullException(nameof(sp));
