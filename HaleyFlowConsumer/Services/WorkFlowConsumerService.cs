@@ -159,8 +159,8 @@ namespace Haley.Services {
                     var transitions = await _feed.GetDueTransitionsAsync(_consumerId, _opt.AckStatus, _opt.TtlSeconds, 0, _opt.BatchSize, ct);
                     var hooks = await _feed.GetDueHooksAsync(_consumerId, _opt.AckStatus, _opt.TtlSeconds, 0, _opt.BatchSize, ct);
 
-                    foreach (var item in transitions) await DispatchAsync(item, ct);
-                    foreach (var item in hooks) await DispatchAsync(item, ct);
+                    foreach (var item in transitions) await DispatchItemSafeAsync(item, ct);
+                    foreach (var item in hooks) await DispatchItemSafeAsync(item, ct);
 
                     if (transitions.Count == 0 && hooks.Count == 0)
                         await Task.Delay(_opt.PollInterval, ct);  // nothing to do — sleep before next poll
@@ -171,6 +171,22 @@ namespace Haley.Services {
                         $"PollLoop error (consumer={_opt.ConsumerGuid}): {ex.Message}", ex));
                     await Task.Delay(_opt.PollInterval, ct);  // error — back off before retrying
                 }
+            }
+        }
+
+        // Per-item wrapper used by the poll loop. Propagates cancellation but isolates any other
+        // exception so a transient failure on one item (e.g. throttle acquisition fault) does not
+        // abandon the remaining items in the batch. Items lost here will be re-sent by the engine
+        // monitor after AckPendingResendAfter elapses — this wrapper minimises the abandonment window.
+        private async Task DispatchItemSafeAsync(ILifeCycleDispatchItem item, CancellationToken ct) {
+            ct.ThrowIfCancellationRequested();
+            try {
+                await DispatchAsync(item, ct);
+            } catch (OperationCanceledException) {
+                throw;  // propagate — poll loop exits cleanly
+            } catch (Exception ex) {
+                FireNotice(LifeCycleNotice.Error("DISPATCH_SCHEDULE_ERROR", "DISPATCH_SCHEDULE_ERROR",
+                    $"Failed to schedule item kind={item.Kind} defId={item.Event?.DefinitionId} ackGuid={item.AckGuid}: {ex.Message}. Item will be re-sent by engine monitor.", ex));
             }
         }
 
