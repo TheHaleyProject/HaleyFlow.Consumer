@@ -55,6 +55,11 @@ namespace Haley.Services {
         private readonly Channel<ILifeCycleDispatchItem> _transitions = Channel.CreateUnbounded<ILifeCycleDispatchItem>();
         private readonly Channel<ILifeCycleDispatchItem> _hooks = Channel.CreateUnbounded<ILifeCycleDispatchItem>();
 
+        /// <inheritdoc/>
+        /// Engine notices are relayed here so the consumer service can surface them through
+        /// its own NoticeRaised event without requiring a separate engine subscription.
+        public event Func<LifeCycleNotice, Task>? NoticeRaised;
+
         public InProcessEventFeed(IWorkFlowEngine engine) {
             _engine = engine ?? throw new ArgumentNullException(nameof(engine));
             // Wire up to the engine's broadcast delegate. Every event the engine raises —
@@ -63,8 +68,12 @@ namespace Haley.Services {
             // (TryWrite is non-blocking) so we never hold up the engine's thread.
             _engine.EventRaised += OnEventRaised;
 
+            // Relay engine notices through our own NoticeRaised so the consumer service
+            // can surface them without a separate subscription to the engine.
+            _engine.NoticeRaised += OnEngineNoticeRaised;
+
             ////Also startthe monitor in the engine.
-            //_engine.StartMonitorAsync(); //important , we can also stop wheneve rneeded.. 
+            //_engine.StartMonitorAsync(); //important , we can also stop wheneve rneeded..
         }
 
         // ── Event ingress ──────────────────────────────────────────────────────────
@@ -80,6 +89,17 @@ namespace Haley.Services {
                 ? _transitions.Writer
                 : _hooks.Writer;
             writer.TryWrite(item);
+            return Task.CompletedTask;
+        }
+
+        private Task OnEngineNoticeRaised(LifeCycleNotice n) {
+            var h = NoticeRaised;
+            if (h == null) return Task.CompletedTask;
+            // Fire each subscriber as a background task — identical to engine's own FireNotice pattern.
+            foreach (Func<LifeCycleNotice, Task> sub in h.GetInvocationList()) {
+                var captured = sub;
+                _ = Task.Run(async () => { try { await captured(n); } catch { } });
+            }
             return Task.CompletedTask;
         }
 

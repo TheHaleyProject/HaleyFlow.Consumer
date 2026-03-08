@@ -43,6 +43,9 @@ namespace Haley.Services {
         private CancellationTokenSource? _cts;
         private long _consumerId;                      // numeric ID assigned by engine after RegisterConsumerAsync
 
+        /// <inheritdoc/>
+        public event Func<LifeCycleNotice, Task>? NoticeRaised;
+
         public WorkFlowConsumerService(ILifeCycleEventFeed feed, IConsumerServiceDAL dal, IServiceProvider sp, ConsumerServiceOptions? options = null) {
             _feed = feed ?? throw new ArgumentNullException(nameof(feed));
             _dal = dal ?? throw new ArgumentNullException(nameof(dal));
@@ -96,11 +99,20 @@ namespace Haley.Services {
             // 2. Resolve discovered definition names → engine-assigned def_ids
             foreach (var name in _registry.GetPendingNames()) {
                 var defId = await _feed.GetDefinitionIdAsync(_opt.EnvCode, name, ct);
-                if (defId.HasValue) _registry.Resolve(name, defId.Value);
+                if (defId.HasValue) {
+                    _registry.Resolve(name, defId.Value);
+                } else {
+                    FireNotice(LifeCycleNotice.Warn("REGISTRY_RESOLVE_FAILED", "REGISTRY_RESOLVE_FAILED",
+                        $"Definition '{name}' not found in engine (env={_opt.EnvCode}). Handler will not receive events."));
+                }
             }
 
             // 3. Register this consumer with the engine → get the assigned consumer ID
             _consumerId = await _feed.RegisterConsumerAsync(_opt.EnvCode, _opt.ConsumerGuid, ct);
+
+            // Relay feed-level and engine notices through our own NoticeRaised so callers
+            // only need to subscribe in one place (the consumer service).
+            _feed.NoticeRaised += n => { FireNotice(n); return Task.CompletedTask; };
 
             _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             var token = _cts.Token;
@@ -125,8 +137,9 @@ namespace Haley.Services {
                     await Task.Delay(_opt.HeartbeatInterval, ct); //Beat and wait
                 } catch (OperationCanceledException) {
                     break;
-                } catch {
-                    // keep loop alive; next beat will retry
+                } catch (Exception ex) {
+                    FireNotice(LifeCycleNotice.Error("HEARTBEAT_ERROR", "HEARTBEAT_ERROR",
+                        $"Consumer heartbeat failed (consumer={_opt.ConsumerGuid}): {ex.Message}", ex));
                 }
             }
         }
@@ -153,7 +166,9 @@ namespace Haley.Services {
                         await Task.Delay(_opt.PollInterval, ct);  // nothing to do — sleep before next poll
                 } catch (OperationCanceledException) {
                     break;
-                } catch {
+                } catch (Exception ex) {
+                    FireNotice(LifeCycleNotice.Error("POLL_ERROR", "POLL_ERROR",
+                        $"PollLoop error (consumer={_opt.ConsumerGuid}): {ex.Message}", ex));
                     await Task.Delay(_opt.PollInterval, ct);  // error — back off before retrying
                 }
             }
@@ -166,8 +181,14 @@ namespace Haley.Services {
         private async Task DispatchAsync(ILifeCycleDispatchItem item, CancellationToken ct) {
             await _throttle.WaitAsync(ct);
             _ = Task.Run(async () => {
-                try { await ProcessItemAsync(item, ct); }
-                finally { _throttle.Release(); }
+                try {
+                    await ProcessItemAsync(item, ct);
+                } catch (Exception ex) {
+                    FireNotice(LifeCycleNotice.Error("DISPATCH_ERROR", "DISPATCH_ERROR",
+                        $"Unhandled exception in ProcessItemAsync kind={item.Kind} defId={item.Event?.DefinitionId} ackGuid={item.AckGuid}: {ex.Message}", ex));
+                } finally {
+                    _throttle.Release();
+                }
             }, ct);
         }
 
@@ -199,7 +220,11 @@ namespace Haley.Services {
         //           stays Pending — the OutboxLoop will retry it until it gets through.
         private async Task ProcessItemAsync(ILifeCycleDispatchItem item, CancellationToken ct) {
             var evt = item.Event;
-            if (!_registry.TryGetRegistration(evt.DefinitionId, out var reg) || reg == null) return;
+            if (!_registry.TryGetRegistration(evt.DefinitionId, out var reg) || reg == null) {
+                FireNotice(LifeCycleNotice.Warn("REGISTRY_MISS", "REGISTRY_MISS",
+                    $"No wrapper registered for defId={evt.DefinitionId} kind={item.Kind} ackGuid={item.AckGuid}. Event ignored."));
+                return;
+            }
 
             // 1. Upsert workflow row (idempotent via UNIQUE(consumer_id, ack_guid))
             var load = new DbExecutionLoad(ct);
@@ -257,6 +282,8 @@ namespace Haley.Services {
                 // Wrapper threw — treat as transient failure. The monitor will resend after back-off.
                 outcome = AckOutcome.Retry;
                 await _dal.Inbox.SetStatusAsync(wfId, InboxStatus.Failed, ex.Message, load);
+                FireNotice(LifeCycleNotice.Error("WRAPPER_ERROR", "WRAPPER_ERROR",
+                    $"Wrapper threw during dispatch kind={item.Kind} defId={evt.DefinitionId} wfId={wfId} ackGuid={item.AckGuid}: {ex.Message}", ex));
             }
 
             // 6. Write outbox with the outcome, then try to ACK the engine right now (inline fast path).
@@ -312,6 +339,8 @@ namespace Haley.Services {
                                     nextRetryAt: DateTimeOffset.UtcNow + _opt.OutboxRetryDelay,
                                     load: load);
                                 await _dal.Outbox.AddHistoryAsync(wfId, outcome, OutboxStatus.Failed, null, ex.Message, load);
+                                FireNotice(LifeCycleNotice.Error("OUTBOX_ACK_FAILED", "OUTBOX_ACK_FAILED",
+                                    $"Outbox ACK retry failed wfId={wfId} ackGuid={ackGuid} outcome={outcome}: {ex.Message}", ex));
                             }
                         }
                     }
@@ -319,7 +348,9 @@ namespace Haley.Services {
                         await Task.Delay(_opt.OutboxInterval, ct);
                 } catch (OperationCanceledException) {
                     break;
-                } catch {
+                } catch (Exception ex) {
+                    FireNotice(LifeCycleNotice.Error("OUTBOX_ERROR", "OUTBOX_ERROR",
+                        $"OutboxLoop error (consumer={_opt.ConsumerGuid}): {ex.Message}", ex));
                     await Task.Delay(_opt.OutboxInterval, ct);
                 }
             }
@@ -349,6 +380,18 @@ namespace Haley.Services {
 
         private static int? TryParseCode(string? code)
             => int.TryParse(code, out var v) ? v : null;
+
+        // Fires a notice to all NoticeRaised subscribers. Each subscriber is invoked as an
+        // independent fire-and-forget background task so that a broken subscriber cannot crash
+        // the consumer loops. Errors from subscribers are swallowed (same pattern as the engine).
+        private void FireNotice(LifeCycleNotice n) {
+            var h = NoticeRaised;
+            if (h == null) return;
+            foreach (Func<LifeCycleNotice, Task> sub in h.GetInvocationList()) {
+                var captured = sub;
+                _ = Task.Run(async () => { try { await captured(n); } catch { } });
+            }
+        }
     }
 }
 
