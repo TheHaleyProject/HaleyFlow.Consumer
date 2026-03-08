@@ -261,6 +261,7 @@
         <button class="nav-item" onclick="gotoSection('arch-wrapper')">LifeCycleWrapper</button>
         <button class="nav-item" onclick="gotoSection('arch-attrs')">Attributes</button>
         <button class="nav-item" onclick="gotoSection('arch-instance-data')">Instance Data <span class="badge-new" style="background:#2563eb;color:#fff;font-size:9px;border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:700;">NEW</span></button>
+        <button class="nav-item" onclick="gotoSection('arch-runcount')">RunCount &amp; Reruns <span class="badge-new" style="background:#22c55e;color:#fff;font-size:9px;border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:700;">NEW</span></button>
         <button class="nav-item" onclick="gotoSection('arch-registry')">WrapperRegistry</button>
         <button class="nav-item" onclick="gotoSection('arch-dispatch')">Dispatch Flow</button>
         <button class="nav-item" onclick="gotoSection('arch-steps')">Step Tracking</button>
@@ -286,6 +287,7 @@
         <button class="nav-item" onclick="gotoSection('ex-steps')">3 — Multi-Step (Idempotent)</button>
         <button class="nav-item" onclick="gotoSection('ex-hook')">4 — Hook Handler</button>
         <button class="nav-item" onclick="gotoSection('ex-versioning')">5 — Handler Versioning</button>
+        <button class="nav-item" onclick="gotoSection('ex-runcount')">6 — Hook Reruns &amp; RunCount <span class="badge-new" style="background:#22c55e;color:#fff;font-size:9px;border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:700;">NEW</span></button>
       </div>
     </div>
 
@@ -541,6 +543,7 @@ WorkFlowConsumerService
         <tbody>
           <tr><td><code>Route</code></td><td>The hook route name (e.g. <code>"app.loan.notify_reviewer"</code>) — matches <code>HookHandlerAttribute.Route</code></td></tr>
           <tr><td><code>Params</code></td><td>Params from the emit entry or matched policy rule</td></tr>
+          <tr><td><code>RunCount</code> <span class="badge new">NEW</span></td><td>How many times this specific hook has been fully dispatched, including this delivery. <code>1</code> = first time, <code>2</code> = second run (e.g. after a <code>ReopenAsync</code>). Also available on <code>ctx.RunCount</code> without casting the event.</td></tr>
         </tbody>
       </table>
     </div>
@@ -555,6 +558,7 @@ WorkFlowConsumerService
           <tr><td><code>AckGuid</code></td><td>Engine-issued ACK GUID for this event — passed back to engine when ACKing</td></tr>
           <tr><td><code>HandlerVersion</code></td><td>Handler version pinned for this entity instance. Used by MinVersion picker.</td></tr>
           <tr><td><code>HandlerUpgrade</code></td><td><code>Pinned</code> or <code>AllowUpgrade</code> — whether newer handler methods can be used</td></tr>
+          <tr><td><code>RunCount</code> <span class="badge new">NEW</span></td><td>How many times this hook has been dispatched including this delivery. Always <code>1</code> for transition events. Use <code>ctx.RunCount &gt; 1</code> to detect reruns without casting the event object.</td></tr>
           <tr><td><code>CancellationToken</code></td><td>Honour this in async operations — cancelled when consumer stops</td></tr>
         </tbody>
       </table>
@@ -597,6 +601,72 @@ WorkFlowConsumerService
     </div>
   </section>
 
+  <!-- ──────────────── RUNCOUNT ──────────────── -->
+  <section class="doc-section" id="arch-runcount">
+    <h3 class="sub-title">RunCount &amp; Hook Reruns <span class="badge new">NEW</span></h3>
+    <p>Every hook dispatch now carries a <code>RunCount</code> — how many times the engine has fully dispatched this hook to consumers, including the current delivery. This lets handlers detect reruns caused by <code>ReopenAsync</code> or workflow loops through the same state.</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">Where RunCount comes from</div>
+        <ul>
+          <li>Engine computes: <code>COUNT(*) FROM hook_lc WHERE hook_id = h.id AND dispatched = 1</code></li>
+          <li>Included in the engine's dispatch payload (<code>ILifeCycleHookEvent.RunCount</code>)</li>
+          <li>Consumer stores it in the <code>workflow.run_count</code> column at upsert time</li>
+          <li>Exposed on <code>ConsumerContext.RunCount</code> — no cast required</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">When RunCount &gt; 1</div>
+        <ul>
+          <li>A previous run of this hook reached consumers (dispatched = 1 in <code>hook_lc</code>)</li>
+          <li>Workflow may have looped back to the same state via <code>ReopenAsync</code></li>
+          <li>Side effects from the first run may already have happened</li>
+          <li>Use step tracking (<code>IsStepCompletedAsync</code>) to skip already-completed work</li>
+        </ul>
+      </div>
+    </div>
+
+    <h4 class="mini-title">Accessing RunCount</h4>
+    <pre><code>[<span class="at">HookHandler</span>(<span class="st">"NOTIFY.EMAIL"</span>)]
+<span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnNotifyAsync(<span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
+
+    <span class="cm">// Option A — from ConsumerContext (no cast needed, always available)</span>
+    <span class="kw">if</span> (ctx.RunCount &gt; <span class="jn">1</span>) {
+        _log.Warn(<span class="st">"Hook re-run #{N} — checking if email already sent"</span>, ctx.RunCount);
+    }
+
+    <span class="cm">// Option B — from the event itself (same value)</span>
+    <span class="kw">if</span> (evt.RunCount &gt; <span class="jn">1</span>) { <span class="cm">/* ... */</span> }
+
+    <span class="cm">// Use step tracking to avoid re-sending email on re-delivery</span>
+    <span class="kw">if</span> (!<span class="kw">await</span> IsStepCompletedAsync(ctx, STEP_SEND_EMAIL)) {
+        <span class="kw">await</span> StartStepAsync(ctx, STEP_SEND_EMAIL);
+        <span class="kw">await</span> _mailer.SendAsync(evt.EntityId, ctx.CancellationToken);
+        <span class="kw">await</span> CompleteStepAsync(ctx, STEP_SEND_EMAIL);
+    }
+    <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;
+}</code><span class="lang-label">C#</span></pre>
+
+    <div class="callout tip">
+      <div class="callout-title">RunCount vs re-delivery</div>
+      <strong>RunCount &gt; 1</strong> means the engine triggered the hook a second time (new lifecycle entry). This is different from <strong>re-delivery</strong> of the same dispatch (same <code>ack_guid</code>, same <code>RunCount</code>). Re-delivery happens when the consumer crashes or returns <code>Retry</code>. Use <code>IsStepCompletedAsync</code> to guard against re-delivery; use <code>ctx.RunCount</code> to guard against genuine reruns.
+    </div>
+
+    <h4 class="mini-title">hook_lc — the engine design behind RunCount</h4>
+    <p>The engine separates hook <em>definitions</em> (one row per emission slot) from per-run <em>dispatch records</em>:</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Table</th><th>One row per</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td><code>hook</code></td><td><code>(instance, state, route, on_entry)</code></td><td>Static definition. Never deleted on reopen.</td></tr>
+          <tr><td><code>hook_lc</code></td><td><code>(hook, lifecycle entry)</code></td><td>Per-run dispatch record. <code>dispatched</code> flips to 1 after ACK rows are created. <code>RunCount = COUNT(*) WHERE dispatched=1</code>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>When <code>ReopenAsync</code> is called, <code>hook</code> rows are kept. Each new lifecycle entry creates fresh <code>hook_lc</code> rows with <code>dispatched=0</code>. Old <code>hook_lc</code> rows stay as history, which is how <code>RunCount</code> accumulates across reruns.</p>
+  </section>
+
   <!-- ──────────────── WRAPPER REGISTRY ──────────────── -->
   <section class="doc-section" id="arch-registry">
     <h3 class="sub-title">WrapperRegistry — Auto-Discovery</h3>
@@ -624,7 +694,7 @@ WorkFlowConsumerService
       <li><div class="step-num">1</div><div class="step-body"><strong>Upsert workflow row</strong> — inserts a row in <code>workflow</code> table keyed by <code>UNIQUE(consumer_id, ack_guid)</code>. Idempotent. Returns <code>(wfId, isNew)</code>.</div></li>
       <li><div class="step-num">2</div><div class="step-body"><strong>Pin handler version</strong> (first event only) — if <code>isNew</code>, looks up the most recent handler version already pinned for this definition+entity. Pins it permanently on the workflow row.</div></li>
       <li><div class="step-num">3</div><div class="step-body"><strong>Upsert inbox</strong> — stores params JSON in <code>inbox</code> table. Sets status to <code>Processing</code>, increments attempt count.</div></li>
-      <li><div class="step-num">4</div><div class="step-body"><strong>Build context</strong> — creates <code>ConsumerContext</code> with <code>WfId</code>, <code>AckGuid</code>, <code>HandlerVersion</code>, <code>CancellationToken</code>, etc.</div></li>
+      <li><div class="step-num">4</div><div class="step-body"><strong>Build context</strong> — creates <code>ConsumerContext</code> with <code>WfId</code>, <code>AckGuid</code>, <code>HandlerVersion</code>, <code>RunCount</code> (from hook event), <code>CancellationToken</code>, etc.</div></li>
       <li><div class="step-num">5</div><div class="step-body"><strong>Resolve handler from DI</strong> — resolves the wrapper type from <code>IServiceProvider</code>. Falls back to <code>Activator.CreateInstance</code> if not registered. Injects the step DAL.</div></li>
       <li><div class="step-num">6</div><div class="step-body"><strong>Dispatch</strong> — calls <code>wrapper.DispatchTransitionAsync</code> or <code>wrapper.DispatchHookAsync</code>. The dispatcher selects the best-matching handler method by MinVersion. Returns <code>AckOutcome</code>.</div></li>
       <li><div class="step-num">7</div><div class="step-body"><strong>Write outbox + attempt ACK</strong> — writes outcome to <code>outbox</code> table. Attempts to call <code>engine.AckAsync</code> immediately. If ACK fails, sets <code>next_retry_at</code> and the OutboxLoop retries later.</div></li>
@@ -801,7 +871,7 @@ WorkFlowConsumerService
           <tr>
             <td><code>workflow</code></td>
             <td>One row per dispatched event. The consumer's local record of each engine event.</td>
-            <td><code>id</code>, <code>ack_guid</code>, <code>entity_id</code>, <code>kind</code> (1=Transition, 2=Hook), <code>consumer_id</code>, <code>def_id</code>, <code>handler_version</code>, <code>handler_upgrade</code>, <code>on_success</code>, <code>on_failure</code></td>
+            <td><code>id</code>, <code>ack_guid</code>, <code>entity_id</code>, <code>kind</code> (1=Transition, 2=Hook), <code>consumer_id</code>, <code>def_id</code>, <code>handler_version</code>, <code>handler_upgrade</code>, <code>on_success</code>, <code>on_failure</code>, <code>run_count</code> <span class="badge new">NEW</span> — mirrors <code>ILifeCycleHookEvent.RunCount</code>; always 1 for transitions</td>
           </tr>
           <tr>
             <td><code>inbox</code></td>
@@ -825,6 +895,12 @@ WorkFlowConsumerService
           </tr>
         </tbody>
       </table>
+    </div>
+    <div class="callout warn" style="margin-top:1rem">
+      <div class="callout-title">Schema migration required — add <code>run_count</code> to consumer <code>workflow</code> table</div>
+      <pre style="margin:.5rem 0 0"><code><span class="kw">ALTER TABLE</span> workflow
+  <span class="kw">ADD COLUMN</span> run_count TINYINT UNSIGNED NOT NULL DEFAULT 1;</code></pre>
+      Without this column the consumer UPSERT query will fail. Apply this migration before deploying the updated consumer library.
     </div>
   </section>
 
@@ -1108,8 +1184,78 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
     </div>
   </section>
 
+  <section class="doc-section" id="ex-runcount">
+    <h3 class="sub-title">Example 6 — Hook Reruns &amp; RunCount <span class="badge new">NEW</span></h3>
+    <p>A workflow has a hook that sends a reviewer notification email. When the application calls <code>ReopenAsync</code> to restart a stalled loan, the hook fires again. The handler uses <code>ctx.RunCount</code> to log the rerun and step tracking to skip the email if it was already sent in this specific delivery attempt.</p>
+    <pre><code>[<span class="at">LifeCycleDefinition</span>(<span class="st">"loan-approval"</span>)]
+<span class="kw">public class</span> <span class="ty">LoanHookHandler</span> : <span class="ty">LifeCycleWrapper</span> {
+    <span class="kw">private readonly</span> <span class="ty">IEmailService</span> _email;
+    <span class="kw">private readonly</span> <span class="ty">ILogger</span>       _log;
+    <span class="kw">private const int</span> STEP_SEND_EMAIL = <span class="jn">1</span>;
+
+    <span class="kw">public</span> LoanHookHandler(<span class="ty">IEmailService</span> email, <span class="ty">ILogger</span>&lt;<span class="ty">LoanHookHandler</span>&gt; log) {
+        _email = email; _log = log;
+    }
+
+    [<span class="at">HookHandler</span>(<span class="st">"app.loan.notify_reviewer"</span>)]
+    <span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnNotifyReviewerAsync(
+        <span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
+
+        <span class="cm">// RunCount == 1: first time this hook has fired for this entity/state.</span>
+        <span class="cm">// RunCount == 2: hook fired again, e.g. after ReopenAsync was called.</span>
+        <span class="kw">if</span> (ctx.RunCount &gt; <span class="jn">1</span>) {
+            _log.LogWarning(
+                <span class="st">"Hook re-run #{N} for entity {Id} — prior reviewer notification may already exist."</span>,
+                ctx.RunCount, evt.EntityId);
+        }
+
+        <span class="cm">// Step tracking guards against re-sending on re-delivery of the SAME dispatch.</span>
+        <span class="cm">// Combined with RunCount this covers both scenarios.</span>
+        <span class="kw">if</span> (!<span class="kw">await</span> IsStepCompletedAsync(ctx, STEP_SEND_EMAIL)) {
+            <span class="kw">await</span> StartStepAsync(ctx, STEP_SEND_EMAIL);
+            <span class="kw">try</span> {
+                <span class="cm">// Include RunCount in the email subject so the reviewer knows it's a rerun</span>
+                <span class="kw">var</span> subject = ctx.RunCount &gt; <span class="jn">1</span>
+                    ? <span class="st">$"[Re-notification #{ctx.RunCount}] Loan {evt.EntityId} needs review"</span>
+                    : <span class="st">$"Loan {evt.EntityId} needs your review"</span>;
+                <span class="kw">await</span> _email.SendAsync(subject, evt.EntityId, ctx.CancellationToken);
+                <span class="kw">await</span> CompleteStepAsync(ctx, STEP_SEND_EMAIL, <span class="st">"sent"</span>);
+            } <span class="kw">catch</span> (<span class="ty">Exception</span> ex) {
+                <span class="kw">await</span> FailStepAsync(ctx, STEP_SEND_EMAIL, ex.Message);
+                <span class="kw">return</span> <span class="ty">AckOutcome</span>.Retry;
+            }
+        }
+        <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;
+    }
+
+    <span class="kw">protected override</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnUnhandledTransitionAsync(
+        <span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)
+        =&gt; Task.FromResult(<span class="ty">AckOutcome</span>.Processed);
+    <span class="kw">protected override</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnUnhandledHookAsync(
+        <span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)
+        =&gt; Task.FromResult(<span class="ty">AckOutcome</span>.Processed);
+}</code><span class="lang-label">C#</span></pre>
+
+    <h4 class="mini-title">What happens on ReopenAsync</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Step</th><th>Engine side</th><th>Consumer side</th></tr></thead>
+        <tbody>
+          <tr><td>1. <code>ReopenAsync</code> called</td><td>Force-resets instance state; creates a new <code>lifecycle</code> row (new <code>lc_id</code>)</td><td>—</td></tr>
+          <tr><td>2. <code>PolicyEnforcer</code> runs</td><td>Inserts fresh <code>hook_lc</code> rows (<code>dispatched=0</code>) for the new <code>lc_id</code>. Old <code>hook_lc</code> rows remain as history.</td><td>—</td></tr>
+          <tr><td>3. Hook dispatched</td><td><code>RunCount = COUNT(hook_lc WHERE dispatched=1)</code> = 2 (prior run = 1, this run = 1). New <code>ack_guid</code> issued.</td><td>New <code>workflow</code> row created (new <code>ack_guid</code>, <code>run_count=2</code>). <code>ctx.RunCount = 2</code>.</td></tr>
+          <tr><td>4. Handler runs</td><td>—</td><td><code>ctx.RunCount &gt; 1</code> → handler knows it's a rerun. Step tracking starts fresh (new <code>inbox_step</code> rows).</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout tip">
+      <div class="callout-title">New ack_guid on every reopen</div>
+      Each reopen creates a new <code>ack_guid</code> scoped to the new <code>hook_lc</code> row. This means the consumer <code>workflow</code> table gets a new row (idempotency key is <code>UNIQUE(consumer_id, ack_guid)</code>). Step tracking starts fresh for the rerun — steps from the prior run are on the old <code>wf_id</code> row.
+    </div>
+  </section>
+
   <hr class="divider">
-  <p style="text-align:center;color:var(--text-muted);font-size:12px">HaleyFlow Consumer — Handler Framework — March 2026</p>
+  <p style="text-align:center;color:var(--text-muted);font-size:12px">HaleyFlow Consumer — Handler Framework — v0.2 — March 2026 — hook_lc + RunCount</p>
 
 </div><!-- content-inner -->
 </main>
