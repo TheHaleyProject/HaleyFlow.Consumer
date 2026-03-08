@@ -20,6 +20,8 @@ namespace Haley.Models {
         public int? EventCode { get; set; }
         /// <summary>Null for transition events.</summary>
         public string? Route { get; set; }
+        /// <summary>How many times this hook has been dispatched (including this delivery). Always 1 for transition events.</summary>
+        public int RunCount { get; set; } = 1;
         public DateTime Created { get; set; }
         public HandlerUpgrade HandlerUpgrade { get; set; } = HandlerUpgrade.Pinned;
     }

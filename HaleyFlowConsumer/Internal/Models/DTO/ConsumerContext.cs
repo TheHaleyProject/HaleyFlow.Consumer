@@ -17,6 +17,11 @@ namespace Haley.Models {
         public int HandlerVersion { get; init; }
         /// <summary>Whether this instance allows handler version upgrades.</summary>
         public HandlerUpgrade HandlerUpgrade { get; init; }
+        /// <summary>
+        /// How many times this hook has been dispatched, including this delivery.
+        /// Always 1 for transition events. Use this to detect reruns (e.g. after a ReopenAsync).
+        /// </summary>
+        public int RunCount { get; init; } = 1;
         public CancellationToken CancellationToken { get; init; }
     }
 }

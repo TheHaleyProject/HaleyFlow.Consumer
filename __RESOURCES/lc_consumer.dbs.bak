@@ -1,9 +1,40 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <project name="MariaDb" database="MariaDb" id="b802615b-2010-49eb-8326-217536925011" >
 	<schema name="lc_consumer" >
+		<table name="business_action" prior="business_ac" >
+			<comment><![CDATA[if a business cation is completed, we dont try to rerun it again.. but in case of inbox delviery, we need to inform]]></comment>
+			<column name="id" type="BIGINT" mandatory="y" >
+				<identity><![CDATA[AUTO_INCREMENT]]></identity>
+			</column>
+			<column name="consumer_id" type="INT" mandatory="y" />
+			<column name="entity_id" type="VARCHAR" length="40" mandatory="y" />
+			<column name="def_id" type="BIGINT" mandatory="y" >
+				<comment><![CDATA[what workflow definition]]></comment>
+			</column>
+			<column name="action_code" type="INT" mandatory="y" >
+				<comment><![CDATA[like 100=SendLoginCredentials, 200=send warning emails etc]]></comment>
+			</column>
+			<column name="status" type="INT" mandatory="y" >
+				<comment><![CDATA[1=Pending,2=Running,3=Completed,4=Failed]]></comment>
+			</column>
+			<column name="started_at" prior="created" type="DATETIME" mandatory="y" >
+				<defo><![CDATA[CURRENT_TIMESTAMP]]></defo>
+			</column>
+			<column name="completed_at" type="DATETIME" length="6" />
+			<column name="result_json" type="LONGTEXT" />
+			<index name="pk_business_action" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="unq_business_action" unique="UNIQUE_KEY" >
+				<column name="consumer_id" />
+				<column name="def_id" />
+				<column name="entity_id" />
+				<column name="action_code" />
+			</index>
+			<options><![CDATA[engine=InnoDB]]></options>
+		</table>
 		<table name="inbox" row_count="0" spec="" >
 			<column name="wf_id" prior="workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" />
-			<column name="payload_json" type="LONGTEXT" />
 			<column name="params_json" type="LONGTEXT" />
 			<column name="received_at" type="DATETIME" mandatory="y" >
 				<defo><![CDATA[current_timestamp()]]></defo>
@@ -32,10 +63,11 @@
 			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
 		</table>
 		<table name="inbox_step" row_count="0" spec="" >
+			<comment><![CDATA[delivery idempotency]]></comment>
 			<column name="inbox_id" prior="inbox_workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" />
-			<column name="step_code" type="INT" length="11" mandatory="y" >
+			<column name="action_code" prior="step_code" type="INT" length="11" mandatory="y" >
 				<defo><![CDATA[0]]></defo>
-				<comment><![CDATA[what is the step that was executed (coming and aware only to the consumer)]]></comment>
+				<comment><![CDATA[what is the action that was executed (coming and aware only to the consumer)]]></comment>
 			</column>
 			<column name="status" type="TINYINT" length="3" mandatory="y" unsigned="y" >
 				<defo><![CDATA[1]]></defo>
@@ -50,7 +82,7 @@
 			</index>
 			<index name="pk_inbox_step" unique="PRIMARY_KEY" >
 				<column name="inbox_id" />
-				<column name="step_code" />
+				<column name="action_code" />
 			</index>
 			<fk name="fk_inbox_step_inbox" to_schema="lc_consumer" to_table="inbox" delete_action="cascade" options="" >
 				<fk_column name="inbox_id" pk="wf_id" />
@@ -122,7 +154,7 @@
 				<identity><![CDATA[AUTO_INCREMENT]]></identity>
 			</column>
 			<column name="ack_guid" type="VARCHAR" length="64" mandatory="y" />
-			<column name="entity_id" type="VARCHAR" length="160" mandatory="y" />
+			<column name="entity_id" type="VARCHAR" length="40" mandatory="y" />
 			<column name="kind" type="TINYINT" length="3" mandatory="y" unsigned="y" >
 				<comment><![CDATA[1=Transition, 2=Hook]]></comment>
 			</column>
@@ -161,6 +193,7 @@ if allow upgrde, we can allow this to upgrade to latest version presen in the ap
 				<column name="consumer_id" />
 			</index>
 			<index name="unq_workflow_ack_guid" unique="UNIQUE_KEY" >
+				<comment><![CDATA[Transport idempotency]]></comment>
 				<column name="consumer_id" />
 				<column name="ack_guid" />
 			</index>
@@ -169,8 +202,9 @@ if allow upgrde, we can allow this to upgrade to latest version presen in the ap
 	</schema>
 	<diagram_group name="Default" id="095de0c8-e633-4185-a9b8-c31a8438aa5e" >
 		<diagram name="Main Diagram" id="9443b33f-5de4-42b2-a6d5-e59d764d8dba" joined_routing="y" show_relation="columns" >
+			<entity schema="lc_consumer" name="business_action" color="C1D8EE" x="342" y="456" />
 			<entity schema="lc_consumer" name="inbox" color="BED3F4" x="589" y="57" />
-			<entity schema="lc_consumer" name="inbox_step" color="BED3F4" x="551" y="285" />
+			<entity schema="lc_consumer" name="inbox_step" color="BED3F4" x="570" y="266" />
 			<entity schema="lc_consumer" name="outbox" color="BED3F4" x="57" y="57" />
 			<entity schema="lc_consumer" name="outbox_history" color="BED3F4" x="95" y="247" />
 			<entity schema="lc_consumer" name="workflow" color="BED3F4" x="323" y="57" />

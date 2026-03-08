@@ -16,6 +16,9 @@ namespace Haley.Internal {
         public const string OCCURRED = "@OCCURRED";
         public const string EVENT_CODE = "@EVENT_CODE";
         public const string ROUTE = "@ROUTE";
+        public const string RUN_COUNT = "@RUN_COUNT";
+        public const string ID = "@ID";
+        public const string ACTION_CODE = "@ACTION_CODE";
         // inbox
         public const string PARAMS_JSON = "@PARAMS_JSON";
         public const string STATUS = "@STATUS";

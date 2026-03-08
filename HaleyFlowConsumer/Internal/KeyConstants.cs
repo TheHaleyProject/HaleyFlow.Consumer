@@ -19,5 +19,10 @@ namespace Haley.Internal {
         public const string KEY_STATUS = "status";
         public const string KEY_WF_ID = "wf_id";
         public const string KEY_CURRENT_OUTCOME = "current_outcome";
+        public const string KEY_ACTION_CODE = "action_code";
+        public const string KEY_RESULT_JSON = "result_json";
+        public const string KEY_STARTED_AT = "started_at";
+        public const string KEY_COMPLETED_AT = "completed_at";
+        public const string KEY_RUN_COUNT = "run_count";
     }
 }

@@ -3,6 +3,7 @@ using Haley.Models;
 using Haley.Utils;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text.Json;
 using Haley.Internal;
 using static Haley.Internal.KeyConstants;
 
@@ -57,6 +58,7 @@ namespace Haley.Abstractions {
         // before calling any dispatch method. The public API exposes it only through the
         // protected helper methods below so subclasses can't accidentally misuse the DAL.
         internal IConsumerInboxStepDAL? _stepDal;
+        internal IConsumerBusinessActionDAL? _businessActionDal;
 
         // ── Step tracking helpers ──────────────────────────────────────────────
         // These are the recommended way for handler code to record progress. The step_code
@@ -89,6 +91,100 @@ namespace Haley.Abstractions {
             var row = await StepDal.GetStepAsync(ctx.WfId, stepCode,
                 new DbExecutionLoad(ctx.CancellationToken));
             return row != null && row.GetInt(KEY_STATUS) == (int)InboxStepStatus.Completed;
+        }
+
+        protected async Task<bool> IsBusinessActionCompletedAsync(
+            ConsumerContext ctx,
+            long defId,
+            string entityId,
+            int actionCode) {
+            if (string.IsNullOrWhiteSpace(entityId)) return false;
+            var row = await BusinessActionDal.GetByKeyAsync(
+                ctx.ConsumerId, defId, entityId, actionCode,
+                new DbExecutionLoad(ctx.CancellationToken));
+            return row?.Status == BusinessActionStatus.Completed;
+        }
+
+        protected Task<BusinessActionRecord?> GetBusinessActionAsync(
+            ConsumerContext ctx,
+            long defId,
+            string entityId,
+            int actionCode) {
+            return BusinessActionDal.GetByKeyAsync(
+                ctx.ConsumerId, defId, entityId, actionCode,
+                new DbExecutionLoad(ctx.CancellationToken));
+        }
+
+        protected async Task<BusinessActionExecutionResult> ExecuteBusinessActionAsync(
+            ConsumerContext ctx,
+            long defId,
+            string entityId,
+            int actionCode,
+            Func<CancellationToken, Task<object?>> action,
+            BusinessActionExecutionMode mode = BusinessActionExecutionMode.SkipIfCompleted) {
+            if (action == null) throw new ArgumentNullException(nameof(action));
+            if (defId <= 0) throw new ArgumentOutOfRangeException(nameof(defId));
+            if (string.IsNullOrWhiteSpace(entityId)) throw new ArgumentNullException(nameof(entityId));
+            if (actionCode <= 0) throw new ArgumentOutOfRangeException(nameof(actionCode));
+
+            var load = new DbExecutionLoad(ctx.CancellationToken);
+            var existing = await BusinessActionDal.GetByKeyAsync(ctx.ConsumerId, defId, entityId, actionCode, load);
+
+            if (mode == BusinessActionExecutionMode.SkipIfCompleted &&
+                existing != null &&
+                existing.Status == BusinessActionStatus.Completed) {
+                return new BusinessActionExecutionResult {
+                    ActionId = existing.Id,
+                    Executed = false,
+                    AlreadyCompleted = true,
+                    ResultJson = existing.ResultJson
+                };
+            }
+
+            var actionId = existing?.Id ?? await BusinessActionDal.UpsertReturnIdAsync(
+                ctx.ConsumerId,
+                defId,
+                entityId,
+                actionCode,
+                BusinessActionStatus.Running,
+                load);
+
+            if (existing != null) {
+                await BusinessActionDal.SetRunningAsync(actionId, load);
+            }
+
+            try {
+                var payload = await action(ctx.CancellationToken);
+                var resultJson = ToResultJson(payload);
+                await BusinessActionDal.SetCompletedAsync(actionId, resultJson, load);
+                return new BusinessActionExecutionResult {
+                    ActionId = actionId,
+                    Executed = true,
+                    AlreadyCompleted = false,
+                    ResultJson = resultJson
+                };
+            } catch (OperationCanceledException) when (ctx.CancellationToken.IsCancellationRequested) {
+                throw;
+            } catch (Exception ex) {
+                var errorJson = ToResultJson(new { error = ex.Message, type = ex.GetType().Name });
+                try {
+                    await BusinessActionDal.SetFailedAsync(actionId, errorJson, load);
+                } catch {
+                    // Best effort only; original exception is more important than audit write failures.
+                }
+                throw;
+            }
+        }
+
+        protected static bool ReadDecisionFromResultJson(string? resultJson, bool defaultValue = true) {
+            if (string.IsNullOrWhiteSpace(resultJson)) return defaultValue;
+            try {
+                using var doc = JsonDocument.Parse(resultJson);
+                if (doc.RootElement.ValueKind != JsonValueKind.Object) return defaultValue;
+                return doc.RootElement.GetBool("decision") ?? defaultValue;
+            } catch {
+                return defaultValue;
+            }
         }
 
         // ── Unhandled event fallbacks ──────────────────────────────────────────
@@ -143,6 +239,15 @@ namespace Haley.Abstractions {
 
         private IConsumerInboxStepDAL StepDal =>
             _stepDal ?? throw new InvalidOperationException("LifeCycleWrapper not initialized by ConsumerService.");
+
+        private IConsumerBusinessActionDAL BusinessActionDal =>
+            _businessActionDal ?? throw new InvalidOperationException("LifeCycleWrapper not initialized by ConsumerService (BusinessAction DAL missing).");
+
+        private static string? ToResultJson(object? value) {
+            if (value == null) return null;
+            if (value is string s) return s;
+            return JsonSerializer.Serialize(value);
+        }
 
         /// <summary>
         /// Version-aware handler selection.

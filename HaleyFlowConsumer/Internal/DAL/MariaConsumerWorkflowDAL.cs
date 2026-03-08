@@ -23,7 +23,8 @@ namespace Haley.Internal {
                 (ON_FAILURE, (object?)r.OnFailure ?? DBNull.Value),
                 (OCCURRED, r.Occurred),
                 (EVENT_CODE, (object?)r.EventCode ?? DBNull.Value),
-                (ROUTE, (object?)r.Route ?? DBNull.Value));
+                (ROUTE, (object?)r.Route ?? DBNull.Value),
+                (RUN_COUNT, r.RunCount));
 
             if (id == null || id.Value <= 0) throw new InvalidOperationException("workflow upsert failed.");
 
@@ -67,6 +68,7 @@ namespace Haley.Internal {
             Occurred = r.GetDateTime(KEY_OCCURRED) ?? DateTime.UtcNow,
             EventCode = r.GetNullableInt(KEY_EVENT_CODE),
             Route = r.GetString(KEY_ROUTE),
+            RunCount = r.GetNullableInt(KEY_RUN_COUNT) ?? 1,
             Created = r.GetDateTime(KEY_CREATED) ?? DateTime.UtcNow,
             HandlerUpgrade = (HandlerUpgrade)(r.GetNullableByte(KEY_HANDLER_UPGRADE) ?? (byte)HandlerUpgrade.Pinned)
         };

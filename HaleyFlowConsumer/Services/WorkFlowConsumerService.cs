@@ -277,6 +277,7 @@ namespace Haley.Services {
                 AckGuid = item.AckGuid,
                 HandlerVersion = effectiveVersion,
                 HandlerUpgrade = wf.HandlerUpgrade,
+                RunCount = wfRecord.RunCount,
                 CancellationToken = ct
             };
 
@@ -288,6 +289,7 @@ namespace Haley.Services {
                 var wrapper = (LifeCycleWrapper)_sp.GetService(reg.WrapperType)
                     ?? (LifeCycleWrapper)Activator.CreateInstance(reg.WrapperType)!;
                 wrapper._stepDal = _dal.InboxStep;
+                wrapper._businessActionDal = _dal.BusinessAction;
 
                 outcome = item.Kind == LifeCycleEventKind.Transition
                     ? await wrapper.DispatchTransitionAsync((ILifeCycleTransitionEvent)evt, ctx)
@@ -389,7 +391,7 @@ namespace Haley.Services {
             };
 
             if (evt is ILifeCycleTransitionEvent te) record.EventCode = te.EventCode;
-            if (evt is ILifeCycleHookEvent he) record.Route = he.Route;
+            if (evt is ILifeCycleHookEvent he) { record.Route = he.Route; record.RunCount = he.RunCount; }
 
             return record;
         }
