@@ -8,7 +8,7 @@ namespace Haley.Internal {
         /// completed_at when Completed (3) or Failed (4). Preserves existing values for result/error if null supplied.
         /// </summary>
         public const string UPSERT =
-            $@"INSERT INTO inbox_step (inbox_id, step_code, status, started_at, completed_at, result_json, last_error)
+            $@"INSERT INTO inbox_step (inbox_id, action_code, status, started_at, completed_at, result_json, last_error)
                VALUES ({INBOX_ID}, {STEP_CODE}, {STATUS},
                        CASE WHEN {STATUS} = 2 THEN UTC_TIMESTAMP(6) END,
                        CASE WHEN {STATUS} IN (3,4) THEN UTC_TIMESTAMP(6) END,
@@ -21,9 +21,9 @@ namespace Haley.Internal {
                    last_error   = COALESCE(VALUES(last_error), last_error);";
 
         public const string SELECT_BY_INBOX_AND_CODE =
-            $@"SELECT * FROM inbox_step WHERE inbox_id = {INBOX_ID} AND step_code = {STEP_CODE};";
+            $@"SELECT * FROM inbox_step WHERE inbox_id = {INBOX_ID} AND action_code = {STEP_CODE};";
 
         public const string SELECT_ALL_BY_INBOX =
-            $@"SELECT * FROM inbox_step WHERE inbox_id = {INBOX_ID} ORDER BY step_code ASC;";
+            $@"SELECT * FROM inbox_step WHERE inbox_id = {INBOX_ID} ORDER BY action_code ASC;";
     }
 }

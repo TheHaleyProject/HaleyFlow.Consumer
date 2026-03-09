@@ -236,6 +236,12 @@ namespace Haley.Services {
         //           stays Pending — the OutboxLoop will retry it until it gets through.
         private async Task ProcessItemAsync(ILifeCycleDispatchItem item, CancellationToken ct) {
             var evt = item.Event;
+            if (string.IsNullOrWhiteSpace(item.AckGuid)) {
+                FireNotice(LifeCycleNotice.Error("DISPATCH_INVALID_ACK", "DISPATCH_INVALID_ACK",
+                    $"Skipping event with missing ack_guid. kind={item.Kind} defId={evt.DefinitionId} entity={evt.EntityId} instance={evt.InstanceGuid}"));
+                return;
+            }
+
             if (!_registry.TryGetRegistration(evt.DefinitionId, out var reg) || reg == null) {
                 FireNotice(LifeCycleNotice.Warn("REGISTRY_MISS", "REGISTRY_MISS",
                     $"No wrapper registered for defId={evt.DefinitionId} kind={item.Kind} ackGuid={item.AckGuid}. Event ignored."));

@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS `inbox_step` (
 CREATE TABLE IF NOT EXISTS `outbox` (
   `wf_id` bigint(20) unsigned NOT NULL,
   `current_outcome` tinyint(3) unsigned DEFAULT NULL COMMENT '1=Delivered,2=Processed,3=Retry,4=Failed',
-  `status` tinyint(3) unsigned NOT NULL DEFAULT 1 COMMENT '1=Pending,2=Sent,3=Failed',
+  `status` tinyint(3) unsigned NOT NULL DEFAULT 1 COMMENT '1=Pending,2=Sent,3=Confirmed,4=Failed',
   `next_retry_at` datetime(6) DEFAULT NULL,
   `last_error` text DEFAULT NULL,
   `modified` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS `outbox_history` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `outbox_id` bigint(20) unsigned NOT NULL,
   `outcome` tinyint(3) unsigned NOT NULL COMMENT '1=Delivered,2=Processed,3=Retry,4=Failed',
-  `status` tinyint(3) unsigned NOT NULL COMMENT '1=Pending,2=Sent,3=Failed',
+  `status` tinyint(3) unsigned NOT NULL COMMENT '1=Pending,2=Sent,3=Confirmed,4=Failed',
   `attempt_no` int(10) unsigned NOT NULL,
   `modified` datetime NOT NULL DEFAULT current_timestamp(),
   `response_payload_json` longtext DEFAULT NULL,
