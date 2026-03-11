@@ -241,7 +241,6 @@ namespace Haley.Services {
                     $"Skipping event with missing ack_guid. kind={item.Kind} defId={evt.DefinitionId} entity={evt.EntityId} instance={evt.InstanceGuid}"));
                 return;
             }
-
             if (!_registry.TryGetRegistration(evt.DefinitionId, out var reg) || reg == null) {
                 FireNotice(LifeCycleNotice.Warn("REGISTRY_MISS", "REGISTRY_MISS",
                     $"No wrapper registered for defId={evt.DefinitionId} kind={item.Kind} ackGuid={item.AckGuid}. Event ignored."));

@@ -21,110 +21,110 @@ USE `lc_consumer`;
 
 -- Dumping structure for table lc_consumer.business_action
 CREATE TABLE IF NOT EXISTS `business_action` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `consumer_id` int(11) NOT NULL,
-  `entity_id` varchar(40) NOT NULL,
-  `def_id` bigint(20) NOT NULL,
-  `action_code` int(11) NOT NULL COMMENT 'like 100=SendLoginCredentials, 200=send warning emails etc',
-  `started_at` datetime NOT NULL DEFAULT current_timestamp(),
-  `status` int(11) NOT NULL COMMENT '1=Pending,2=Running,3=Completed,4=Failed',
-  `completed_at` datetime(6) DEFAULT NULL,
-  `result_json` longtext DEFAULT NULL,
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'Internal surrogate identifier.',
+  `consumer_id` int(11) NOT NULL COMMENT 'Registered consumer identifier.',
+  `entity_id` varchar(40) NOT NULL COMMENT 'External business entity identifier (for example submission or application id).',
+  `def_id` bigint(20) NOT NULL COMMENT 'Workflow definition identifier.',
+  `action_code` int(11) NOT NULL COMMENT 'Business action code (example: 100=SendLoginCredentials, 200=SendWarningEmail).',
+  `started_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'Execution start timestamp.',
+  `status` int(11) NOT NULL COMMENT 'Action execution state: 1=Pending, 2=Running, 3=Completed, 4=Failed.',
+  `completed_at` datetime(6) DEFAULT NULL COMMENT 'Execution completion timestamp.',
+  `result_json` longtext DEFAULT NULL COMMENT 'Structured execution result payload (JSON).',
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_business_action` (`consumer_id`,`def_id`,`entity_id`,`action_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='if a business cation is completed, we dont try to rerun it again.. but in case of inbox delviery, we need to inform';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Idempotent record of business side-effects executed by a consumer for a workflow entity.';
 
 -- Data exporting was unselected.
 
 -- Dumping structure for table lc_consumer.inbox
 CREATE TABLE IF NOT EXISTS `inbox` (
-  `wf_id` bigint(20) unsigned NOT NULL,
-  `params_json` longtext DEFAULT NULL,
-  `received_at` datetime NOT NULL DEFAULT current_timestamp(),
-  `modified` datetime NOT NULL DEFAULT current_timestamp(),
-  `status` tinyint(3) unsigned NOT NULL DEFAULT 1 COMMENT '1=Received,2=Processing,3=Processed,4=Failed',
-  `attempt_count` int(10) unsigned NOT NULL DEFAULT 0,
-  `last_error` text DEFAULT NULL,
+  `wf_id` bigint(20) unsigned NOT NULL COMMENT 'Workflow record identifier (FK to workflow.id).',
+  `params_json` longtext DEFAULT NULL COMMENT 'Incoming parameter payload captured from engine (JSON).',
+  `received_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'UTC timestamp when the item was received by the consumer.',
+  `modified` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'UTC timestamp when the row was last updated.',
+  `status` tinyint(3) unsigned NOT NULL DEFAULT 1 COMMENT 'Inbox processing state: 1=Received, 2=Processing, 3=Processed, 4=Failed.',
+  `attempt_count` int(10) unsigned NOT NULL DEFAULT 0 COMMENT 'Number of processing attempts performed for this record.',
+  `last_error` text DEFAULT NULL COMMENT 'Last captured error message for troubleshooting.',
   PRIMARY KEY (`wf_id`),
   KEY `idx_inbox_status` (`status`,`received_at`),
   CONSTRAINT `fk_inbox_workflow` FOREIGN KEY (`wf_id`) REFERENCES `workflow` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Durable inbound work queue for engine-raised workflow items received by a consumer.';
 
 -- Data exporting was unselected.
 
 -- Dumping structure for table lc_consumer.inbox_step
 CREATE TABLE IF NOT EXISTS `inbox_step` (
-  `inbox_id` bigint(20) unsigned NOT NULL,
-  `action_code` int(11) NOT NULL DEFAULT 0 COMMENT 'what is the action that was executed (coming and aware only to the consumer)',
-  `status` tinyint(3) unsigned NOT NULL DEFAULT 1 COMMENT '1=Pending,2=Running,3=Completed,4=Failed',
-  `started_at` datetime(6) DEFAULT NULL,
-  `completed_at` datetime(6) DEFAULT NULL,
-  `result_json` longtext DEFAULT NULL,
-  `last_error` text DEFAULT NULL,
+  `inbox_id` bigint(20) unsigned NOT NULL COMMENT 'Inbox record identifier (FK to inbox.wf_id).',
+  `action_code` int(11) NOT NULL DEFAULT 0 COMMENT 'Consumer-defined business action code.',
+  `status` tinyint(3) unsigned NOT NULL DEFAULT 1 COMMENT 'Step state: 1=Pending, 2=Running, 3=Completed, 4=Failed.',
+  `started_at` datetime(6) DEFAULT NULL COMMENT 'Execution start timestamp.',
+  `completed_at` datetime(6) DEFAULT NULL COMMENT 'Execution completion timestamp.',
+  `result_json` longtext DEFAULT NULL COMMENT 'Structured execution result payload (JSON).',
+  `last_error` text DEFAULT NULL COMMENT 'Last captured error message for troubleshooting.',
   PRIMARY KEY (`inbox_id`,`action_code`),
   KEY `idx_inbox_step_status` (`status`),
   CONSTRAINT `fk_inbox_step_inbox` FOREIGN KEY (`inbox_id`) REFERENCES `inbox` (`wf_id`) ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='delivery idempotency';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Step-level execution tracking for inbox items to support deterministic, idempotent processing.';
 
 -- Data exporting was unselected.
 
 -- Dumping structure for table lc_consumer.outbox
 CREATE TABLE IF NOT EXISTS `outbox` (
-  `wf_id` bigint(20) unsigned NOT NULL,
-  `current_outcome` tinyint(3) unsigned DEFAULT NULL COMMENT '1=Delivered,2=Processed,3=Retry,4=Failed',
-  `status` tinyint(3) unsigned NOT NULL DEFAULT 1 COMMENT '1=Pending,2=Sent,3=Confirmed,4=Failed',
-  `next_retry_at` datetime(6) DEFAULT NULL,
-  `last_error` text DEFAULT NULL,
-  `modified` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `wf_id` bigint(20) unsigned NOT NULL COMMENT 'Workflow record identifier (FK to workflow.id).',
+  `current_outcome` tinyint(3) unsigned DEFAULT NULL COMMENT 'Current outcome: 1=Delivered, 2=Processed, 3=Retry, 4=Failed.',
+  `status` tinyint(3) unsigned NOT NULL DEFAULT 1 COMMENT 'Outbox send state: 1=Pending, 2=Sent, 3=Confirmed, 4=Failed.',
+  `next_retry_at` datetime(6) DEFAULT NULL COMMENT 'Scheduled timestamp for next retry attempt.',
+  `last_error` text DEFAULT NULL COMMENT 'Last captured error message for troubleshooting.',
+  `modified` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT 'UTC timestamp when the row was last updated.',
   PRIMARY KEY (`wf_id`),
   KEY `idx_outbox_send_status` (`status`,`next_retry_at`),
   CONSTRAINT `fk_outbox_workflow` FOREIGN KEY (`wf_id`) REFERENCES `workflow` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Outbound acknowledgement queue from consumer to engine with retry scheduling.';
 
 -- Data exporting was unselected.
 
 -- Dumping structure for table lc_consumer.outbox_history
 CREATE TABLE IF NOT EXISTS `outbox_history` (
-  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  `outbox_id` bigint(20) unsigned NOT NULL,
-  `outcome` tinyint(3) unsigned NOT NULL COMMENT '1=Delivered,2=Processed,3=Retry,4=Failed',
-  `status` tinyint(3) unsigned NOT NULL COMMENT '1=Pending,2=Sent,3=Confirmed,4=Failed',
-  `attempt_no` int(10) unsigned NOT NULL,
-  `modified` datetime NOT NULL DEFAULT current_timestamp(),
-  `response_payload_json` longtext DEFAULT NULL,
-  `error` text DEFAULT NULL,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT 'Internal surrogate identifier.',
+  `outbox_id` bigint(20) unsigned NOT NULL COMMENT 'Outbox record identifier (FK to outbox.wf_id).',
+  `outcome` tinyint(3) unsigned NOT NULL COMMENT 'Attempt outcome: 1=Delivered, 2=Processed, 3=Retry, 4=Failed.',
+  `status` tinyint(3) unsigned NOT NULL COMMENT 'Attempt send state: 1=Pending, 2=Sent, 3=Confirmed, 4=Failed.',
+  `attempt_no` int(10) unsigned NOT NULL COMMENT 'Monotonic attempt sequence number.',
+  `modified` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'UTC timestamp when the row was last updated.',
+  `response_payload_json` longtext DEFAULT NULL COMMENT 'Raw response payload captured from engine/API (JSON).',
+  `error` text DEFAULT NULL COMMENT 'Error details captured for this send attempt.',
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_outbox_attempt` (`outbox_id`,`attempt_no`),
   KEY `idx_outbox_history_outbox_sent` (`outbox_id`,`modified`),
   CONSTRAINT `fk_outbox_history_outbox` FOREIGN KEY (`outbox_id`) REFERENCES `outbox` (`wf_id`) ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Immutable attempt history for outbox sends, responses, and failures.';
 
 -- Data exporting was unselected.
 
 -- Dumping structure for table lc_consumer.workflow
 CREATE TABLE IF NOT EXISTS `workflow` (
-  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  `ack_guid` varchar(64) NOT NULL,
-  `entity_id` varchar(40) NOT NULL,
-  `kind` tinyint(3) unsigned NOT NULL COMMENT '1=Transition, 2=Hook',
-  `consumer_id` int(10) unsigned NOT NULL,
-  `def_id` bigint(20) unsigned NOT NULL,
-  `def_version_id` bigint(20) unsigned NOT NULL,
-  `handler_version` int(11) DEFAULT NULL COMMENT 'pinned on first event.',
-  `instance_guid` varchar(36) DEFAULT NULL,
-  `on_success` int(11) DEFAULT NULL,
-  `on_failure` int(11) DEFAULT NULL,
-  `occurred` datetime NOT NULL,
-  `event_code` int(11) DEFAULT NULL COMMENT 'Null for hooks.. Which event raised this transition',
-  `route` varchar(200) DEFAULT NULL COMMENT 'route that needs to be invoked.. null for transition',
-  `created` datetime NOT NULL DEFAULT current_timestamp(),
-  `handler_upgrade` tinyint(4) NOT NULL DEFAULT 1 COMMENT '1=Pinned, 2=AllowUpgrade\nIf pinned, the handler has to stick to whatever version is got registered with.\nif allow upgrde, we can allow this to upgrade to latest version presen in the application.. so new steps will be executed.',
-  `run_count` int(11) NOT NULL DEFAULT 1,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT 'Internal surrogate identifier.',
+  `ack_guid` varchar(64) NOT NULL COMMENT 'External acknowledgement GUID used for idempotency and correlation.',
+  `entity_id` varchar(40) NOT NULL COMMENT 'External business entity identifier (for example submission or application id).',
+  `kind` tinyint(3) unsigned NOT NULL COMMENT 'Workload kind: 1=Transition, 2=Hook.',
+  `consumer_id` int(10) unsigned NOT NULL COMMENT 'Registered consumer identifier.',
+  `def_id` bigint(20) unsigned NOT NULL COMMENT 'Workflow definition identifier.',
+  `def_version_id` bigint(20) unsigned NOT NULL COMMENT 'Definition version identifier captured when workload was created.',
+  `handler_version` int(11) DEFAULT NULL COMMENT 'Pinned consumer handler version used for this workload.',
+  `instance_guid` varchar(36) DEFAULT NULL COMMENT 'Workflow instance GUID from engine.',
+  `on_success` int(11) DEFAULT NULL COMMENT 'Optional consumer action code to execute after successful processing.',
+  `on_failure` int(11) DEFAULT NULL COMMENT 'Optional consumer action code to execute after failed processing.',
+  `occurred` datetime NOT NULL COMMENT 'Domain occurrence timestamp from source event.',
+  `event_code` int(11) DEFAULT NULL COMMENT 'Transition event code; NULL when workload kind is Hook.',
+  `route` varchar(200) DEFAULT NULL COMMENT 'Hook route name; NULL when workload kind is Transition.',
+  `created` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'UTC timestamp when the row was created.',
+  `handler_upgrade` tinyint(4) NOT NULL DEFAULT 1 COMMENT 'Handler strategy: 1=PinnedVersion, 2=AllowUpgradeToLatest.',
+  `run_count` int(11) NOT NULL DEFAULT 1 COMMENT 'Number of times this workload has been executed/retried.',
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_workflow_ack_guid` (`consumer_id`,`ack_guid`),
   KEY `idx_workflow_entity_def` (`entity_id`),
   KEY `idx_workflow_consumer_status` (`consumer_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Canonical consumer-side record for one engine-raised transition or hook workload.';
 
 -- Data exporting was unselected.
 
@@ -133,3 +133,4 @@ CREATE TABLE IF NOT EXISTS `workflow` (
 /*!40014 SET FOREIGN_KEY_CHECKS=IFNULL(@OLD_FOREIGN_KEY_CHECKS, 1) */;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40111 SET SQL_NOTES=IFNULL(@OLD_SQL_NOTES, 1) */;
+

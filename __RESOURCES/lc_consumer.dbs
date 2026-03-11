@@ -2,26 +2,36 @@
 <project name="MariaDb" database="MariaDb" id="b802615b-2010-49eb-8326-217536925011" >
 	<schema name="lc_consumer" >
 		<table name="business_action" prior="business_ac" >
-			<comment><![CDATA[if a business cation is completed, we dont try to rerun it again.. but in case of inbox delviery, we need to inform]]></comment>
+			<comment><![CDATA[Idempotent record of business side-effects executed by a consumer for a workflow entity.]]></comment>
 			<column name="id" type="BIGINT" mandatory="y" >
 				<identity><![CDATA[AUTO_INCREMENT]]></identity>
+				<comment><![CDATA[Internal surrogate identifier.]]></comment>
 			</column>
-			<column name="consumer_id" type="INT" mandatory="y" />
-			<column name="entity_id" type="VARCHAR" length="40" mandatory="y" />
+			<column name="consumer_id" type="INT" mandatory="y" >
+				<comment><![CDATA[Registered consumer identifier.]]></comment>
+			</column>
+			<column name="entity_id" type="VARCHAR" length="40" mandatory="y" >
+				<comment><![CDATA[External business entity identifier (for example submission or application id).]]></comment>
+			</column>
 			<column name="def_id" type="BIGINT" mandatory="y" >
-				<comment><![CDATA[what workflow definition]]></comment>
+				<comment><![CDATA[Workflow definition identifier.]]></comment>
 			</column>
 			<column name="action_code" type="INT" mandatory="y" >
-				<comment><![CDATA[like 100=SendLoginCredentials, 200=send warning emails etc]]></comment>
+				<comment><![CDATA[Business action code (example: 100=SendLoginCredentials, 200=SendWarningEmail).]]></comment>
 			</column>
 			<column name="status" type="INT" mandatory="y" >
-				<comment><![CDATA[1=Pending,2=Running,3=Completed,4=Failed]]></comment>
+				<comment><![CDATA[Action execution state: 1=Pending, 2=Running, 3=Completed, 4=Failed.]]></comment>
 			</column>
 			<column name="started_at" prior="created" type="DATETIME" mandatory="y" >
-				<defo><![CDATA[CURRENT_TIMESTAMP]]></defo>
+				<defo><![CDATA[current_timestamp()]]></defo>
+				<comment><![CDATA[Execution start timestamp.]]></comment>
 			</column>
-			<column name="completed_at" type="DATETIME" length="6" />
-			<column name="result_json" type="LONGTEXT" />
+			<column name="completed_at" type="DATETIME" length="6" >
+				<comment><![CDATA[Execution completion timestamp.]]></comment>
+			</column>
+			<column name="result_json" type="LONGTEXT" >
+				<comment><![CDATA[Structured execution result payload (JSON).]]></comment>
+			</column>
 			<index name="pk_business_action" unique="PRIMARY_KEY" >
 				<column name="id" />
 			</index>
@@ -34,22 +44,32 @@
 			<options><![CDATA[engine=InnoDB]]></options>
 		</table>
 		<table name="inbox" row_count="0" spec="" >
-			<column name="wf_id" prior="workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" />
-			<column name="params_json" type="LONGTEXT" />
+			<comment><![CDATA[Durable inbound work queue for engine-raised workflow items received by a consumer.]]></comment>
+			<column name="wf_id" prior="workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" >
+				<comment><![CDATA[Workflow record identifier (FK to workflow.id).]]></comment>
+			</column>
+			<column name="params_json" type="LONGTEXT" >
+				<comment><![CDATA[Incoming parameter payload captured from engine (JSON).]]></comment>
+			</column>
 			<column name="received_at" type="DATETIME" mandatory="y" >
 				<defo><![CDATA[current_timestamp()]]></defo>
+				<comment><![CDATA[UTC timestamp when the item was received by the consumer.]]></comment>
 			</column>
 			<column name="modified" prior="processed_at" type="DATETIME" mandatory="y" >
 				<defo><![CDATA[current_timestamp()]]></defo>
+				<comment><![CDATA[UTC timestamp when the row was last updated.]]></comment>
 			</column>
 			<column name="status" prior="process_status" type="TINYINT" length="3" mandatory="y" unsigned="y" >
 				<defo><![CDATA[1]]></defo>
-				<comment><![CDATA[1=Received,2=Processing,3=Processed,4=Failed]]></comment>
+				<comment><![CDATA[Inbox processing state: 1=Received, 2=Processing, 3=Processed, 4=Failed.]]></comment>
 			</column>
 			<column name="attempt_count" type="INT" length="10" mandatory="y" unsigned="y" >
 				<defo><![CDATA[0]]></defo>
+				<comment><![CDATA[Number of processing attempts performed for this record.]]></comment>
 			</column>
-			<column name="last_error" type="TEXT" />
+			<column name="last_error" type="TEXT" >
+				<comment><![CDATA[Last captured error message for troubleshooting.]]></comment>
+			</column>
 			<index name="pk_inbox" unique="PRIMARY_KEY" >
 				<column name="wf_id" />
 			</index>
@@ -63,20 +83,30 @@
 			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
 		</table>
 		<table name="inbox_step" row_count="0" spec="" >
-			<comment><![CDATA[delivery idempotency]]></comment>
-			<column name="inbox_id" prior="inbox_workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" />
+			<comment><![CDATA[Step-level execution tracking for inbox items to support deterministic, idempotent processing.]]></comment>
+			<column name="inbox_id" prior="inbox_workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" >
+				<comment><![CDATA[Inbox record identifier (FK to inbox.wf_id).]]></comment>
+			</column>
 			<column name="action_code" prior="step_code" type="INT" length="11" mandatory="y" >
 				<defo><![CDATA[0]]></defo>
-				<comment><![CDATA[what is the action that was executed (coming and aware only to the consumer)]]></comment>
+				<comment><![CDATA[Consumer-defined business action code.]]></comment>
 			</column>
 			<column name="status" type="TINYINT" length="3" mandatory="y" unsigned="y" >
 				<defo><![CDATA[1]]></defo>
-				<comment><![CDATA[1=Pending,2=Running,3=Completed,4=Failed]]></comment>
+				<comment><![CDATA[Step state: 1=Pending, 2=Running, 3=Completed, 4=Failed.]]></comment>
 			</column>
-			<column name="started_at" type="DATETIME" length="6" />
-			<column name="completed_at" type="DATETIME" length="6" />
-			<column name="result_json" type="LONGTEXT" />
-			<column name="last_error" type="TEXT" />
+			<column name="started_at" type="DATETIME" length="6" >
+				<comment><![CDATA[Execution start timestamp.]]></comment>
+			</column>
+			<column name="completed_at" type="DATETIME" length="6" >
+				<comment><![CDATA[Execution completion timestamp.]]></comment>
+			</column>
+			<column name="result_json" type="LONGTEXT" >
+				<comment><![CDATA[Structured execution result payload (JSON).]]></comment>
+			</column>
+			<column name="last_error" type="TEXT" >
+				<comment><![CDATA[Last captured error message for troubleshooting.]]></comment>
+			</column>
 			<index name="idx_inbox_step_status" unique="NORMAL" >
 				<column name="status" />
 			</index>
@@ -90,19 +120,27 @@
 			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
 		</table>
 		<table name="outbox" row_count="0" spec="" >
-			<column name="wf_id" prior="workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" />
+			<comment><![CDATA[Outbound acknowledgement queue from consumer to engine with retry scheduling.]]></comment>
+			<column name="wf_id" prior="workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" >
+				<comment><![CDATA[Workflow record identifier (FK to workflow.id).]]></comment>
+			</column>
 			<column name="current_outcome" type="TINYINT" length="3" unsigned="y" >
-				<comment><![CDATA[1=Delivered,2=Processed,3=Retry,4=Failed]]></comment>
+				<comment><![CDATA[Current outcome: 1=Delivered, 2=Processed, 3=Retry, 4=Failed.]]></comment>
 			</column>
 			<column name="status" prior="send_status" type="TINYINT" length="3" mandatory="y" unsigned="y" >
 				<defo><![CDATA[1]]></defo>
-				<comment><![CDATA[1=Pending,2=Sent,3=Failed]]></comment>
+				<comment><![CDATA[Outbox send state: 1=Pending, 2=Sent, 3=Confirmed, 4=Failed.]]></comment>
 			</column>
-			<column name="next_retry_at" type="DATETIME" length="6" />
-			<column name="last_error" type="TEXT" />
+			<column name="next_retry_at" type="DATETIME" length="6" >
+				<comment><![CDATA[Scheduled timestamp for next retry attempt.]]></comment>
+			</column>
+			<column name="last_error" type="TEXT" >
+				<comment><![CDATA[Last captured error message for troubleshooting.]]></comment>
+			</column>
 			<column name="modified" prior="modified_at" type="DATETIME" mandatory="y" >
 				<defo><![CDATA[current_timestamp()]]></defo>
 				<column_options><![CDATA[ON UPDATE current_timestamp()]]></column_options>
+				<comment><![CDATA[UTC timestamp when the row was last updated.]]></comment>
 			</column>
 			<index name="pk_outbox" unique="PRIMARY_KEY" >
 				<column name="wf_id" />
@@ -117,22 +155,33 @@
 			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
 		</table>
 		<table name="outbox_history" row_count="0" spec="" >
+			<comment><![CDATA[Immutable attempt history for outbox sends, responses, and failures.]]></comment>
 			<column name="id" type="BIGINT" length="20" mandatory="y" unsigned="y" >
 				<identity><![CDATA[AUTO_INCREMENT]]></identity>
+				<comment><![CDATA[Internal surrogate identifier.]]></comment>
 			</column>
-			<column name="outbox_id" prior="outbox_workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" />
+			<column name="outbox_id" prior="outbox_workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" >
+				<comment><![CDATA[Outbox record identifier (FK to outbox.wf_id).]]></comment>
+			</column>
 			<column name="outcome" type="TINYINT" length="3" mandatory="y" unsigned="y" >
-				<comment><![CDATA[1=Delivered,2=Processed,3=Retry,4=Failed]]></comment>
+				<comment><![CDATA[Attempt outcome: 1=Delivered, 2=Processed, 3=Retry, 4=Failed.]]></comment>
 			</column>
 			<column name="status" prior="send_status" type="TINYINT" length="3" mandatory="y" unsigned="y" >
-				<comment><![CDATA[1=Pending,2=Sent,3=Failed]]></comment>
+				<comment><![CDATA[Attempt send state: 1=Pending, 2=Sent, 3=Confirmed, 4=Failed.]]></comment>
 			</column>
-			<column name="attempt_no" prior="attempt_count" type="INT" length="10" mandatory="y" unsigned="y" />
+			<column name="attempt_no" prior="attempt_count" type="INT" length="10" mandatory="y" unsigned="y" >
+				<comment><![CDATA[Monotonic attempt sequence number.]]></comment>
+			</column>
 			<column name="modified" prior="sent_at" type="DATETIME" mandatory="y" >
 				<defo><![CDATA[current_timestamp()]]></defo>
+				<comment><![CDATA[UTC timestamp when the row was last updated.]]></comment>
 			</column>
-			<column name="response_payload_json" type="LONGTEXT" />
-			<column name="error" type="TEXT" />
+			<column name="response_payload_json" type="LONGTEXT" >
+				<comment><![CDATA[Raw response payload captured from engine/API (JSON).]]></comment>
+			</column>
+			<column name="error" type="TEXT" >
+				<comment><![CDATA[Error details captured for this send attempt.]]></comment>
+			</column>
 			<index name="pk_outbox_history" unique="PRIMARY_KEY" >
 				<column name="id" />
 			</index>
@@ -150,41 +199,61 @@
 			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
 		</table>
 		<table name="workflow" row_count="0" spec="" >
+			<comment><![CDATA[Canonical consumer-side record for one engine-raised transition or hook workload.]]></comment>
 			<column name="id" type="BIGINT" length="20" mandatory="y" unsigned="y" >
 				<identity><![CDATA[AUTO_INCREMENT]]></identity>
+				<comment><![CDATA[Internal surrogate identifier.]]></comment>
 			</column>
-			<column name="ack_guid" type="VARCHAR" length="64" mandatory="y" />
-			<column name="entity_id" type="VARCHAR" length="40" mandatory="y" />
+			<column name="ack_guid" type="VARCHAR" length="64" mandatory="y" >
+				<comment><![CDATA[External acknowledgement GUID used for idempotency and correlation.]]></comment>
+			</column>
+			<column name="entity_id" type="VARCHAR" length="40" mandatory="y" >
+				<comment><![CDATA[External business entity identifier (for example submission or application id).]]></comment>
+			</column>
 			<column name="kind" type="TINYINT" length="3" mandatory="y" unsigned="y" >
-				<comment><![CDATA[1=Transition, 2=Hook]]></comment>
+				<comment><![CDATA[Workload kind: 1=Transition, 2=Hook.]]></comment>
 			</column>
-			<column name="consumer_id" type="INT" length="10" mandatory="y" unsigned="y" />
-			<column name="def_id" type="BIGINT" mandatory="y" unsigned="y" />
-			<column name="def_version_id" type="BIGINT" mandatory="y" unsigned="y" />
+			<column name="consumer_id" type="INT" length="10" mandatory="y" unsigned="y" >
+				<comment><![CDATA[Registered consumer identifier.]]></comment>
+			</column>
+			<column name="def_id" type="BIGINT" mandatory="y" unsigned="y" >
+				<comment><![CDATA[Workflow definition identifier.]]></comment>
+			</column>
+			<column name="def_version_id" type="BIGINT" mandatory="y" unsigned="y" >
+				<comment><![CDATA[Definition version identifier captured when workload was created.]]></comment>
+			</column>
 			<column name="handler_version" type="INT" >
-				<comment><![CDATA[pinned on first event.]]></comment>
+				<comment><![CDATA[Pinned consumer handler version used for this workload.]]></comment>
 			</column>
-			<column name="instance_guid" type="VARCHAR" length="36" />
-			<column name="on_success" type="INT" />
-			<column name="on_failure" type="INT" />
-			<column name="occurred" type="DATETIME" mandatory="y" />
+			<column name="instance_guid" type="VARCHAR" length="36" >
+				<comment><![CDATA[Workflow instance GUID from engine.]]></comment>
+			</column>
+			<column name="on_success" type="INT" >
+				<comment><![CDATA[Optional consumer action code to execute after successful processing.]]></comment>
+			</column>
+			<column name="on_failure" type="INT" >
+				<comment><![CDATA[Optional consumer action code to execute after failed processing.]]></comment>
+			</column>
+			<column name="occurred" type="DATETIME" mandatory="y" >
+				<comment><![CDATA[Domain occurrence timestamp from source event.]]></comment>
+			</column>
 			<column name="event_code" type="INT" >
-				<comment><![CDATA[Null for hooks.. Which event raised this transition]]></comment>
+				<comment><![CDATA[Transition event code; NULL when workload kind is Hook.]]></comment>
 			</column>
 			<column name="route" type="VARCHAR" length="200" >
-				<comment><![CDATA[route that needs to be invoked.. null for transition]]></comment>
+				<comment><![CDATA[Hook route name; NULL when workload kind is Transition.]]></comment>
 			</column>
 			<column name="created" type="DATETIME" mandatory="y" >
 				<defo><![CDATA[current_timestamp()]]></defo>
+				<comment><![CDATA[UTC timestamp when the row was created.]]></comment>
 			</column>
 			<column name="handler_upgrade" type="TINYINT" mandatory="y" >
 				<defo><![CDATA[1]]></defo>
-				<comment><![CDATA[1=Pinned, 2=AllowUpgrade
-If pinned, the handler has to stick to whatever version is got registered with.
-if allow upgrde, we can allow this to upgrade to latest version presen in the application.. so new steps will be executed.]]></comment>
+				<comment><![CDATA[Handler strategy: 1=PinnedVersion, 2=AllowUpgradeToLatest.]]></comment>
 			</column>
 			<column name="run_count" type="INT" mandatory="y" >
 				<defo><![CDATA[1]]></defo>
+				<comment><![CDATA[Number of times this workload has been executed/retried.]]></comment>
 			</column>
 			<index name="pk_workflow" unique="PRIMARY_KEY" >
 				<column name="id" />
@@ -196,7 +265,6 @@ if allow upgrde, we can allow this to upgrade to latest version presen in the ap
 				<column name="consumer_id" />
 			</index>
 			<index name="unq_workflow_ack_guid" unique="UNIQUE_KEY" >
-				<comment><![CDATA[Transport idempotency]]></comment>
 				<column name="consumer_id" />
 				<column name="ack_guid" />
 			</index>

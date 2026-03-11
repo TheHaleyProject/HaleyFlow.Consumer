@@ -183,6 +183,9 @@
 If pinned, the handler has to stick to whatever version is got registered with.
 if allow upgrde, we can allow this to upgrade to latest version presen in the application.. so new steps will be executed.]]></comment>
 			</column>
+			<column name="run_count" type="INT" mandatory="y" >
+				<defo><![CDATA[1]]></defo>
+			</column>
 			<index name="pk_workflow" unique="PRIMARY_KEY" >
 				<column name="id" />
 			</index>
