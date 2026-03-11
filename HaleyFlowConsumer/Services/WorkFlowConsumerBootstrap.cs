@@ -4,25 +4,25 @@ using Haley.Utils;
 using System.Reflection;
 
 namespace Haley.Services {
-    public sealed class WorkFlowConsumerInitiatorService : IWorkFlowConsumerInitiatorService, IAsyncDisposable {
-        private readonly ConsumerInitiatorOptions _options;
+    public sealed class WorkFlowConsumerBootstrap : IWorkFlowConsumerBootstrap, IAsyncDisposable {
+        private readonly ConsumerBootstrapOptions _options;
         private readonly IAdapterGateway _agw;
         private readonly ILifeCycleEngineProxy _engineProxy;
         private readonly IServiceProvider _serviceProvider;
         private readonly SemaphoreSlim _initLock = new(1, 1);
         private readonly HashSet<Assembly> _registeredAssemblies = new();
 
-        private IWorkFlowConsumerService? _consumer;
+        private IWorkFlowConsumerProcessor? _consumer;
         private bool _runtimeStarted;
 
-        public WorkFlowConsumerInitiatorService(ConsumerInitiatorOptions options, IAdapterGateway agw, ILifeCycleEngineProxy engineProxy, IServiceProvider serviceProvider) {
+        public WorkFlowConsumerBootstrap(ConsumerBootstrapOptions options, IAdapterGateway agw, ILifeCycleEngineProxy engineProxy, IServiceProvider serviceProvider) {
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _agw = agw ?? throw new ArgumentNullException(nameof(agw));
             _engineProxy = engineProxy ?? throw new ArgumentNullException(nameof(engineProxy));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         }
 
-        public IWorkFlowConsumerInitiatorService RegisterAssembly(Assembly assembly) {
+        public IWorkFlowConsumerBootstrap RegisterAssembly(Assembly assembly) {
             if (assembly == null) throw new ArgumentNullException(nameof(assembly));
 
             lock (_registeredAssemblies) {
@@ -33,7 +33,7 @@ namespace Haley.Services {
             return this;
         }
 
-        public IWorkFlowConsumerInitiatorService RegisterAssembly(string assemblyName) {
+        public IWorkFlowConsumerBootstrap RegisterAssembly(string assemblyName) {
             if (string.IsNullOrWhiteSpace(assemblyName)) throw new ArgumentException("Assembly name is required.", nameof(assemblyName));
             var asm = AppDomain.CurrentDomain.GetAssemblies()
                 .FirstOrDefault(a => string.Equals(a.GetName().Name, assemblyName, StringComparison.OrdinalIgnoreCase))
@@ -50,14 +50,14 @@ namespace Haley.Services {
 
                 if (_consumer == null) {
                     if (string.IsNullOrWhiteSpace(_options.ConsumerAdapterKey))
-                        throw new InvalidOperationException("ConsumerAdapterKey is required to initialize WorkFlowConsumerInitiatorService.");
+                        throw new InvalidOperationException("ConsumerAdapterKey is required to initialize WorkFlowConsumerBootstrap.");
 
                     var maker = new WorkFlowConsumerMaker()
                         .WithAdapterKey(_options.ConsumerAdapterKey)
                         .WithProvider(_serviceProvider);
 
                     maker.EngineProxy = _engineProxy;
-                    maker.Options = CreateConsumerServiceOptions(_options);
+                    maker.Options = _options;
                     _consumer = await maker.Build(_agw);
 
                     RegisterConfiguredAssemblies(_consumer);
@@ -73,7 +73,7 @@ namespace Haley.Services {
             }
         }
 
-        public async Task<IWorkFlowConsumerService> GetConsumerAsync(CancellationToken ct = default) {
+        public async Task<IWorkFlowConsumerProcessor> GetConsumerAsync(CancellationToken ct = default) {
             await EnsureHostInitializedAsync(ct);
             return _consumer!;
         }
@@ -94,7 +94,7 @@ namespace Haley.Services {
             _initLock.Dispose();
         }
 
-        private void RegisterConfiguredAssemblies(IWorkFlowConsumerService consumer) {
+        private void RegisterConfiguredAssemblies(IWorkFlowConsumerProcessor consumer) {
             if (_options.WrapperAssemblies == null || _options.WrapperAssemblies.Count == 0) return;
             for (var i = 0; i < _options.WrapperAssemblies.Count; i++) {
                 var asmName = _options.WrapperAssemblies[i];
@@ -103,7 +103,7 @@ namespace Haley.Services {
             }
         }
 
-        private void RegisterRuntimeAssemblies(IWorkFlowConsumerService consumer) {
+        private void RegisterRuntimeAssemblies(IWorkFlowConsumerProcessor consumer) {
             Assembly[] snapshot;
             lock (_registeredAssemblies) {
                 snapshot = _registeredAssemblies.ToArray();
@@ -112,22 +112,6 @@ namespace Haley.Services {
             for (var i = 0; i < snapshot.Length; i++) {
                 consumer.RegisterAssembly(snapshot[i]);
             }
-        }
-
-        private static ConsumerServiceOptions CreateConsumerServiceOptions(ConsumerInitiatorOptions source) {
-            return new ConsumerServiceOptions {
-                ConsumerGuid = source.ConsumerGuid,
-                EnvCode = source.EnvCode,
-                MaxConcurrency = source.MaxConcurrency,
-                BatchSize = source.BatchSize,
-                AckStatus = source.AckStatus,
-                TtlSeconds = source.TtlSeconds,
-                HeartbeatInterval = source.HeartbeatInterval,
-                PollInterval = source.PollInterval,
-                OutboxInterval = source.OutboxInterval,
-                OutboxRetryDelay = source.OutboxRetryDelay,
-                DefaultHandlerUpgrade = source.DefaultHandlerUpgrade
-            };
         }
     }
 }

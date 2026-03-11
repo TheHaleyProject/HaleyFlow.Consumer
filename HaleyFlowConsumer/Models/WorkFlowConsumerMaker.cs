@@ -10,7 +10,7 @@ namespace Haley.Models {
         const string EMBEDDED_SQL_RESOURCE = "Haley.Scripts.consumer.sql";
         const string REPLACE_DBNAME = "lc_consumer";
         public ILifeCycleEngineProxy? EngineProxy { get; set; } = null;
-        public ConsumerServiceOptions? Options { get; set; }
+        public WorkFlowConsumerOptions? Options { get; set; }
         public WorkFlowConsumerMaker() {
             FallbackDbName = FALLBACK_DB_NAME;
             ReplaceDbName = REPLACE_DBNAME;

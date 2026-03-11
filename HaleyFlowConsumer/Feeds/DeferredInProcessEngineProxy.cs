@@ -3,8 +3,13 @@ using Haley.Enums;
 using Haley.Models;
 
 namespace Haley.Services {
+
+    //DeferredInProcessEngineProxy is intentionally different than InprocessEngineProxy.. Why? because this as the name suggests, the creation of the engine is deferred. 
+    //Notice, _inner ? that is not created at DI registration but created only on first call. Which means, we dont' need the IWorkFlowEngine until call time.. so, may be engine is not started or not registered yes.. So, we dont have to worry about it.
+    //When we make the first call, engineProxy would be created..
+    //In this case, the deferred proxy becomes 'Virtual Proxy'
     public sealed class DeferredInProcessEngineProxy : ILifeCycleEngineProxy {
-        private readonly IWorkFlowEngineAccessor _engineAccessor;
+        private readonly IWorkFlowEngineAccessor _engineAccessor; //Not an engine instance but a provider/factory to obtain the engine
         private readonly SemaphoreSlim _initLock = new(1, 1);
         private InProcessEngineProxy? _inner;
 

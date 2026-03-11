@@ -93,11 +93,7 @@ namespace Haley.Abstractions {
             return row != null && row.GetInt(KEY_STATUS) == (int)InboxStepStatus.Completed;
         }
 
-        protected async Task<bool> IsBusinessActionCompletedAsync(
-            ConsumerContext ctx,
-            long defId,
-            string entityId,
-            int actionCode) {
+        protected async Task<bool> IsBusinessActionCompletedAsync(ConsumerContext ctx, long defId, string entityId, int actionCode) {
             if (string.IsNullOrWhiteSpace(entityId)) return false;
             var row = await BusinessActionDal.GetByKeyAsync(
                 ctx.ConsumerId, defId, entityId, actionCode,
@@ -105,23 +101,13 @@ namespace Haley.Abstractions {
             return row?.Status == BusinessActionStatus.Completed;
         }
 
-        protected Task<BusinessActionRecord?> GetBusinessActionAsync(
-            ConsumerContext ctx,
-            long defId,
-            string entityId,
-            int actionCode) {
+        protected Task<BusinessActionRecord?> GetBusinessActionAsync(ConsumerContext ctx, long defId, string entityId, int actionCode) {
             return BusinessActionDal.GetByKeyAsync(
                 ctx.ConsumerId, defId, entityId, actionCode,
                 new DbExecutionLoad(ctx.CancellationToken));
         }
 
-        protected async Task<BusinessActionExecutionResult> ExecuteBusinessActionAsync(
-            ConsumerContext ctx,
-            long defId,
-            string entityId,
-            int actionCode,
-            Func<CancellationToken, Task<object?>> action,
-            BusinessActionExecutionMode mode = BusinessActionExecutionMode.SkipIfCompleted) {
+        protected async Task<BusinessActionExecutionResult> ExecuteBusinessActionAsync(ConsumerContext ctx, long defId, string entityId, int actionCode, Func<CancellationToken, Task<object?>> action, BusinessActionExecutionMode mode = BusinessActionExecutionMode.SkipIfCompleted) {
             if (action == null) throw new ArgumentNullException(nameof(action));
             if (defId <= 0) throw new ArgumentOutOfRangeException(nameof(defId));
             if (string.IsNullOrWhiteSpace(entityId)) throw new ArgumentNullException(nameof(entityId));
@@ -270,9 +256,7 @@ namespace Haley.Abstractions {
         /// happen in practice if the developer registered handlers correctly, but the caller
         /// then falls through to OnUnhandled as a safety net).
         /// </summary>
-        private static THandler? PickBestHandler<THandler>(
-            List<(int MinVersion, THandler Handler)> candidates, int handlerVersion)
-            where THandler : class {
+        private static THandler? PickBestHandler<THandler>(List<(int MinVersion, THandler Handler)> candidates, int handlerVersion) where THandler : class {
             // Pick highest MinVersion that is <= handlerVersion
             (int MinVersion, THandler Handler)? best = null;
             foreach (var c in candidates) {

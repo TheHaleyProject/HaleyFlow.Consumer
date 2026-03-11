@@ -113,16 +113,14 @@ namespace Haley.Services {
         // This is acceptable because in-process use is typically single-consumer and
         // items are processed immediately after being drained.
 
-        public Task<IReadOnlyList<ILifeCycleDispatchItem>> GetDueTransitionsAsync(
-            long consumerId, int ackStatus, int ttlSeconds, int skip, int take, CancellationToken ct = default) {
+        public Task<IReadOnlyList<ILifeCycleDispatchItem>> GetDueTransitionsAsync(long consumerId, int ackStatus, int ttlSeconds, int skip, int take, CancellationToken ct = default) {
             var result = new List<ILifeCycleDispatchItem>();
             while (result.Count < take && _transitions.Reader.TryRead(out var item))
                 result.Add(item);
             return Task.FromResult<IReadOnlyList<ILifeCycleDispatchItem>>(result);
         }
 
-        public Task<IReadOnlyList<ILifeCycleDispatchItem>> GetDueHooksAsync(
-            long consumerId, int ackStatus, int ttlSeconds, int skip, int take, CancellationToken ct = default) {
+        public Task<IReadOnlyList<ILifeCycleDispatchItem>> GetDueHooksAsync(long consumerId, int ackStatus, int ttlSeconds, int skip, int take, CancellationToken ct = default) {
             var result = new List<ILifeCycleDispatchItem>();
             while (result.Count < take && _hooks.Reader.TryRead(out var item))
                 result.Add(item);
@@ -134,12 +132,10 @@ namespace Haley.Services {
         // command bus. Here the engine IS the bus — we call it directly. Same behavior,
         // zero network hops.
 
-        public Task AckAsync(long consumerId, string ackGuid, AckOutcome outcome,
-            string? message = null, DateTimeOffset? retryAt = null, CancellationToken ct = default)
+        public Task AckAsync(long consumerId, string ackGuid, AckOutcome outcome, string? message = null, DateTimeOffset? retryAt = null, CancellationToken ct = default)
             => _engine.AckAsync(consumerId, ackGuid, outcome, message, retryAt, ct);
 
-        public Task AckAsync(int envCode, string consumerGuid, string ackGuid, AckOutcome outcome,
-            string? message = null, DateTimeOffset? retryAt = null, CancellationToken ct = default)
+        public Task AckAsync(int envCode, string consumerGuid, string ackGuid, AckOutcome outcome, string? message = null, DateTimeOffset? retryAt = null, CancellationToken ct = default)
             => _engine.AckAsync(envCode, consumerGuid, ackGuid, outcome, message, retryAt, ct);
 
         public Task<long> RegisterConsumerAsync(int envCode, string consumerGuid, CancellationToken ct = default)

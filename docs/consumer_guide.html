@@ -273,7 +273,7 @@
     <div class="nav-section">
       <button class="nav-group-btn" onclick="toggleGroup(this)">Reference <span class="caret">▾</span></button>
       <div class="nav-items">
-        <button class="nav-item" onclick="gotoSection('ref-options')">ConsumerServiceOptions</button>
+        <button class="nav-item" onclick="gotoSection('ref-options')">WorkFlowConsumerOptions</button>
         <button class="nav-item" onclick="gotoSection('ref-ackoutcome')">AckOutcome Values</button>
         <button class="nav-item" onclick="gotoSection('ref-schema')">Consumer DB Schema</button>
       </div>
@@ -385,7 +385,7 @@ services.AddTransient&lt;<span class="ty">LoanApprovalHandler</span>&gt;();
 <span class="kw">var</span> consumer = <span class="kw">await new</span> <span class="ty">WorkFlowConsumerMaker</span> {
     EngineProxy     = inProcessFeed,
     ServiceProvider = serviceProvider,
-    Options         = <span class="kw">new</span> <span class="ty">ConsumerServiceOptions</span> {
+    Options         = <span class="kw">new</span> <span class="ty">WorkFlowConsumerOptions</span> {
         ConsumerGuid = <span class="st">"my-app-consumer"</span>,
         EnvCode      = <span class="jn">1</span>
     }
@@ -780,7 +780,7 @@ WorkFlowConsumerService
       </table>
     </div>
     <pre><code><span class="cm">// Set upgrade policy in options (applies to new instances):</span>
-<span class="kw">new</span> <span class="ty">ConsumerServiceOptions</span> {
+<span class="kw">new</span> <span class="ty">WorkFlowConsumerOptions</span> {
     DefaultHandlerUpgrade = <span class="ty">HandlerUpgrade</span>.Pinned  <span class="cm">// default</span>
 }</code><span class="lang-label">C#</span></pre>
   </section>
@@ -818,7 +818,7 @@ WorkFlowConsumerService
   <!-- ──────────────── OPTIONS ──────────────── -->
   <section class="doc-section" id="ref-options">
     <div class="section-label">Reference</div>
-    <h2 class="section-title">ConsumerServiceOptions</h2>
+    <h2 class="section-title">WorkFlowConsumerOptions</h2>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Property</th><th>Default</th><th>Description</th></tr></thead>
@@ -951,7 +951,7 @@ services.AddTransient&lt;<span class="ty">LoanApprovalHandler</span>&gt;();
 <span class="kw">var</span> consumer = <span class="kw">await new</span> <span class="ty">WorkFlowConsumerMaker</span> {
     EngineProxy     = inProcessFeed,     <span class="cm">// ILifeCycleEngineProxy — bridges engine to consumer</span>
     ServiceProvider = serviceProvider,
-    Options         = <span class="kw">new</span> <span class="ty">ConsumerServiceOptions</span> {
+    Options         = <span class="kw">new</span> <span class="ty">WorkFlowConsumerOptions</span> {
         ConsumerGuid   = <span class="st">"loan-consumer-01"</span>,
         EnvCode        = <span class="jn">1</span>,
         MaxConcurrency = <span class="jn">10</span>,
@@ -1167,7 +1167,7 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
     }
 
     <span class="cm">// ── AllowUpgrade: let existing entities pick up new logic ──────
-    // Set in ConsumerServiceOptions.DefaultHandlerUpgrade = AllowUpgrade
+    // Set in WorkFlowConsumerOptions.DefaultHandlerUpgrade = AllowUpgrade
     // Entity with HandlerVersion=1 + AllowUpgrade will use V4 (max declared).
     // Only do this when the new logic is backwards-compatible.</span>
 

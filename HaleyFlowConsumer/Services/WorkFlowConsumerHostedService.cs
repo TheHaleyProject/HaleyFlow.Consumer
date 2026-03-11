@@ -3,16 +3,16 @@ using Microsoft.Extensions.Hosting;
 
 namespace Haley.Services {
     internal sealed class WorkFlowConsumerHostedService : IHostedService {
-        private readonly IWorkFlowConsumerInitiatorService _initiator;
+        private readonly IWorkFlowConsumerBootstrap _bootstrap;
 
-        public WorkFlowConsumerHostedService(IWorkFlowConsumerInitiatorService initiator) {
-            _initiator = initiator ?? throw new ArgumentNullException(nameof(initiator));
+        public WorkFlowConsumerHostedService(IWorkFlowConsumerBootstrap bootstrap) {
+            _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
-            => _initiator.EnsureHostInitializedAsync(cancellationToken);
+            => _bootstrap.EnsureHostInitializedAsync(cancellationToken);
 
         public Task StopAsync(CancellationToken cancellationToken)
-            => _initiator.StopAsync(cancellationToken);
+            => _bootstrap.StopAsync(cancellationToken);
     }
 }
