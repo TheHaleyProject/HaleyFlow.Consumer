@@ -9,6 +9,9 @@ namespace Haley.Models {
         [ConfigurationKeyName("env_code")]
         public int EnvCode { get; set; }
 
+        [ConfigurationKeyName("env_name")]
+        public string EnvDisplayName { get; set; } = "dev";
+
         public int MaxConcurrency { get; set; } = 5;
         public int BatchSize { get; set; } = 20;
         public int AckStatus { get; set; } = 1;

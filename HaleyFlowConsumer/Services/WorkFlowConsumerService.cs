@@ -85,7 +85,8 @@ namespace Haley.Services {
         //           internally. We call GetDefinitionIdAsync to translate. After this, the registry maps
         //           def_id → wrapper type, ready for fast O(1) lookup at dispatch time.
         //
-        //   Step 3: Register this consumer process with the engine (idempotent — safe every restart).
+        //   Step 3: Register environment + consumer process through the engine proxy.
+        //           This is intentionally consumer-side responsibility (works for in-process and remote proxies).
         //           The engine assigns a numeric consumerId which we store; it's used in all ACK calls.
         //           Note: registering gives the engine a row — but it still doesn't know which definitions
         //           this consumer handles. That subscription mapping lives in Hub (ResolveConsumers callback).
@@ -107,7 +108,8 @@ namespace Haley.Services {
                 }
             }
 
-            // 3. Register this consumer with the engine → get the assigned consumer ID
+            // 3. Register environment + this consumer with the engine feed
+            await _feed.RegisterEnvironmentAsync(_opt.EnvCode, null, ct);
             _consumerId = await _feed.RegisterConsumerAsync(_opt.EnvCode, _opt.ConsumerGuid, ct);
 
             // Relay feed-level and engine notices through our own NoticeRaised so callers

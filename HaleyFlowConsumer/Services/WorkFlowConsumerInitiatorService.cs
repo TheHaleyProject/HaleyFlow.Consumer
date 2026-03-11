@@ -64,6 +64,8 @@ namespace Haley.Services {
                     RegisterRuntimeAssemblies(_consumer);
                 }
 
+                // Consumer-side responsibility: register environment before the runtime starts polling.
+                await _engineProxy.RegisterEnvironmentAsync(_options.EnvCode, _options.EnvDisplayName, ct);
                 await _consumer.StartAsync(ct);
                 _runtimeStarted = true;
             } finally {
