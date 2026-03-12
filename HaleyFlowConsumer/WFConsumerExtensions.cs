@@ -108,5 +108,41 @@ namespace Haley.Utils {
 
             return services;
         }
+
+        public static IReadOnlyList<Dictionary<string, object?>> ToWorkflowDictionaries(this DbRows rows) {
+            var items = rows.ToDictionaries();
+            for (var i = 0; i < items.Count; i++) {
+                var item = items[i];
+                item.MapEnumField<WorkflowKind>("kind");
+                item.MapEnumField<InboxStatus>("inbox_status");
+                item.MapEnumField<OutboxStatus>("outbox_status");
+                item.MapEnumField<AckOutcome>("current_outcome");
+            }
+
+            return items;
+        }
+
+        public static IReadOnlyList<Dictionary<string, object?>> ToInboxDictionaries(this DbRows rows) {
+            var items = rows.ToDictionaries();
+            for (var i = 0; i < items.Count; i++) {
+                var item = items[i];
+                item.MapEnumField<WorkflowKind>("kind");
+                item.MapEnumField<InboxStatus>("status");
+            }
+
+            return items;
+        }
+
+        public static IReadOnlyList<Dictionary<string, object?>> ToOutboxDictionaries(this DbRows rows) {
+            var items = rows.ToDictionaries();
+            for (var i = 0; i < items.Count; i++) {
+                var item = items[i];
+                item.MapEnumField<WorkflowKind>("kind");
+                item.MapEnumField<OutboxStatus>("status");
+                item.MapEnumField<AckOutcome>("current_outcome");
+            }
+
+            return items;
+        }
     }
 }
