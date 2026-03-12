@@ -17,35 +17,65 @@ namespace Haley.Utils {
     public static class WFConsumerExtensions {
         public static async Task<IWorkFlowConsumerProcessor> Build(this WorkFlowConsumerMaker input, IAdapterGateway agw) {
             //replace the sql contents, as only we know that.
+            if (input.EngineProxy == null) throw new InvalidOperationException("EngineProxy is required to build WorkFlowConsumerProcessor.");
+            if (input.ServiceProvider == null) throw new InvalidOperationException("ServiceProvider is required to build WorkFlowConsumerProcessor.");
             var adapterKey = await input.Initialize(agw); //Base names are already coming from the concrete implementation of DBInstanceMaker
             var dal = new MariaConsumerServiceDAL(agw, adapterKey);
             return new WorkFlowConsumerProcessor(input.EngineProxy,dal,input.ServiceProvider, input.Options);
         }
 
         public static async Task<IWorkFlowConsumerService> BuildService(this WorkFlowConsumerMaker input, IAdapterGateway agw) {
-            var adapterKey = await input.Initialize(agw);
-            var dal = new MariaConsumerServiceDAL(agw, adapterKey);
-            return new WorkFlowConsumerService(dal);
+            ArgumentNullException.ThrowIfNull(input);
+            ArgumentNullException.ThrowIfNull(agw);
+
+            if (input.EngineProxy == null) {
+                throw new InvalidOperationException("EngineProxy is required to build WorkFlowConsumerService.");
+            }
+
+            //In Engine we dont try to get the service out but in consumer we need the service out
+            var options = input.Options as ConsumerServiceOptions ?? new ConsumerServiceOptions {
+                ConsumerGuid = input.Options?.ConsumerGuid ?? string.Empty,
+                EnvCode = input.Options?.EnvCode ?? 0,
+                MaxConcurrency = input.Options?.MaxConcurrency ?? 5,
+                BatchSize = input.Options?.BatchSize ?? 20,
+                AckStatus = input.Options?.AckStatus ?? 1,
+                TtlSeconds = input.Options?.TtlSeconds ?? 120,
+                HeartbeatInterval = input.Options?.HeartbeatInterval ?? TimeSpan.FromSeconds(30),
+                PollInterval = input.Options?.PollInterval ?? TimeSpan.FromSeconds(5),
+                OutboxInterval = input.Options?.OutboxInterval ?? TimeSpan.FromSeconds(15),
+                OutboxRetryDelay = input.Options?.OutboxRetryDelay ?? TimeSpan.FromMinutes(2),
+                DefaultHandlerUpgrade = input.Options?.DefaultHandlerUpgrade ?? HandlerUpgrade.Pinned
+            };
+
+            if (string.IsNullOrWhiteSpace(options.ConsumerAdapterKey)) {
+                options.ConsumerAdapterKey = input.AdapterKey;
+            }
+
+            var provider = input.ServiceProvider;
+            if (provider == null) {
+                throw new InvalidOperationException("ServiceProvider is required to build WorkFlowConsumerService.");
+            }
+            return new WorkFlowConsumerService(options, agw, input.EngineProxy, provider);
         }
 
-        public static IServiceCollection AddWorkFlowConsumerBootstrap(this IServiceCollection services, IConfiguration configuration, string sectionName = "WorkFlowConsumer", bool autoStart = true, bool addDeferredInProcessProxy = true) {
+        public static IServiceCollection AddWorkFlowConsumerService(this IServiceCollection services, IConfiguration configuration, string sectionName = "WorkFlowConsumer", bool autoStart = true, bool addDeferredInProcessProxy = true) {
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(configuration);
             if (string.IsNullOrWhiteSpace(sectionName)) throw new ArgumentException("Section name is required.", nameof(sectionName));
 
-            services.Configure<ConsumerBootstrapOptions>(configuration.GetSection(sectionName));
-            return AddWorkFlowConsumerBootstrapCore(services, autoStart, addDeferredInProcessProxy);
+            services.Configure<ConsumerServiceOptions>(configuration.GetSection(sectionName));
+            return AddWorkFlowConsumerServiceCore(services, autoStart, addDeferredInProcessProxy);
         }
 
-        public static IServiceCollection AddWorkFlowConsumerBootstrap(this IServiceCollection services, Action<ConsumerBootstrapOptions> configureOptions, bool autoStart = true, bool addDeferredInProcessProxy = true) {
+        public static IServiceCollection AddWorkFlowConsumerService(this IServiceCollection services, Action<ConsumerServiceOptions> configureOptions, bool autoStart = true, bool addDeferredInProcessProxy = true) {
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(configureOptions);
 
             services.Configure(configureOptions);
-            return AddWorkFlowConsumerBootstrapCore(services, autoStart, addDeferredInProcessProxy);
+            return AddWorkFlowConsumerServiceCore(services, autoStart, addDeferredInProcessProxy);
         }
 
-        private static IServiceCollection AddWorkFlowConsumerBootstrapCore(IServiceCollection services, bool autoStart, bool addDeferredInProcessProxy) {
+        private static IServiceCollection AddWorkFlowConsumerServiceCore(IServiceCollection services, bool autoStart, bool addDeferredInProcessProxy) {
             var hasIAdapter = services.Any(s => s.ServiceType == typeof(IAdapterGateway));
             var hasAdapter = services.Any(s => s.ServiceType == typeof(AdapterGateway));
 
@@ -58,9 +88,9 @@ namespace Haley.Utils {
                 }
             }
 
-            services.TryAddSingleton(sp => sp.GetRequiredService<IOptions<ConsumerBootstrapOptions>>().Value);
-            services.TryAddSingleton<WorkFlowConsumerBootstrap>();
-            services.TryAddSingleton<IWorkFlowConsumerBootstrap>(sp => sp.GetRequiredService<WorkFlowConsumerBootstrap>());
+            services.TryAddSingleton(sp => sp.GetRequiredService<IOptions<ConsumerServiceOptions>>().Value);
+            services.TryAddSingleton<WorkFlowConsumerService>();
+            services.TryAddSingleton<IWorkFlowConsumerService>(sp => sp.GetRequiredService<WorkFlowConsumerService>());
 
             if (addDeferredInProcessProxy) {
                 services.TryAddSingleton<ILifeCycleEngineProxy>(sp => {
@@ -73,7 +103,7 @@ namespace Haley.Utils {
             }
 
             if (autoStart) {
-                services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WorkFlowConsumerHostedService>());
+                services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WorkFlowConsumerBootstrap>());
             }
 
             return services;

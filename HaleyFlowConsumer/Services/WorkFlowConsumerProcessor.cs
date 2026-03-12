@@ -4,6 +4,7 @@ using Haley.Internal;
 using static Haley.Internal.KeyConstants;
 using Haley.Models;
 using Haley.Utils;
+using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using System.Text.Json;
 
@@ -69,6 +70,25 @@ namespace Haley.Services {
                 ?? Assembly.Load(assemblyName);
             return RegisterAssembly(asm);
         }
+
+        // ----------------------------------------------------------------
+        // Administrative reads (consumer DB)
+        // ----------------------------------------------------------------
+
+        public Task<DbRows> ListWorkflowsAsync(int skip, int take, CancellationToken ct = default)
+            => _dal.Workflow.ListPagedAsync(skip, take, new DbExecutionLoad(ct));
+
+        public Task<DbRows> ListInboxAsync(int? status, int skip, int take, CancellationToken ct = default)
+            => _dal.Inbox.ListPagedAsync(status, skip, take, new DbExecutionLoad(ct));
+
+        public Task<DbRows> ListOutboxAsync(int? status, int skip, int take, CancellationToken ct = default)
+            => _dal.Outbox.ListPagedAsync(status, skip, take, new DbExecutionLoad(ct));
+
+        public Task<long> CountPendingInboxAsync(CancellationToken ct = default)
+            => _dal.Inbox.CountPendingAsync(new DbExecutionLoad(ct));
+
+        public Task<long> CountPendingOutboxAsync(CancellationToken ct = default)
+            => _dal.Outbox.CountPendingAsync(new DbExecutionLoad(ct));
 
         // ----------------------------------------------------------------
         // Lifecycle
@@ -293,8 +313,7 @@ namespace Haley.Services {
             //    send emails, write to other DBs, etc. We don't care — we just want an AckOutcome back.
             AckOutcome outcome;
             try {
-                var wrapper = (LifeCycleWrapper)_sp.GetService(reg.WrapperType)
-                    ?? (LifeCycleWrapper)Activator.CreateInstance(reg.WrapperType)!;
+                var wrapper = (LifeCycleWrapper)ActivatorUtilities.CreateInstance(_sp, reg.WrapperType);
                 wrapper._stepDal = _dal.InboxStep;
                 wrapper._businessActionDal = _dal.BusinessAction;
 

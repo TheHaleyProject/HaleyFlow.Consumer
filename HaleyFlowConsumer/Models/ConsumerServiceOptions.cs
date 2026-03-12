@@ -3,7 +3,7 @@ using Haley.Services;
 using Microsoft.Extensions.Configuration;
 
 namespace Haley.Models {
-    public sealed class ConsumerBootstrapOptions : WorkFlowConsumerOptions {
+    public sealed class ConsumerServiceOptions : WorkFlowConsumerOptions {
 
         [ConfigurationKeyName("env_name")]
         public string EnvDisplayName { get; set; } = "dev";
