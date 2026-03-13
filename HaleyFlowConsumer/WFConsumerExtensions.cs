@@ -15,13 +15,13 @@ using System.Threading.Tasks;
 
 namespace Haley.Utils {
     public static class WFConsumerExtensions {
-        public static async Task<IWorkFlowConsumerProcessor> Build(this WorkFlowConsumerMaker input, IAdapterGateway agw) {
+        public static async Task<IWorkFlowConsumerManager> Build(this WorkFlowConsumerMaker input, IAdapterGateway agw) {
             //replace the sql contents, as only we know that.
             if (input.EngineProxy == null) throw new InvalidOperationException("EngineProxy is required to build WorkFlowConsumerProcessor.");
             if (input.ServiceProvider == null) throw new InvalidOperationException("ServiceProvider is required to build WorkFlowConsumerProcessor.");
             var adapterKey = await input.Initialize(agw); //Base names are already coming from the concrete implementation of DBInstanceMaker
             var dal = new MariaConsumerServiceDAL(agw, adapterKey);
-            return new WorkFlowConsumerProcessor(input.EngineProxy,dal,input.ServiceProvider, input.Options);
+            return new WorkFlowConsumerManager(input.EngineProxy,dal,input.ServiceProvider, input.Options);
         }
 
         public static async Task<IWorkFlowConsumerService> BuildService(this WorkFlowConsumerMaker input, IAdapterGateway agw) {

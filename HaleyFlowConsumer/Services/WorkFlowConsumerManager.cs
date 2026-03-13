@@ -34,7 +34,7 @@ namespace Haley.Services {
     /// registers with the engine on startup, dispatches events with bounded concurrency,
     /// and ACKs results via the transactional outbox.
     /// </summary>
-    public sealed class WorkFlowConsumerProcessor : IWorkFlowConsumerProcessor {
+    public sealed class WorkFlowConsumerManager : IWorkFlowConsumerManager {
         private readonly ILifeCycleEngineProxy _feed;    // thin client over the engine's ACK+dispatch DB tables
         private readonly IConsumerServiceDAL _dal;     // consumer-side DB: workflow, inbox, outbox, step tables
         private readonly IServiceProvider _sp;         // DI container — used to resolve wrapper instances
@@ -47,7 +47,7 @@ namespace Haley.Services {
         /// <inheritdoc/>
         public event Func<LifeCycleNotice, Task>? NoticeRaised;
 
-        public WorkFlowConsumerProcessor(ILifeCycleEngineProxy feed, IConsumerServiceDAL dal, IServiceProvider sp, WorkFlowConsumerOptions? options = null) {
+        public WorkFlowConsumerManager(ILifeCycleEngineProxy feed, IConsumerServiceDAL dal, IServiceProvider sp, WorkFlowConsumerOptions? options = null) {
             _feed = feed ?? throw new ArgumentNullException(nameof(feed));
             _dal = dal ?? throw new ArgumentNullException(nameof(dal));
             _sp = sp ?? throw new ArgumentNullException(nameof(sp));
@@ -59,12 +59,12 @@ namespace Haley.Services {
         // Assembly registration (setup-time, fluent)
         // ----------------------------------------------------------------
 
-        public IWorkFlowConsumerProcessor RegisterAssembly(Assembly assembly) {
+        public IWorkFlowConsumerManager RegisterAssembly(Assembly assembly) {
             _registry.RegisterAssembly(assembly);
             return this;
         }
 
-        public IWorkFlowConsumerProcessor RegisterAssembly(string assemblyName) {
+        public IWorkFlowConsumerManager RegisterAssembly(string assemblyName) {
             var asm = AppDomain.CurrentDomain.GetAssemblies()
                 .FirstOrDefault(a => a.GetName().Name == assemblyName)
                 ?? Assembly.Load(assemblyName);

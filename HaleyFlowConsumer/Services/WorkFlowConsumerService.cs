@@ -12,7 +12,7 @@ namespace Haley.Services {
         private readonly SemaphoreSlim _initLock = new(1, 1);
         private readonly HashSet<Assembly> _registeredAssemblies = new();
 
-        private IWorkFlowConsumerProcessor? _consumer;
+        private IWorkFlowConsumerManager? _consumer;
         private bool _runtimeStarted;
 
         public WorkFlowConsumerService(ConsumerServiceOptions options, IAdapterGateway agw, ILifeCycleEngineProxy engineProxy, IServiceProvider serviceProvider) {
@@ -73,7 +73,7 @@ namespace Haley.Services {
             }
         }
 
-        public async Task<IWorkFlowConsumerProcessor> GetConsumerAsync(CancellationToken ct = default) {
+        public async Task<IWorkFlowConsumerManager> GetConsumerAsync(CancellationToken ct = default) {
             await EnsureHostInitializedAsync(ct);
             return _consumer!;
         }
@@ -119,7 +119,7 @@ namespace Haley.Services {
             _initLock.Dispose();
         }
 
-        private void RegisterConfiguredAssemblies(IWorkFlowConsumerProcessor consumer) {
+        private void RegisterConfiguredAssemblies(IWorkFlowConsumerManager consumer) {
             if (_options.WrapperAssemblies == null || _options.WrapperAssemblies.Count == 0) return;
             for (var i = 0; i < _options.WrapperAssemblies.Count; i++) {
                 var asmName = _options.WrapperAssemblies[i];
@@ -128,7 +128,7 @@ namespace Haley.Services {
             }
         }
 
-        private void RegisterRuntimeAssemblies(IWorkFlowConsumerProcessor consumer) {
+        private void RegisterRuntimeAssemblies(IWorkFlowConsumerManager consumer) {
             Assembly[] snapshot;
             lock (_registeredAssemblies) {
                 snapshot = _registeredAssemblies.ToArray();
