@@ -43,7 +43,7 @@ namespace Haley.Abstractions {
     ///
     /// ACK OWNERSHIP:
     /// Wrappers normally do not call AckAsync directly. A handler returns AckOutcome and the
-    /// ConsumerProcessor writes the ACK using that outcome. This keeps ACK persistence and
+    /// ConsumerManager writes the ACK using that outcome. This keeps ACK persistence and
     /// retry behavior centralized in one runtime component.
     ///
     /// STEP TRACKING:
@@ -65,7 +65,7 @@ namespace Haley.Abstractions {
     ///   2) Optionally write consumer-side idempotency/audit data (inbox_step/business_action).
     ///   3) Optionally call engine APIs (for example TriggerAsync for next transition, or
     ///      UpsertRuntimeAsync to add runtime traces visible on engine timeline views).
-    ///   4) Return AckOutcome (Processed/Retry/Failed); ConsumerProcessor persists ACK result.
+    ///   4) Return AckOutcome (Processed/Retry/Failed); ConsumerManager persists ACK result.
     /// </summary>
     public abstract class LifeCycleWrapper {
         private readonly IWorkFlowEngineAccessor? _engineAccessor;

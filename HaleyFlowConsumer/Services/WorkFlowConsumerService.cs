@@ -64,7 +64,7 @@ namespace Haley.Services {
                     RegisterRuntimeAssemblies(_consumer);
                 }
 
-                // Registration is owned by WorkFlowConsumerProcessor.StartAsync:
+                // Registration is owned by WorkFlowConsumerManager.StartAsync:
                 // it registers environment + consumer identity before loops start.
                 await _consumer.StartAsync(ct);
                 _runtimeStarted = true;

@@ -355,7 +355,7 @@
       <li><div class="step-num">2</div><div class="step-body"><strong>Add handler methods</strong> — decorate with <code>[TransitionHandler(eventCode)]</code> or <code>[HookHandler("route")]</code>.</div></li>
       <li><div class="step-num">3</div><div class="step-body"><strong>Implement abstract methods</strong> — <code>OnUnhandledTransitionAsync</code> and <code>OnUnhandledHookAsync</code> for unregistered events.</div></li>
       <li><div class="step-num">4</div><div class="step-body"><strong>Register with DI</strong> — add <code>services.AddTransient&lt;MyHandler&gt;()</code>.</div></li>
-      <li><div class="step-num">5</div><div class="step-body"><strong>Build and start</strong> — create <code>WorkFlowConsumerService</code>, call <code>RegisterAssembly</code>, then <code>StartAsync</code>.</div></li>
+      <li><div class="step-num">5</div><div class="step-body"><strong>Build and start</strong> — build a <code>WorkFlowConsumerManager</code>, call <code>RegisterAssembly</code>, then <code>StartAsync</code>. If you are using DI, register <code>WorkFlowConsumerService</code> and let the hosted bootstrap initialize it.</div></li>
     </ol>
     <pre><code><span class="cm">// 1. Handler class</span>
 [<span class="at">LifeCycleDefinition</span>(<span class="st">"loan-approval"</span>)]
@@ -399,7 +399,7 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
     <div class="section-label">Core Concepts</div>
     <h2 class="section-title">Architecture</h2>
     <h3 class="sub-title">Background Loops</h3>
-    <p><code>WorkFlowConsumerService.StartAsync</code> launches three independent background loops on the thread pool:</p>
+    <p><code>WorkFlowConsumerManager.StartAsync</code> launches three independent background loops on the thread pool. <code>WorkFlowConsumerService</code> is the hosted facade that builds and initializes the manager.</p>
     <div class="card-grid">
       <div class="card">
         <div class="card-title">HeartbeatLoop</div>
@@ -444,7 +444,7 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
       <pre><code>Engine DB (ack_consumer)
     │
     ▼ PollLoop — GetDueTransitionsAsync / GetDueHooksAsync
-WorkFlowConsumerService
+WorkFlowConsumerManager
     │
     ├─ Semaphore (MaxConcurrency) ──► ProcessItemAsync
     │       ├─ Upsert workflow row    (consumer DB: workflow)
@@ -673,12 +673,12 @@ WorkFlowConsumerService
     <p>The registry maps definition IDs (engine-assigned) to handler types. It works in two phases:</p>
     <ol class="step-list">
       <li><div class="step-num">1</div><div class="step-body"><strong>Assembly scan</strong> (<code>RegisterAssembly</code>) — finds all non-abstract types inheriting <code>LifeCycleWrapper</code> with <code>[LifeCycleDefinition]</code>. Stores them by definition name.</div></li>
-      <li><div class="step-num">2</div><div class="step-body"><strong>Engine resolution</strong> (on <code>StartAsync</code>) — for each discovered name, calls <code>engine.GetDefinitionIdAsync</code>. Binds the returned def_id to the handler type.</div></li>
+      <li><div class="step-num">2</div><div class="step-body"><strong>Engine resolution</strong> (on <code>WorkFlowConsumerManager.StartAsync</code>) — for each discovered name, calls <code>engine.GetDefinitionIdAsync</code>. Binds the returned def_id to the handler type.</div></li>
     </ol>
     <p>At dispatch time, <code>TryGetRegistration(defId)</code> looks up the handler type. If no registration exists for an incoming definition ID, the event is silently skipped.</p>
     <div class="callout tip">
       <div class="callout-title">Multiple assemblies</div>
-      Call <code>RegisterAssembly</code> for each assembly that contains handler classes before <code>StartAsync</code>. <code>StartAsync</code> also auto-scans all currently loaded assemblies as a fallback.
+      Call <code>RegisterAssembly</code> for each assembly that contains handler classes before <code>StartAsync</code>. <code>WorkFlowConsumerManager.StartAsync</code> also auto-scans all currently loaded assemblies as a fallback.
     </div>
     <pre><code>consumer
     .RegisterAssembly(Assembly.GetExecutingAssembly())
@@ -909,7 +909,7 @@ WorkFlowConsumerService
     <div class="section-label">Examples</div>
     <h2 class="section-title">Code Examples</h2>
     <h3 class="sub-title">Example 1 — Minimal Setup</h3>
-    <p>The smallest working consumer — a single handler class plus service startup.</p>
+    <p>The smallest working consumer — a single handler class plus consumer manager startup.</p>
     <pre><code><span class="cm">// ─────────────────────────────────────────────────────────────
 // Handler class
 // ─────────────────────────────────────────────────────────────</span>

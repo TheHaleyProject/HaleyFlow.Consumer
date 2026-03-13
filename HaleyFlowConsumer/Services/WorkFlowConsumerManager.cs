@@ -10,7 +10,7 @@ using System.Text.Json;
 
 namespace Haley.Services {
 
-    // WorkFlowConsumerProcessor is the consumer-side counterpart to WorkFlowEngine.
+    // WorkFlowConsumerManager is the consumer-side counterpart to WorkFlowEngine.
     // It runs as a background service in the consumer process (microservice / worker).
     //
     // The big picture of how the consumer fits in:
