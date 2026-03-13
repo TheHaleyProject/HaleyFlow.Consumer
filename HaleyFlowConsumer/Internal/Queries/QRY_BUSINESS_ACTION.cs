@@ -2,6 +2,14 @@ using static Haley.Internal.QueryFields;
 
 namespace Haley.Internal {
     internal static class QRY_BUSINESS_ACTION {
+        public const string SELECT_ID_BY_KEY =
+            $@"SELECT id FROM business_action
+               WHERE consumer_id = {CONSUMER_ID}
+                 AND def_id = {DEF_ID}
+                 AND entity_id = lower(trim({ENTITY_ID}))
+                 AND action_code = {ACTION_CODE}
+               LIMIT 1;";
+
         public const string UPSERT_RETURN_ID =
             $@"INSERT INTO business_action (consumer_id, def_id, entity_id, action_code, status)
                VALUES ({CONSUMER_ID}, {DEF_ID}, lower(trim({ENTITY_ID})), {ACTION_CODE}, {STATUS})

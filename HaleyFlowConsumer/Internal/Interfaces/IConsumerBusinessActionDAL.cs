@@ -4,6 +4,11 @@ using System.Threading.Tasks;
 
 namespace Haley.Internal {
     public interface IConsumerBusinessActionDAL {
+        /// <summary>
+        /// Returns the existing business_action id when the logical key is already present.
+        /// Falls back to insert/upsert only when the row does not exist yet, so repeated
+        /// calls do not burn auto-increment values on duplicate-key updates.
+        /// </summary>
         Task<long> UpsertReturnIdAsync(long consumerId, long defId, string entityId, int actionCode, BusinessActionStatus status, DbExecutionLoad load = default);
         Task<BusinessActionRecord?> GetByIdAsync(long id, DbExecutionLoad load = default);
         Task<BusinessActionRecord?> GetByKeyAsync(long consumerId, long defId, string entityId, int actionCode, DbExecutionLoad load = default);

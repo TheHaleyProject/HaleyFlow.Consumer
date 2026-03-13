@@ -10,7 +10,29 @@ namespace Haley.Internal {
         public MariaConsumerWorkflowDAL(IDALUtilBase db) : base(db) { }
 
         public async Task<(long wfId, bool isNew)> UpsertAsync(WorkflowRecord r, DbExecutionLoad load = default) {
-            // LAST_INSERT_ID returns existing id on ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
+            var existingId = await Db.ScalarAsync<long?>(QRY_WORKFLOW.SELECT_ID_BY_ACK_GUID_AND_CONSUMER, load,
+                (CONSUMER_ID, r.ConsumerId),
+                (ACK_GUID, r.AckGuid));
+
+            if (existingId.HasValue && existingId.Value > 0) {
+                await Db.ExecAsync(QRY_WORKFLOW.UPDATE, load,
+                    (WF_ID, existingId.Value),
+                    (ENTITY_ID, r.EntityId),
+                    (KIND, (byte)r.Kind),
+                    (DEF_ID, r.DefId),
+                    (DEF_VERSION_ID, r.DefVersionId),
+                    (INSTANCE_GUID, (object?)r.InstanceGuid ?? DBNull.Value),
+                    (ON_SUCCESS, (object?)r.OnSuccess ?? DBNull.Value),
+                    (ON_FAILURE, (object?)r.OnFailure ?? DBNull.Value),
+                    (OCCURRED, r.Occurred),
+                    (EVENT_CODE, (object?)r.EventCode ?? DBNull.Value),
+                    (ROUTE, (object?)r.Route ?? DBNull.Value),
+                    (RUN_COUNT, r.RunCount));
+
+                return (existingId.Value, false);
+            }
+
+            // Insert path still uses UPSERT so a concurrent insert resolves safely to the existing row.
             var id = await Db.ScalarAsync<long?>(QRY_WORKFLOW.UPSERT, load,
                 (ACK_GUID, r.AckGuid),
                 (ENTITY_ID, r.EntityId),
@@ -28,7 +50,7 @@ namespace Haley.Internal {
 
             if (id == null || id.Value <= 0) throw new InvalidOperationException("workflow upsert failed.");
 
-            // Detect insert vs existing: re-check if handler_version is null (new row never has it set)
+            // Detect insert vs existing: a concurrent inserter may have won the race after our pre-check.
             var existing = await GetByIdAsync(id.Value, load);
             var isNew = existing?.HandlerVersion == null;
             return (id.Value, isNew);

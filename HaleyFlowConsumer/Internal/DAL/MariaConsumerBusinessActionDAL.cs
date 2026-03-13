@@ -10,6 +10,14 @@ namespace Haley.Internal {
         public MariaConsumerBusinessActionDAL(IDALUtilBase db) : base(db) { }
 
         public async Task<long> UpsertReturnIdAsync(long consumerId, long defId, string entityId, int actionCode, BusinessActionStatus status, DbExecutionLoad load = default) {
+            var existingId = await Db.ScalarAsync<long?>(QRY_BUSINESS_ACTION.SELECT_ID_BY_KEY, load,
+                (CONSUMER_ID, consumerId),
+                (DEF_ID, defId),
+                (ENTITY_ID, entityId),
+                (ACTION_CODE, actionCode));
+            if (existingId.HasValue && existingId.Value > 0) return existingId.Value;
+
+            // Insert path still uses UPSERT so a concurrent inserter resolves to the same row safely.
             var id = await Db.ScalarAsync<long?>(QRY_BUSINESS_ACTION.UPSERT_RETURN_ID, load,
                 (CONSUMER_ID, consumerId),
                 (DEF_ID, defId),

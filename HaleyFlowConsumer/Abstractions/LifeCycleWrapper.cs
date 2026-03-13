@@ -116,6 +116,9 @@ namespace Haley.Abstractions {
             return row != null && row.GetInt(KEY_STATUS) == (int)InboxStepStatus.Completed;
         }
 
+        protected static string PickEvent(string? preferred, string fallback)
+        => !string.IsNullOrWhiteSpace(preferred) ? preferred : fallback;
+
         protected async Task<bool> IsBusinessActionCompletedAsync(ConsumerContext ctx, long defId, string entityId, int actionCode) {
             if (string.IsNullOrWhiteSpace(entityId)) return false;
             var row = await BusinessActionDal.GetByKeyAsync(

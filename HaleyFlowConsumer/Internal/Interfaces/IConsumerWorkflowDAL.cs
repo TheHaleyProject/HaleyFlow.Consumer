@@ -6,8 +6,9 @@ using Haley.Models;
 namespace Haley.Internal {
     public interface IConsumerWorkflowDAL {
         /// <summary>
-        /// Inserts a new workflow row. On duplicate (consumer_id, ack_guid) returns the existing id.
-        /// Returns (wfId, isNew=true) on insert, (wfId, isNew=false) on existing.
+        /// Updates the existing workflow row when (consumer_id, ack_guid) is already present.
+        /// Falls back to insert/upsert only when the row does not exist yet, so repeated calls
+        /// do not burn auto-increment values on duplicate-key updates.
         /// </summary>
         Task<(long wfId, bool isNew)> UpsertAsync(WorkflowRecord record, DbExecutionLoad load = default);
         Task<WorkflowRecord?> GetByIdAsync(long wfId, DbExecutionLoad load = default);
