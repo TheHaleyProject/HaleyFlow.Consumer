@@ -10,8 +10,8 @@ namespace Haley.Internal {
         public MariaConsumerWorkflowDAL(IDALUtilBase db) : base(db) { }
 
         public async Task<(long wfId, bool isNew)> UpsertAsync(WorkflowRecord r, DbExecutionLoad load = default) {
-            var existingId = await Db.ScalarAsync<long?>(QRY_WORKFLOW.SELECT_ID_BY_ACK_GUID_AND_CONSUMER, load,
-                (CONSUMER_ID, r.ConsumerId),
+            // ack_guid is globally unique — no need to include consumer_id in the lookup.
+            var existingId = await Db.ScalarAsync<long?>(QRY_WORKFLOW.SELECT_ID_BY_ACK_GUID, load,
                 (ACK_GUID, r.AckGuid));
 
             if (existingId.HasValue && existingId.Value > 0) {

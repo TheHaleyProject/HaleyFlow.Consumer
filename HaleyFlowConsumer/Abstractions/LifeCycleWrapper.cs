@@ -36,10 +36,11 @@ namespace Haley.Abstractions {
     /// assignment of <c>_stepDal</c> by the consumer service (see below).
     ///
     /// ENGINE ACCESS FROM WRAPPERS:
-    /// This base class can hold a workflow engine accessor so handlers may call engine-side
-    /// operations (for example TriggerAsync or UpsertRuntimeAsync) when needed.
-    /// Every wrapper passes IWorkFlowEngineAccessor to the base constructor, then uses
-    /// the protected EngineAccessor property whenever engine-side calls are needed.
+    /// Wrappers that need to call engine-side operations (TriggerAsync, UpsertRuntimeAsync, etc.)
+    /// pass an <see cref="ILifeCycleExecution"/> to the base constructor and use the protected
+    /// <see cref="Engine"/> property. The underlying proxy routes calls to wherever the engine
+    /// lives (in-process or remote HTTP) — the wrapper never holds a direct engine reference.
+    /// Wrappers that do not need engine calls can use the parameterless constructor.
     ///
     /// ACK OWNERSHIP:
     /// Wrappers normally do not call AckAsync directly. A handler returns AckOutcome and the
@@ -68,11 +69,15 @@ namespace Haley.Abstractions {
     ///   4) Return AckOutcome (Processed/Retry/Failed); ConsumerManager persists ACK result.
     /// </summary>
     public abstract class LifeCycleWrapper {
-        private readonly IWorkFlowEngineAccessor? _engineAccessor;
+        private readonly ILifeCycleExecution? _engine;
 
-        protected LifeCycleWrapper(IWorkFlowEngineAccessor engineAccessor) {
-            _engineAccessor = engineAccessor ?? throw new ArgumentNullException(nameof(engineAccessor));
+        /// <summary>For wrappers that need to call engine operations (trigger, upsert runtime, etc.).</summary>
+        protected LifeCycleWrapper(ILifeCycleExecution engine) {
+            _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         }
+
+        /// <summary>For wrappers that only process events and never call back to the engine.</summary>
+        protected LifeCycleWrapper() { }
 
         // ── Step DAL injection ─────────────────────────────────────────────────
         // Not injected via the constructor because the wrapper is resolved from DI before
@@ -255,8 +260,12 @@ namespace Haley.Abstractions {
         private IConsumerBusinessActionDAL BusinessActionDal =>
             _businessActionDal ?? throw new InvalidOperationException("LifeCycleWrapper not initialized by ConsumerService (BusinessAction DAL missing).");
 
-        protected IWorkFlowEngineAccessor EngineAccessor =>
-            _engineAccessor ?? throw new InvalidOperationException("LifeCycleWrapper was constructed without IWorkFlowEngineAccessor.");
+        /// <summary>
+        /// Access the engine to trigger events, fetch timelines, upsert runtime logs, etc.
+        /// Only valid when the wrapper was constructed with <see cref="ILifeCycleExecution"/>.
+        /// </summary>
+        protected ILifeCycleExecution Engine =>
+            _engine ?? throw new InvalidOperationException("LifeCycleWrapper was constructed without ILifeCycleExecution. Use the overloaded constructor that accepts an engine.");
 
         private static string? ToResultJson(object? value) {
             if (value == null) return null;

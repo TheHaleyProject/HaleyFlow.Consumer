@@ -6,5 +6,7 @@ namespace Haley.Internal {
         IConsumerInboxDAL Inbox { get; }
         IConsumerInboxStepDAL InboxStep { get; }
         IConsumerOutboxDAL Outbox { get; }
+        IConsumerEntityDAL Entity { get; }
+        IConsumerEntityWorkflowDAL EntityWorkflow { get; }
     }
 }

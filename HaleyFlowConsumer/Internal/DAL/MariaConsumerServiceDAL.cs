@@ -8,6 +8,8 @@ namespace Haley.Internal {
         public IConsumerInboxDAL Inbox { get; }
         public IConsumerInboxStepDAL InboxStep { get; }
         public IConsumerOutboxDAL Outbox { get; }
+        public IConsumerEntityDAL Entity { get; }
+        public IConsumerEntityWorkflowDAL EntityWorkflow { get; }
 
         public MariaConsumerServiceDAL(IAdapterGateway agw, string key) : base (agw,key) {
             Workflow = new MariaConsumerWorkflowDAL(this);
@@ -15,6 +17,8 @@ namespace Haley.Internal {
             Inbox = new MariaConsumerInboxDAL(this);
             InboxStep = new MariaConsumerInboxStepDAL(this);
             Outbox = new MariaConsumerOutboxDAL(this);
+            Entity = new MariaConsumerEntityDAL(this);
+            EntityWorkflow = new MariaConsumerEntityWorkflowDAL(this);
         }
     }
 }

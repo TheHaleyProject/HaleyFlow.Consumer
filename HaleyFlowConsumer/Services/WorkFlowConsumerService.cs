@@ -114,6 +114,42 @@ namespace Haley.Services {
             return await consumer.CountPendingOutboxAsync(ct);
         }
 
+        public async Task<string> CreateEntityAsync(CancellationToken ct = default) {
+            var consumer = await GetConsumerAsync(ct);
+            return await consumer.CreateEntityAsync(ct);
+        }
+
+        public async Task<LifeCycleTriggerResult> CreateWorkflowAsync(string entityId, string defName, CreateWorkflowRequest request, CancellationToken ct = default) {
+            if (string.IsNullOrWhiteSpace(entityId)) throw new ArgumentException("entityId is required.", nameof(entityId));
+            if (string.IsNullOrWhiteSpace(defName)) throw new ArgumentException("defName is required.", nameof(defName));
+            if (request == null) throw new ArgumentNullException(nameof(request));
+
+            // All engine calls go through the proxy — never directly to the engine.
+            // InProcessEngineProxy delegates to the in-process engine; an HttpEngineProxy
+            // would POST to the remote engine API. The service doesn't need to know which.
+            var triggerReq = new LifeCycleTriggerRequest {
+                EnvCode = _options.EnvCode,
+                DefName = defName,
+                EntityId = entityId,
+                Event = request.Event,
+                Actor = request.Actor,
+                Metadata = request.Metadata,
+                Payload = request.Payload,
+                SkipAckGate = request.SkipAckGate
+            };
+            var result = await _engineProxy.TriggerAsync(triggerReq, ct);
+
+            // Record the entity→workflow mapping in the consumer DB.
+            var consumer = await GetConsumerAsync(ct);
+            await consumer.RecordEntityWorkflowAsync(entityId, defName, result, ct);
+            return result;
+        }
+
+        public async Task<DbRows> GetWorkflowsByEntityAsync(string entityId, CancellationToken ct = default) {
+            var consumer = await GetConsumerAsync(ct);
+            return await consumer.GetWorkflowsByEntityAsync(entityId, ct);
+        }
+
         public async ValueTask DisposeAsync() {
             try { await StopAsync(CancellationToken.None); } catch { }
             _initLock.Dispose();

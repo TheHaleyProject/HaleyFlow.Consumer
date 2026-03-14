@@ -4,7 +4,6 @@ using Haley.Internal;
 using static Haley.Internal.KeyConstants;
 using Haley.Models;
 using Haley.Utils;
-using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using System.Text.Json;
 
@@ -43,6 +42,11 @@ namespace Haley.Services {
         private readonly SemaphoreSlim _throttle;      // bounds concurrent event processing to MaxConcurrency
         private CancellationTokenSource? _cts;
         private long _consumerId;                      // numeric ID assigned by engine after RegisterConsumerAsync
+
+        /// <inheritdoc/>
+        public long ConsumerId => _consumerId;
+        /// <inheritdoc/>
+        public string ConsumerGuid => _opt.ConsumerGuid;
 
         /// <inheritdoc/>
         public event Func<LifeCycleNotice, Task>? NoticeRaised;
@@ -263,6 +267,14 @@ namespace Haley.Services {
                     $"Skipping event with missing ack_guid. kind={item.Kind} defId={evt.DefinitionId} entity={evt.EntityId} instance={evt.InstanceGuid}"));
                 return;
             }
+            // Safety gate: only process events addressed to this consumer.
+            // Each client has exactly one consumer DB; the engine sends the numeric consumer ID
+            // on every dispatch item. Reject anything not matching our registered identity.
+            if (item.ConsumerId != _consumerId) {
+                FireNotice(LifeCycleNotice.Warn("CONSUMER_ID_MISMATCH", "CONSUMER_ID_MISMATCH",
+                    $"Rejecting event: item.ConsumerId={item.ConsumerId} != this consumer ({_consumerId}/{_opt.ConsumerGuid}). ackGuid={item.AckGuid}"));
+                return;
+            }
             if (!_registry.TryGetRegistration(evt.DefinitionId, out var reg) || reg == null) {
                 FireNotice(LifeCycleNotice.Warn("REGISTRY_MISS", "REGISTRY_MISS",
                     $"No wrapper registered for defId={evt.DefinitionId} kind={item.Kind} ackGuid={item.AckGuid}. Event ignored."));
@@ -364,7 +376,7 @@ namespace Haley.Services {
                     foreach (var r in rows) {
                         ct.ThrowIfCancellationRequested();
                         var load = new DbExecutionLoad(ct);
-                        var wfId = r.GetLong(KEY_WF_ID);
+                        var wfId = r.GetLong(KEY_INBOX_ID);
                         var ackGuid = r.GetString(KEY_ACK_GUID) ?? string.Empty;
                         var consumerId = r.GetLong(KEY_CONSUMER_ID);
                         var outcome = (AckOutcome)r.GetByte(KEY_CURRENT_OUTCOME);
@@ -399,6 +411,26 @@ namespace Haley.Services {
                 }
             }
         }
+
+        // ----------------------------------------------------------------
+        // Entity & Workflow management (client-facing API)
+        // ----------------------------------------------------------------
+
+        public Task<string> CreateEntityAsync(CancellationToken ct = default)
+            => _dal.Entity.CreateAsync(new DbExecutionLoad(ct));
+
+        public async Task RecordEntityWorkflowAsync(string entityId, string defName, LifeCycleTriggerResult result, CancellationToken ct = default) {
+            var load = new DbExecutionLoad(ct);
+            await _dal.EntityWorkflow.UpsertAsync(new EntityWorkflowRecord {
+                Entity = entityId,
+                DefName = defName,
+                InstanceId = result.InstanceGuid ?? string.Empty,
+                IsTriggered = result.Applied
+            }, load);
+        }
+
+        public Task<DbRows> GetWorkflowsByEntityAsync(string entityId, CancellationToken ct = default)
+            => _dal.EntityWorkflow.GetByEntityAsync(entityId, new DbExecutionLoad(ct));
 
         // Helpers
         private WorkflowRecord BuildWorkflowRecord(ILifeCycleDispatchItem item) {

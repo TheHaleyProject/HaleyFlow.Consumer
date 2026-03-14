@@ -268,6 +268,7 @@
         <button class="nav-item" onclick="gotoSection('arch-business-actions')">Business Actions <span class="badge-new" style="background:#22c55e;color:#fff;font-size:9px;border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:700;">NEW</span></button>
         <button class="nav-item" onclick="gotoSection('arch-versioning')">Handler Versioning</button>
         <button class="nav-item" onclick="gotoSection('arch-outbox')">Outbox &amp; Reliability</button>
+        <button class="nav-item" onclick="gotoSection('arch-proxy')">Engine Proxy <span class="badge-new" style="background:#2563eb;color:#fff;font-size:9px;border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:700;">NEW</span></button>
       </div>
     </div>
 
@@ -1502,8 +1503,89 @@ OutboxLoop ─── scan outbox (Pending, next_retry_at &lt;= now)
     </div>
   </section>
 
+  <!-- ENGINE PROXY -->
+  <section id="arch-proxy" class="doc-section">
+    <div class="section-label">Architecture</div>
+    <h2 class="section-title">Engine Proxy</h2>
+
+    <p>
+      The consumer never holds a reference to <code>IWorkFlowEngine</code> or
+      <code>IWorkFlowEngineAccessor</code>. All engine interaction goes through a single
+      abstraction: <code>ILifeCycleEngineProxy</code>.
+    </p>
+
+    <div class="callout tip">
+      <div class="callout-title">Design rule</div>
+      <code>Haley.Flow.Consumer</code> has no dependency on the engine package.
+      It only knows <code>ILifeCycleEngineProxy</code>. Which implementation is active
+      is determined entirely by the host application's DI registration.
+    </div>
+
+    <h3 class="sub-title">Proxy implementations</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Implementation</th><th>Package</th><th>When to use</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>InProcessEngineProxy</code></td>
+            <td>Engine package <em>(engine project only)</em></td>
+            <td>Engine and consumer run in the same .NET host. Direct method calls; events delivered via in-memory channels.</td>
+          </tr>
+          <tr>
+            <td><code>DeferredInProcessEngineProxy</code></td>
+            <td>Engine package <em>(engine project only)</em></td>
+            <td>Same as above but the engine instance is resolved lazily on the first call — safe when the engine may not yet be started at DI registration time.</td>
+          </tr>
+          <tr>
+            <td><code>HttpEngineProxy</code> <em>(future)</em></td>
+            <td>Consumer package</td>
+            <td>Engine runs on a separate host. Every proxy method issues an HTTP call to the engine's REST API. Consumer code is unchanged.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub-title">What the proxy exposes</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Surface</th><th>Methods</th></tr></thead>
+        <tbody>
+          <tr><td><code>ILifeCycleConsumerBus</code></td><td>Registration, heartbeat, ACK, blueprint import</td></tr>
+          <tr><td><code>ILifeCycleRuntimeBus</code></td><td>Trigger, timeline, instance data, runtime log, suspend/resume/reopen, list pending ACKs</td></tr>
+          <tr><td>Own</td><td><code>GetDueTransitionsAsync</code>, <code>GetDueHooksAsync</code>, <code>NoticeRaised</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub-title">Event delivery vs on-demand queries</h3>
+    <p>
+      <code>GetDueTransitionsAsync</code> / <code>GetDueHooksAsync</code> are the consumer-side
+      end of the engine's <em>push delivery</em> mechanism — they exist because the engine has
+      an <code>EventRaised</code> event. When the engine fires (on trigger, monitor resend, hook
+      advancement), events are buffered by the proxy and drained by the consumer's poll loop.
+    </p>
+    <p>
+      Every other method on the proxy is an <em>on-demand query or command</em> — the consumer
+      initiates it at will: fetch a timeline JSON to email it, list pending ACKs for a dashboard,
+      upsert a runtime status from a wrapper, suspend or reopen an instance.
+    </p>
+    <div class="callout warn">
+      <div class="callout-title">Do not confuse</div>
+      <code>ListPendingAcksAsync</code> is an on-demand query (consumer asks the engine what's
+      unresolved). <code>GetDueTransitionsAsync</code> is event delivery (engine pushed events
+      into the proxy's buffer; consumer drains them). They are fundamentally different.
+    </div>
+
+    <h3 class="sub-title">Wiring up (in-process host)</h3>
+    <pre><code><span class="cm">// Register in the host that also runs the engine:</span>
+services.<span class="fn">AddSingleton</span>&lt;<span class="ty">ILifeCycleEngineProxy</span>, <span class="ty">DeferredInProcessEngineProxy</span>&gt;();
+
+<span class="cm">// Consumer service sees only the proxy — no engine types:</span>
+services.<span class="fn">AddSingleton</span>&lt;<span class="ty">IWorkFlowConsumerService</span>, <span class="ty">WorkFlowConsumerService</span>&gt;();</code><span class="lang-label">C#</span></pre>
+  </section>
+
   <hr class="divider">
-  <p style="text-align:center;color:var(--text-muted);font-size:12px">HaleyFlow Consumer — Handler Framework — v0.2 — March 2026 — hook_lc + RunCount</p>
+  <p style="text-align:center;color:var(--text-muted);font-size:12px">HaleyFlow Consumer — Handler Framework — v0.2 — March 2026 — hook_lc + RunCount + Proxy Architecture</p>
 
 </div><!-- content-inner -->
 </main>

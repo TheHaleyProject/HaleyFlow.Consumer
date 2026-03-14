@@ -23,9 +23,14 @@ namespace Haley.Internal {
         public const string PARAMS_JSON = "@PARAMS_JSON";
         public const string STATUS = "@STATUS";
         public const string LAST_ERROR = "@LAST_ERROR";
-        // inbox_step
+        // inbox_status, inbox_step, outbox FK to inbox.id
         public const string INBOX_ID = "@INBOX_ID";
         public const string STEP_CODE = "@STEP_CODE";
+        // entity workflow
+        public const string DEF_NAME = "@DEF_NAME";
+        public const string INSTANCE_ID = "@INSTANCE_ID";
+        public const string IS_TRIGGERED = "@IS_TRIGGERED";
+        public const string ENTITY = "@ENTITY";
         public const string RESULT_JSON = "@RESULT_JSON";
         // outbox
         public const string OUTCOME = "@OUTCOME";

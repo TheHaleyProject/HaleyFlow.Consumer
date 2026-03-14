@@ -4,30 +4,30 @@ namespace Haley.Internal {
     internal static class QRY_INBOX {
 
         public const string UPSERT =
-            $@"INSERT IGNORE INTO inbox (wf_id, params_json)
-               VALUES ({WF_ID}, {PARAMS_JSON});";
+            $@"INSERT IGNORE INTO inbox_status (inbox_id, params_json)
+               VALUES ({INBOX_ID}, {PARAMS_JSON});";
 
         public const string SET_STATUS =
-            $@"UPDATE inbox SET status = {STATUS}, last_error = {LAST_ERROR}, modified = UTC_TIMESTAMP()
-               WHERE wf_id = {WF_ID};";
+            $@"UPDATE inbox_status SET status = {STATUS}, last_error = {LAST_ERROR}, modified = UTC_TIMESTAMP()
+               WHERE inbox_id = {INBOX_ID};";
 
         public const string INCREMENT_ATTEMPT =
-            $@"UPDATE inbox SET attempt_count = attempt_count + 1, modified = UTC_TIMESTAMP()
-               WHERE wf_id = {WF_ID};";
+            $@"UPDATE inbox_status SET attempt_count = attempt_count + 1, modified = UTC_TIMESTAMP()
+               WHERE inbox_id = {INBOX_ID};";
 
-        public const string SELECT_BY_WF_ID =
-            $@"SELECT * FROM inbox WHERE wf_id = {WF_ID};";
+        public const string SELECT_BY_INBOX_ID =
+            $@"SELECT * FROM inbox_status WHERE inbox_id = {INBOX_ID};";
 
         public const string LIST_PAGED =
-            $@"SELECT i.wf_id, i.status, i.attempt_count, i.last_error, i.received_at, i.modified,
-              w.entity_id, w.instance_guid, w.kind, w.route, w.event_code
-       FROM inbox i
-       JOIN workflow w ON w.id = i.wf_id
-       WHERE ({STATUS} < 0 OR i.status = {STATUS})
-       ORDER BY i.modified DESC
+            $@"SELECT s.inbox_id, s.status, s.attempt_count, s.last_error, s.received_at, s.modified,
+              i.entity_id, i.instance_guid, i.kind, i.route, i.event_code
+       FROM inbox_status s
+       JOIN inbox i ON i.id = s.inbox_id
+       WHERE ({STATUS} < 0 OR s.status = {STATUS})
+       ORDER BY s.modified DESC
        LIMIT {TAKE} OFFSET {SKIP};";
 
         public const string COUNT_PENDING =
-            @"SELECT COUNT(*) FROM inbox WHERE status IN (1, 2);";
+            @"SELECT COUNT(*) FROM inbox_status WHERE status IN (1, 2);";
     }
 }
