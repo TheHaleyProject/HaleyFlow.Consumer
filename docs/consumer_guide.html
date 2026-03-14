@@ -265,6 +265,7 @@
         <button class="nav-item" onclick="gotoSection('arch-registry')">WrapperRegistry</button>
         <button class="nav-item" onclick="gotoSection('arch-dispatch')">Dispatch Flow</button>
         <button class="nav-item" onclick="gotoSection('arch-steps')">Step Tracking</button>
+        <button class="nav-item" onclick="gotoSection('arch-business-actions')">Business Actions <span class="badge-new" style="background:#22c55e;color:#fff;font-size:9px;border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:700;">NEW</span></button>
         <button class="nav-item" onclick="gotoSection('arch-versioning')">Handler Versioning</button>
         <button class="nav-item" onclick="gotoSection('arch-outbox')">Outbox &amp; Reliability</button>
       </div>
@@ -276,6 +277,8 @@
         <button class="nav-item" onclick="gotoSection('ref-options')">WorkFlowConsumerOptions</button>
         <button class="nav-item" onclick="gotoSection('ref-ackoutcome')">AckOutcome Values</button>
         <button class="nav-item" onclick="gotoSection('ref-schema')">Consumer DB Schema</button>
+        <button class="nav-item" onclick="gotoSection('ref-notices')">Notice Codes <span class="badge-new" style="background:#22c55e;color:#fff;font-size:9px;border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:700;">NEW</span></button>
+        <button class="nav-item" onclick="gotoSection('ref-bg-loops')">Background Loops Detail <span class="badge-new" style="background:#22c55e;color:#fff;font-size:9px;border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:700;">NEW</span></button>
       </div>
     </div>
 
@@ -745,6 +748,91 @@ WorkFlowConsumerManager
 }</code><span class="lang-label">C#</span></pre>
   </section>
 
+  <!-- ──────────────── BUSINESS ACTIONS ──────────────── -->
+  <section class="doc-section" id="arch-business-actions">
+    <h3 class="sub-title">Business Actions — Persistent Idempotent Operations <span class="badge new">NEW</span></h3>
+    <p>Business actions provide a way to record that a significant operation was performed for a workflow entity — and to guarantee it is never re-executed, even across process restarts, re-deliveries, or multiple event types.</p>
+
+    <div class="callout tip">
+      <div class="callout-title">Steps vs Business Actions</div>
+      <strong>Step tracking</strong> (<code>inbox_step</code>) is scoped to a single event delivery — steps reset when the same event is re-delivered with a new <code>ack_guid</code> or after a reopen. <strong>Business actions</strong> persist across <em>all</em> events for the same entity and are never re-executed once completed, regardless of how many times the event is re-delivered or how many times the instance is reopened.
+    </div>
+
+    <h4 class="mini-title">Primary API</h4>
+    <pre><code><span class="ty">Task</span>&lt;<span class="ty">BusinessActionExecutionResult</span>&gt; <span class="fn">ExecuteBusinessActionAsync</span>(
+    <span class="ty">ConsumerContext</span>              ctx,
+    <span class="kw">long</span>                         defId,
+    <span class="ty">string</span>                       entityId,
+    <span class="ty">string</span>                       actionCode,
+    <span class="ty">Func</span>&lt;<span class="ty">Task</span>&lt;<span class="ty">string</span>?&gt;&gt;           action,
+    <span class="ty">BusinessActionExecutionMode</span>  mode = <span class="ty">BusinessActionExecutionMode</span>.SkipIfCompleted
+);</code><span class="lang-label">C#</span></pre>
+    <p>The action is keyed by <code>(consumer_id, def_id, entity_id, action_code)</code>. If a completed row already exists for that key, the action delegate is not called — the prior result JSON is returned instead.</p>
+
+    <h4 class="mini-title">BusinessActionExecutionMode</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Value</th><th>Behaviour</th></tr></thead>
+        <tbody>
+          <tr><td><code>SkipIfCompleted</code> (default)</td><td>If the action was already completed, skip the delegate and return the prior result. Safe for idempotent operations.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4 class="mini-title">BusinessActionExecutionResult</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>Executed</code></td><td>bool</td><td><code>true</code> if the action delegate ran this call; <code>false</code> if it was skipped.</td></tr>
+          <tr><td><code>AlreadyCompleted</code></td><td>bool</td><td><code>true</code> if the action was skipped because a completed record already existed.</td></tr>
+          <tr><td><code>ResultJson</code></td><td>string?</td><td>The JSON string returned by the action delegate (or stored from the prior run if skipped).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4 class="mini-title">Helper Methods</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Method</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>ReadDecisionFromResultJson(resultJson, defaultValue)</code></td><td>Reads the <code>"decision"</code> bool field from the result JSON string. Returns <code>defaultValue</code> if the JSON is null, malformed, or the field is absent.</td></tr>
+          <tr><td><code>IsBusinessActionCompletedAsync(ctx, defId, entityId, actionCode)</code></td><td>Returns <code>true</code> if a completed record exists for the key. Does not execute the action.</td></tr>
+          <tr><td><code>GetBusinessActionAsync(ctx, defId, entityId, actionCode)</code></td><td>Returns the stored action record (including result JSON) or <code>null</code> if none exists.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4 class="mini-title">Usage Example</h4>
+    <pre><code>[<span class="at">TransitionHandler</span>(<span class="jn">200</span>)]  <span class="cm">// approve event</span>
+<span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnApproveAsync(<span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)
+{
+    <span class="kw">const string</span> ACTION_CREDIT_CHECK = <span class="st">"credit-decision"</span>;
+
+    <span class="cm">// This will only run the credit check ONCE per entity, ever.</span>
+    <span class="kw">var</span> result = <span class="kw">await</span> ExecuteBusinessActionAsync(
+        ctx, evt.DefinitionId, evt.EntityId, ACTION_CREDIT_CHECK,
+        <span class="kw">async</span> () => {
+            <span class="kw">var</span> approved = <span class="kw">await</span> _creditService.CheckAsync(evt.EntityId, ctx.CancellationToken);
+            <span class="cm">// Return a JSON string — the helper can read "decision" back later:</span>
+            <span class="kw">return</span> System.Text.Json.JsonSerializer.Serialize(<span class="kw">new</span> { decision = approved });
+        }
+    );
+
+    <span class="kw">if</span> (result.AlreadyCompleted) {
+        <span class="cm">// Prior run result is in result.ResultJson — skip the check, use cached decision</span>
+        <span class="kw">bool</span> approved = ReadDecisionFromResultJson(result.ResultJson, defaultValue: <span class="nb">false</span>);
+        <span class="kw">await</span> _notify.SendDecisionAsync(evt.EntityId, approved, ctx.CancellationToken);
+    } <span class="kw">else</span> {
+        <span class="cm">// Action just ran — result.ResultJson has the fresh decision</span>
+        <span class="kw">bool</span> approved = ReadDecisionFromResultJson(result.ResultJson, defaultValue: <span class="nb">false</span>);
+        <span class="kw">await</span> _notify.SendDecisionAsync(evt.EntityId, approved, ctx.CancellationToken);
+    }
+
+    <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;
+}</code><span class="lang-label">C#</span></pre>
+  </section>
+
   <!-- ──────────────── HANDLER VERSIONING ──────────────── -->
   <section class="doc-section" id="arch-versioning">
     <h3 class="sub-title">Handler Versioning</h3>
@@ -769,20 +857,32 @@ WorkFlowConsumerManager
 [<span class="at">TransitionHandler</span>(<span class="jn">100</span>, minVersion: <span class="jn">4</span>)]   <span class="cm">// selected when HandlerVersion >= 4</span>
 <span class="kw">public</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnSubmitV4Async(...) { ... }</code><span class="lang-label">C#</span></pre>
 
-    <h4 class="mini-title">HandlerUpgrade policy</h4>
+    <h4 class="mini-title">default_handler_upgrade policy</h4>
+    <p>The <code>DefaultHandlerUpgrade</code> option in <code>WorkFlowConsumerOptions</code> controls whether existing in-flight instances pick up newer handler methods when you deploy updated code.</p>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Value</th><th>Behaviour</th></tr></thead>
+        <thead><tr><th>Value</th><th>Behaviour</th><th>Use case</th></tr></thead>
         <tbody>
-          <tr><td><code>Pinned</code> (default)</td><td>Instance always uses its originally pinned version. Deploying new handler versions does not affect existing instances.</td></tr>
-          <tr><td><code>AllowUpgrade</code></td><td>If the wrapper now declares a higher <code>MaxDeclaredVersion</code>, the effective version is bumped to <code>max(pinned, MaxDeclaredVersion)</code>. Existing instances pick up new handler methods on next delivery.</td></tr>
+          <tr><td><code>Pinned</code> (default)</td><td>Version is set once at first event delivery for the entity and never changes. New code deployments do not affect in-flight instances — they continue using the handler methods that were selected when they started.</td><td>Safest option. Use when you want full isolation between old and new instances — ship improved logic for new instances while old in-flight instances keep their original handler path.</td></tr>
+          <tr><td><code>Auto</code></td><td>The effective version advances with the wrapper's declared maximum version. Existing in-flight instances automatically pick up new handler methods on next event delivery after a deployment.</td><td>Use when all handler versions are backward-compatible and you want every instance to benefit from fixes immediately, regardless of when they started.</td></tr>
         </tbody>
       </table>
     </div>
-    <pre><code><span class="cm">// Set upgrade policy in options (applies to new instances):</span>
+    <pre><code><span class="cm">// Set upgrade policy in options:</span>
 <span class="kw">new</span> <span class="ty">WorkFlowConsumerOptions</span> {
-    DefaultHandlerUpgrade = <span class="ty">HandlerUpgrade</span>.Pinned  <span class="cm">// default</span>
-}</code><span class="lang-label">C#</span></pre>
+    DefaultHandlerUpgrade = <span class="ty">HandlerUpgrade</span>.Pinned  <span class="cm">// default — safe for production</span>
+}
+
+<span class="cm">// Example: instance pinned at version 2, two handlers defined</span>
+[<span class="at">TransitionHandler</span>(<span class="jn">100</span>, minVersion: <span class="jn">1</span>)]  <span class="cm">// selected: HandlerVersion=2 ≥ minVersion=1, highest match</span>
+<span class="kw">public</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnSubmitV1Async(...) { ... }
+
+[<span class="at">TransitionHandler</span>(<span class="jn">100</span>, minVersion: <span class="jn">3</span>)]  <span class="cm">// NOT selected: minVersion=3 > HandlerVersion=2</span>
+<span class="kw">public</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnSubmitV3Async(...) { ... }</code><span class="lang-label">C#</span></pre>
+    <div class="callout tip">
+      <div class="callout-title">Scenario: ship improved logic without breaking in-flight instances</div>
+      You have 500 loan applications in the <code>UnderReview</code> state. You deploy a new handler at <code>minVersion: 3</code> with improved credit-check logic. With <code>Pinned</code>, all 500 existing instances continue using their pinned version (e.g. version 2, selecting the <code>minVersion: 1</code> handler). New applications started after the deployment will get version 3 and use the new handler path. Neither group is disrupted.
+    </div>
   </section>
 
   <!-- ──────────────── OUTBOX ──────────────── -->
@@ -1251,6 +1351,154 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
     <div class="callout tip">
       <div class="callout-title">New ack_guid on every reopen</div>
       Each reopen creates a new <code>ack_guid</code> scoped to the new <code>hook_lc</code> row. This means the consumer <code>workflow</code> table gets a new row (idempotency key is <code>UNIQUE(consumer_id, ack_guid)</code>). Step tracking starts fresh for the rerun — steps from the prior run are on the old <code>wf_id</code> row.
+    </div>
+  </section>
+
+  <!-- ──────────────── CONSUMER NOTICE CODES ──────────────── -->
+  <section class="doc-section" id="ref-notices">
+    <div class="section-label">Reference</div>
+    <h2 class="section-title">Consumer Notice Codes</h2>
+    <p>Subscribe to <code>manager.NoticeRaised</code> to receive operational events from the consumer framework. These are distinct from the engine's notice codes — they are fired by the consumer library itself during polling, dispatch, and outbox operations.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Code</th><th>Severity</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>HEARTBEAT_ERROR</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>Heartbeat call to the engine (<code>BeatConsumerAsync</code>) failed. If this persists beyond the engine's <code>ConsumerTtlSeconds</code>, the engine will stop dispatching events to this consumer.</td>
+          </tr>
+          <tr>
+            <td><code>POLL_ERROR</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>Unhandled exception in the poll loop. The loop will sleep and retry. Individual dispatch errors are reported separately via <code>DISPATCH_ERROR</code>.</td>
+          </tr>
+          <tr>
+            <td><code>OUTBOX_ERROR</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>Unhandled exception in the outbox loop. Pending ACKs will not be retried until the loop recovers on its next cycle.</td>
+          </tr>
+          <tr>
+            <td><code>OUTBOX_ACK_FAILED</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>A specific outbox entry failed to reach the engine after the maximum number of retry attempts. The engine may not receive the ACK for this event — manual investigation may be required.</td>
+          </tr>
+          <tr>
+            <td><code>DISPATCH_SCHEDULE_ERROR</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>Failed to schedule an event item for dispatch (e.g. semaphore acquisition error). The engine's monitor will re-send the item after its <code>next_due</code> interval elapses.</td>
+          </tr>
+          <tr>
+            <td><code>DISPATCH_ERROR</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>Unhandled exception in <code>ProcessItemAsync</code> — thrown outside the handler delegate itself. The event will be re-delivered on the next poll cycle.</td>
+          </tr>
+          <tr>
+            <td><code>DISPATCH_INVALID_ACK</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>An event arrived with a missing or null <code>ack_guid</code> when one was expected. The event is skipped and will not be re-delivered.</td>
+          </tr>
+          <tr>
+            <td><code>WRAPPER_ERROR</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>The <code>LifeCycleWrapper</code> dispatch method threw an unhandled exception. The outcome is automatically set to <code>Retry</code> so the engine re-delivers the event.</td>
+          </tr>
+          <tr>
+            <td><code>REGISTRY_MISS</code></td>
+            <td><span class="badge warn">Warn</span></td>
+            <td>The consumer received an event for a definition ID that has no registered handler type. The event is silently ignored — check that the correct wrapper class is in scope and that <code>RegisterAssembly</code> was called.</td>
+          </tr>
+          <tr>
+            <td><code>REGISTRY_RESOLVE_FAILED</code></td>
+            <td><span class="badge warn">Warn</span></td>
+            <td>At startup, the engine could not find a definition matching the handler's declared <code>[LifeCycleDefinition("name")]</code>. Events for this definition will never be dispatched until the engine has the definition imported.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <pre><code><span class="cm">// Subscribe to consumer notices:</span>
+manager.NoticeRaised += (notice) => {
+    <span class="kw">switch</span> (notice.Code) {
+        <span class="kw">case</span> <span class="st">"HEARTBEAT_ERROR"</span>:
+            _logger.LogError(<span class="st">"Consumer heartbeat failed: {ex}"</span>, notice.Data[<span class="st">"exception"</span>]);
+            <span class="kw">break</span>;
+        <span class="kw">case</span> <span class="st">"REGISTRY_MISS"</span>:
+            _logger.LogWarning(<span class="st">"No handler for def_id={id}"</span>, notice.Data[<span class="st">"defId"</span>]);
+            <span class="kw">break</span>;
+        <span class="kw">case</span> <span class="st">"WRAPPER_ERROR"</span>:
+            _logger.LogError(<span class="st">"Handler threw, will retry: {ex}"</span>, notice.Data[<span class="st">"exception"</span>]);
+            <span class="kw">break</span>;
+    }
+    <span class="kw">return</span> Task.CompletedTask;
+};</code><span class="lang-label">C#</span></pre>
+  </section>
+
+  <!-- ──────────────── BACKGROUND LOOPS DETAIL ──────────────── -->
+  <section class="doc-section" id="ref-bg-loops">
+    <div class="section-label">Reference</div>
+    <h2 class="section-title">Three Background Loops — Detailed Reference</h2>
+    <p><code>WorkFlowConsumerManager.StartAsync</code> launches three independent background loops. Each runs on a separate thread-pool task and does not share state with the others.</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title"><span class="card-icon">♥</span> HeartbeatLoop</div>
+        <ul>
+          <li>Calls <code>engine.BeatConsumerAsync(consumerGuid, envCode, ttlSeconds)</code> every <code>heartbeat_interval</code></li>
+          <li>Default interval: <code>HeartbeatInterval</code> option (default 30 seconds)</li>
+          <li>Fires <code>HEARTBEAT_ERROR</code> notice on failure — does not crash the loop</li>
+          <li>If this loop stalls or errors for longer than the engine's <code>ConsumerTtlSeconds</code>, the engine marks the consumer as down and stops dispatching events to it</li>
+          <li>Keep <code>HeartbeatInterval</code> comfortably below <code>ConsumerTtlSeconds</code> (e.g. 30s interval with 120s TTL)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="card-icon">⟳</span> PollLoop</div>
+        <ul>
+          <li>Calls <code>engine.GetDueTransitionsAsync</code> and <code>engine.GetDueHooksAsync</code> in sequence</li>
+          <li>This is the <em>pull path</em> — it catches events that the engine's push (<code>EventRaised</code>) may have missed (e.g. engine in-process delivery skipped)</li>
+          <li>Dispatches each item via a <code>SemaphoreSlim</code>-bounded concurrency pool (<code>MaxConcurrency</code> option)</li>
+          <li>If events found: polls again immediately without sleeping</li>
+          <li>If no events: sleeps for <code>PollInterval</code> (default 5 seconds) before next poll</li>
+          <li>Fires <code>POLL_ERROR</code> notice on unhandled exception — sleeps and retries</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card-grid" style="margin-top:0">
+      <div class="card">
+        <div class="card-title"><span class="card-icon">📤</span> OutboxLoop</div>
+        <ul>
+          <li>Scans <code>outbox</code> rows with status Pending where <code>next_retry_at &lt;= now</code></li>
+          <li>For each pending row: calls <code>engine.AckAsync</code> with the stored outcome</li>
+          <li>On success: marks row Confirmed. On failure: updates <code>next_retry_at</code> and increments retry count</li>
+          <li>After max retries: fires <code>OUTBOX_ACK_FAILED</code> notice</li>
+          <li>If no pending rows: sleeps for <code>OutboxInterval</code> (default 15 seconds)</li>
+          <li>Guarantees at-least-once ACK delivery even when the engine is temporarily unreachable</li>
+          <li>Survives process crashes — outbox rows are durable in the consumer DB</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="card-icon">▶</span> Startup Sequence</div>
+        <ul>
+          <li>Scan registered assemblies for <code>[LifeCycleDefinition]</code> classes</li>
+          <li>Query engine to resolve definition names to IDs — logs <code>REGISTRY_RESOLVE_FAILED</code> for any unresolved names</li>
+          <li>Register consumer with engine via <code>RegisterConsumerAsync</code></li>
+          <li>Launch HeartbeatLoop, PollLoop, and OutboxLoop concurrently</li>
+        </ul>
+      </div>
+    </div>
+    <div class="flow">
+      <pre><code>HeartbeatLoop ──────────────────────────────────────► BeatConsumerAsync (every heartbeat_interval)
+
+PollLoop ─── GetDueTransitionsAsync ─┐
+         └── GetDueHooksAsync ────────┼─► Semaphore ──► ProcessItemAsync ──► OutboxRow
+                                      │                        │
+                                      │              ┌─────────▼──────────┐
+                                      │              │ handler.DispatchAsync│
+                                      │              │ returns AckOutcome  │
+                                      │              └─────────────────────┘
+                                      └─ (sleep PollInterval if empty)
+
+OutboxLoop ─── scan outbox (Pending, next_retry_at &lt;= now)
+           └──► engine.AckAsync ──► Confirmed / next_retry_at bumped</code></pre>
     </div>
   </section>
 
