@@ -320,12 +320,16 @@ namespace Haley.Services {
                 CancellationToken = ct
             };
 
-            // 5. Resolve wrapper from DI, inject step DAL, dispatch.
+            // 5. Resolve wrapper from DI (preferred — wrapper can have its own injected app services),
+            //    falling back to direct activation for parameterless wrappers. Then inject engine + DALs.
             //    The wrapper contains the application's business logic. It may call external APIs,
             //    send emails, write to other DBs, etc. We don't care — we just want an AckOutcome back.
             AckOutcome outcome;
             try {
-                var wrapper = (LifeCycleWrapper)ActivatorUtilities.CreateInstance(_sp, reg.WrapperType);
+                var wrapper = (_sp.GetService(reg.WrapperType) ?? Activator.CreateInstance(reg.WrapperType))
+                    as LifeCycleWrapper
+                    ?? throw new InvalidOperationException($"Could not activate wrapper type {reg.WrapperType.Name}.");
+                wrapper._engine = _feed;
                 wrapper._stepDal = _dal.InboxStep;
                 wrapper._businessActionDal = _dal.BusinessAction;
 

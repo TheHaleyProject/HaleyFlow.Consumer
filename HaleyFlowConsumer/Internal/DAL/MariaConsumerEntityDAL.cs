@@ -2,6 +2,7 @@ using Haley.Abstractions;
 using Haley.Utils;
 using static Haley.Internal.QueryFields;
 using static Haley.Internal.KeyConstants;
+using Haley.Models;
 
 namespace Haley.Internal {
     internal sealed class MariaConsumerEntityDAL : MariaDALBase, IConsumerEntityDAL {

@@ -37,10 +37,9 @@ namespace Haley.Abstractions {
     ///
     /// ENGINE ACCESS FROM WRAPPERS:
     /// Wrappers that need to call engine-side operations (TriggerAsync, UpsertRuntimeAsync, etc.)
-    /// pass an <see cref="ILifeCycleExecution"/> to the base constructor and use the protected
-    /// <see cref="Engine"/> property. The underlying proxy routes calls to wherever the engine
-    /// lives (in-process or remote HTTP) — the wrapper never holds a direct engine reference.
-    /// Wrappers that do not need engine calls can use the parameterless constructor.
+    /// use the protected <see cref="Engine"/> property. This is populated by the consumer manager
+    /// after the wrapper is activated, before dispatch — exactly like the step DAL fields.
+    /// No constructor parameter is needed; wrappers constructor-inject only their own app services.
     ///
     /// ACK OWNERSHIP:
     /// Wrappers normally do not call AckAsync directly. A handler returns AckOutcome and the
@@ -69,22 +68,17 @@ namespace Haley.Abstractions {
     ///   4) Return AckOutcome (Processed/Retry/Failed); ConsumerManager persists ACK result.
     /// </summary>
     public abstract class LifeCycleWrapper {
-        private readonly ILifeCycleExecution? _engine;
-
-        /// <summary>For wrappers that need to call engine operations (trigger, upsert runtime, etc.).</summary>
-        protected LifeCycleWrapper(ILifeCycleExecution engine) {
-            _engine = engine ?? throw new ArgumentNullException(nameof(engine));
-        }
 
         /// <summary>For wrappers that only process events and never call back to the engine.</summary>
         protected LifeCycleWrapper() { }
 
-        // ── Step DAL injection ─────────────────────────────────────────────────
-        // Not injected via the constructor because the wrapper is resolved from DI before
-        // ConsumerService knows which event it is handling (and therefore which step table
-        // connection to use). ConsumerService sets this field immediately after activation,
-        // before calling any dispatch method. The public API exposes it only through the
-        // protected helper methods below so subclasses can't accidentally misuse the DAL.
+        // ── Post-construction injection ────────────────────────────────────────
+        // These fields are NOT injected via the constructor. The consumer manager resolves
+        // (or activates) the wrapper first, then sets these fields immediately before calling
+        // any dispatch method. This keeps wrapper constructors free of framework concerns —
+        // subclasses only constructor-inject their own application services (repositories,
+        // HTTP clients, etc.) and the framework supplies engine access + DALs transparently.
+        internal ILifeCycleExecution? _engine;
         internal IConsumerInboxStepDAL? _stepDal;
         internal IConsumerBusinessActionDAL? _businessActionDal;
 
@@ -262,10 +256,10 @@ namespace Haley.Abstractions {
 
         /// <summary>
         /// Access the engine to trigger events, fetch timelines, upsert runtime logs, etc.
-        /// Only valid when the wrapper was constructed with <see cref="ILifeCycleExecution"/>.
+        /// Populated by the consumer manager before dispatch — always available inside handler methods.
         /// </summary>
         protected ILifeCycleExecution Engine =>
-            _engine ?? throw new InvalidOperationException("LifeCycleWrapper was constructed without ILifeCycleExecution. Use the overloaded constructor that accepts an engine.");
+            _engine ?? throw new InvalidOperationException("Engine was not injected by the consumer manager. This property is only valid inside handler methods dispatched by WorkFlowConsumerManager.");
 
         private static string? ToResultJson(object? value) {
             if (value == null) return null;

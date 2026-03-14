@@ -58,24 +58,24 @@ namespace Haley.Utils {
             return new WorkFlowConsumerService(options, agw, input.EngineProxy, provider);
         }
 
-        public static IServiceCollection AddWorkFlowConsumerService(this IServiceCollection services, IConfiguration configuration, string sectionName = "WorkFlowConsumer", bool autoStart = true, bool addDeferredInProcessProxy = true) {
+        public static IServiceCollection AddWorkFlowConsumerService(this IServiceCollection services, IConfiguration configuration, string sectionName = "WorkFlowConsumer", bool autoStart = true) {
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(configuration);
             if (string.IsNullOrWhiteSpace(sectionName)) throw new ArgumentException("Section name is required.", nameof(sectionName));
 
             services.Configure<ConsumerServiceOptions>(configuration.GetSection(sectionName));
-            return AddWorkFlowConsumerServiceCore(services, autoStart, addDeferredInProcessProxy);
+            return AddWorkFlowConsumerServiceCore(services, autoStart);
         }
 
-        public static IServiceCollection AddWorkFlowConsumerService(this IServiceCollection services, Action<ConsumerServiceOptions> configureOptions, bool autoStart = true, bool addDeferredInProcessProxy = true) {
+        public static IServiceCollection AddWorkFlowConsumerService(this IServiceCollection services, Action<ConsumerServiceOptions> configureOptions, bool autoStart = true) {
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(configureOptions);
 
             services.Configure(configureOptions);
-            return AddWorkFlowConsumerServiceCore(services, autoStart, addDeferredInProcessProxy);
+            return AddWorkFlowConsumerServiceCore(services, autoStart);
         }
 
-        private static IServiceCollection AddWorkFlowConsumerServiceCore(IServiceCollection services, bool autoStart, bool addDeferredInProcessProxy) {
+        private static IServiceCollection AddWorkFlowConsumerServiceCore(IServiceCollection services, bool autoStart) {
             var hasIAdapter = services.Any(s => s.ServiceType == typeof(IAdapterGateway));
             var hasAdapter = services.Any(s => s.ServiceType == typeof(AdapterGateway));
 
@@ -92,15 +92,9 @@ namespace Haley.Utils {
             services.TryAddSingleton<WorkFlowConsumerService>();
             services.TryAddSingleton<IWorkFlowConsumerService>(sp => sp.GetRequiredService<WorkFlowConsumerService>());
 
-            if (addDeferredInProcessProxy) {
-                services.TryAddSingleton<ILifeCycleEngineProxy>(sp => {
-                    var accessor = sp.GetService<IWorkFlowEngineAccessor>();
-                    if (accessor == null) {
-                        throw new InvalidOperationException("No ILifeCycleEngineProxy was registered, and IWorkFlowEngineAccessor was not found for in-process fallback. Register ILifeCycleEngineProxy explicitly or register engine service first.");
-                    }
-                    return new DeferredInProcessEngineProxy(accessor);
-                });
-            }
+            // ILifeCycleEngineProxy must be registered by the caller before this call.
+            // In-process host: call services.AddInProcessEngineProxy() from the engine package.
+            // Remote host: register an HttpEngineProxy (or similar) explicitly.
 
             if (autoStart) {
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WorkFlowConsumerBootstrap>());

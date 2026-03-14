@@ -1,3 +1,5 @@
+using Haley.Models;
+
 namespace Haley.Internal {
     /// <summary>Manages the <c>entity</c> table — the UUID generator for business entities.</summary>
     public interface IConsumerEntityDAL {
