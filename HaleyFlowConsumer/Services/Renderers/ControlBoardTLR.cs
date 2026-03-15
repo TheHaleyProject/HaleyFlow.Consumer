@@ -9,8 +9,8 @@ namespace Haley.Services;
 /// Converts a <see cref="ConsumerTimeline"/> into a self-contained HTML page.
 ///
 /// Design mirrors docs/consumer_timeline_preview.html:
-///   • Sticky rail sidebar — instance info, summary stats, trigger heat bars.
-///   • Main column — hero header (KPIs + chips), then a collapsible card per event.
+///   • Wider rail sidebar — fixed instance card plus scrollable summary / trigger heat.
+///   • Main column — simple title, sticky action bar, then a collapsible card per event.
 ///     Each card shows: inbox status, outbox delivery, step checkpoints, and the
 ///     full outbox retry history table.
 ///
@@ -76,30 +76,36 @@ internal static class ControlBoardTLR {
       mask-image: radial-gradient(circle at center, black 35%, transparent 95%);
     }
     .shell {
-      position: relative; z-index: 1; max-width: 1560px; margin: 0 auto; padding: 26px;
-      display: grid; grid-template-columns: 320px minmax(0,1fr); gap: 26px; align-items: start;
+      position: relative; z-index: 1; max-width: 1680px; margin: 0 auto; padding: 26px;
+      display: grid; grid-template-columns: 392px minmax(0,1fr); gap: 26px; align-items: start;
     }
-    .rail { position: sticky; top: 18px; display: flex; flex-direction: column; gap: 18px; align-self: start; }
+    .rail {
+      position: sticky; top: 18px; align-self: start; max-height: calc(100vh - 36px);
+      display: flex; flex-direction: column; gap: 18px;
+    }
+    .rail-top { flex: 0 0 auto; }
+    .rail-scroll {
+      min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding-right: 4px;
+    }
     .main { display: flex; flex-direction: column; gap: 20px; }
     .card, .hero, .event-card {
       background: var(--card); border: 1px solid rgba(255,255,255,.72);
       box-shadow: var(--shadow); backdrop-filter: blur(16px);
     }
     .card { border-radius: var(--radius-xl); padding: 20px; }
-    .hero { border-radius: 34px; padding: 28px; display: grid; grid-template-columns: minmax(0,1.1fr) minmax(300px,.9fr); gap: 20px; }
     .eyebrow, .section-title, .k-label, .meta-label, .prop-key {
       text-transform: uppercase; letter-spacing: .14em; font-size: .75rem; color: var(--muted);
     }
     .eyebrow { color: var(--teal); font-weight: 700; margin-bottom: 12px; }
-    .headline { margin: 0 0 14px; font-size: clamp(1.4rem,2vw,2.2rem); font-weight: 900; line-height: 1.1; }
-    .chip-row { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 10px; }
+    .page-head { padding: 18px 22px; }
+    .page-title { margin: 0; font-size: clamp(1.18rem,1.55vw,1.55rem); font-weight: 900; line-height: 1.08; }
+    .toolbar-stick { position: sticky; top: 18px; z-index: 6; }
+    .chip-row, .toolbar-meta { display: flex; flex-wrap: wrap; gap: 10px; }
     .chip { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.74); font-size: .83rem; }
     .chip strong, .mono { font-family: var(--mono); overflow-wrap: anywhere; word-break: break-word; }
-    .hero-kpis, .stats-grid, .meta-grid, .duo-grid, .summary-grid { display: grid; gap: 12px; }
-    .hero-kpis, .stats-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
-    .kpi, .stat, .meta-item, .mini-panel { border: 1px solid var(--line); background: rgba(255,255,255,.74); border-radius: 18px; }
-    .kpi { min-height: 98px; padding: 15px; display: flex; flex-direction: column; justify-content: space-between; }
-    .k-value { font-family: var(--serif); font-size: 2rem; line-height: 1; margin: 8px 0; }
+    .stats-grid, .meta-grid, .duo-grid, .summary-grid { display: grid; gap: 12px; }
+    .stats-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .stat, .meta-item, .mini-panel { border: 1px solid var(--line); background: rgba(255,255,255,.74); border-radius: 18px; }
     .stat { padding: 14px; }
     .stat strong { display: block; font-size: 1.32rem; margin-bottom: 4px; }
     .heat-stack { display: grid; gap: 10px; }
@@ -108,29 +114,29 @@ internal static class ControlBoardTLR {
     .bar { height: 8px; border-radius: 999px; background: rgba(23,37,44,.08); overflow: hidden; }
     .fill { height: 100%; background: linear-gradient(90deg, #d69229, #b24a34); }
     .timeline { display: flex; flex-direction: column; gap: 18px; }
-    .event-card { border-radius: 30px; padding: 22px; position: relative; }
+    .event-card { border-radius: 30px; padding: 20px; position: relative; transition: padding .18s ease; }
     .event-card::before {
       content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 7px;
       background: var(--accent, var(--teal)); border-radius: 30px 0 0 30px;
     }
     .event-head {
-      display: grid; grid-template-columns: 68px minmax(0,1fr) auto 22px;
-      gap: 18px; align-items: start; margin-bottom: 18px;
+      display: grid; grid-template-columns: 64px minmax(0,1fr) auto 22px;
+      gap: 16px; align-items: start; margin-bottom: 16px;
       cursor: pointer; user-select: none;
     }
     .event-mark {
-      width: 68px; height: 68px; border-radius: 22px; display: grid; place-items: center;
-      color: white; font-size: 1.4rem; font-weight: 700;
+      width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center;
+      color: white; font-size: 1.25rem; font-weight: 700;
       background: linear-gradient(160deg, var(--accent, var(--teal)), rgba(22,29,35,.96));
     }
-    .event-title { margin: 0 0 8px; font-size: 1.3rem; font-weight: 900; line-height: 1.1; }
-    .prop-row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 6px; }
+    .event-title { margin: 0 0 6px; font-size: 1.18rem; font-weight: 900; line-height: 1.1; }
+    .prop-row { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 4px; }
     .prop { display: inline-flex; align-items: baseline; gap: 5px; }
-    .prop-val { font-size: .85rem; font-family: var(--mono); color: var(--ink); }
+    .prop-val { font-size: .8rem; font-family: var(--mono); color: var(--ink); }
     .badge-stack { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
     .badge {
-      display: inline-flex; align-items: center; padding: 9px 14px; border-radius: 999px;
-      text-transform: uppercase; letter-spacing: .05em; font-size: .79rem; font-weight: 700; white-space: nowrap;
+      display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 999px;
+      text-transform: uppercase; letter-spacing: .05em; font-size: .74rem; font-weight: 700; white-space: nowrap;
     }
     .badge.fail  { background: rgba(178,74,52,.13);  color: var(--red);   }
     .badge.warn  { background: rgba(157,107,23,.14); color: var(--amber); }
@@ -141,6 +147,22 @@ internal static class ControlBoardTLR {
       padding-top: 6px; transition: transform .22s ease; align-self: start; text-align: center;
     }
     .event-card.collapsed .expand-chevron { transform: rotate(-90deg); }
+    .event-card.collapsed { padding-top: 14px; padding-bottom: 14px; }
+    .event-card.collapsed .event-head {
+      grid-template-columns: 50px minmax(0,1fr) auto 18px;
+      gap: 12px; margin-bottom: 0;
+    }
+    .event-card.collapsed .event-mark {
+      width: 50px; height: 50px; border-radius: 16px; font-size: 1.02rem;
+    }
+    .event-card.collapsed .section-title { font-size: .68rem; letter-spacing: .12em; }
+    .event-card.collapsed .event-title { margin-bottom: 4px; font-size: .98rem; }
+    .event-card.collapsed .prop-row { gap: 4px 10px; }
+    .event-card.collapsed .prop-key,
+    .event-card.collapsed .prop-val { font-size: .72rem; }
+    .event-card.collapsed .badge-stack { gap: 6px; }
+    .event-card.collapsed .badge { padding: 5px 9px; font-size: .66rem; }
+    .event-card.collapsed .expand-chevron { padding-top: 2px; font-size: .82rem; }
     .event-body-wrap { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .28s ease; }
     .event-card.collapsed .event-body-wrap { grid-template-rows: 0fr; }
     .event-body { overflow: hidden; min-height: 0; }
@@ -181,8 +203,11 @@ internal static class ControlBoardTLR {
     tbody tr:last-child td { border-bottom: 0; }
     .empty { padding: 14px; border-radius: 14px; border: 1px dashed rgba(23,37,44,.14); background: rgba(23,37,44,.04); color: var(--muted); font-size: .85rem; }
     .steps-box { margin-bottom: 18px; }
-    .timeline-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-    .timeline-label { flex: 1; font-size: .75rem; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); }
+    .timeline-toolbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+    .toolbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .btn-toolbar {
       padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line);
       background: rgba(255,255,255,.74); font-family: var(--ui); font-size: .8rem;
@@ -193,16 +218,19 @@ internal static class ControlBoardTLR {
     ::-webkit-scrollbar-track { background: rgba(23,37,44,.05); border-radius: 999px; }
     ::-webkit-scrollbar-thumb { background: rgba(23,37,44,.22); border-radius: 999px; }
     @media (max-width: 1220px) {
-      .shell, .hero, .meta-grid, .duo-grid { grid-template-columns: 1fr; }
-      .rail { position: static; }
+      .shell, .meta-grid, .duo-grid { grid-template-columns: 1fr; }
+      .rail { position: static; max-height: none; }
+      .rail-scroll { max-height: none; overflow: visible; padding-right: 0; }
+      .toolbar-stick { position: static; }
       .badge-stack { align-items: flex-start; }
     }
     @media (max-width: 760px) {
       .shell { padding: 14px; gap: 16px; }
-      .hero, .event-card, .card { border-radius: 22px; }
+      .page-head, .event-card, .card { border-radius: 22px; }
       .event-head { grid-template-columns: 1fr; }
       .event-mark { width: 58px; height: 58px; border-radius: 18px; }
-      .hero-kpis, .stats-grid, .summary-grid { grid-template-columns: 1fr; }
+      .event-card.collapsed .event-head { grid-template-columns: 1fr; }
+      .stats-grid, .summary-grid { grid-template-columns: 1fr; }
     }
   </style>
   <script>
@@ -238,10 +266,11 @@ internal static class ControlBoardTLR {
 
         sb.Append($"""
   <aside class="rail">
-    <section class="card">
-      <div class="section-title">Instance</div>
-      <div class="mono" style="overflow-wrap:anywhere;font-size:.85rem;margin-top:6px">{E(timeline.InstanceGuid)}</div>
-      <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+    <div class="rail-top">
+      <section class="card">
+        <div class="section-title">Instance</div>
+        <div class="mono" style="overflow-wrap:anywhere;font-size:.85rem;margin-top:6px">{E(timeline.InstanceGuid)}</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
 """);
 
         if (!string.IsNullOrWhiteSpace(consumerGuid))
@@ -251,22 +280,28 @@ internal static class ControlBoardTLR {
             sb.Append($"        {RailIdRow("entity", entityId)}\n");
 
         sb.Append($"        {RailIdRow("records", items.Count.ToString())}\n");
-        sb.Append("      </div>\n");
+        sb.Append("""
+        </div>
+      </section>
+    </div>
+    <div class="rail-scroll">
+""");
 
         sb.Append($"""
-    </section>
-    <section class="card">
-      <div class="section-title">Summary</div>
-      <div class="stats-grid">
-        {Stat(totalAttempts.ToString(), "attempts")}
-        {Stat(totalHistory.ToString(),  "history")}
-        {Stat(hookCount.ToString(),     "hooks")}
-        {Stat(transCount.ToString(),    "transitions")}
-      </div>
-    </section>
-    <section class="card">
-    <div class="section-title">Trigger Heat</div>
-      <div class="heat-stack">
+      <section class="card">
+        <div class="section-title">Summary</div>
+        <div class="stats-grid">
+          {Stat(items.Count.ToString(),     "records")}
+          {Stat(failedCount.ToString(),     "failed")}
+          {Stat(totalAttempts.ToString(),   "attempts")}
+          {Stat(totalHistory.ToString(),    "history")}
+          {Stat(hookCount.ToString(),       "hooks")}
+          {Stat(transCount.ToString(),      "transitions")}
+        </div>
+      </section>
+      <section class="card">
+        <div class="section-title">Trigger Heat</div>
+        <div class="heat-stack">
 """);
 
         for (var i = 0; i < items.Count; i++) {
@@ -288,8 +323,9 @@ internal static class ControlBoardTLR {
         }
 
         sb.Append("""
-      </div>
-    </section>
+        </div>
+      </section>
+    </div>
   </aside>
 """);
     }
@@ -305,36 +341,25 @@ internal static class ControlBoardTLR {
             ? first.EntityId
             : "\u2014";
 
-        var failedCount   = CountWhere(items, i => i.InboxStatus?.Status == "Failed");
-        var hookCount     = CountWhere(items, i => i.Kind == "Hook");
-        var transCount    = CountWhere(items, i => i.Kind == "Transition");
-        var totalAttempts = SumInt(items, i => i.InboxStatus?.AttemptCount ?? 0);
-        var totalHistory  = SumInt(items, i => i.Outbox?.History?.Count ?? 0);
-
         sb.Append($"""
   <main class="main">
-    <section class="hero">
-      <div>
-        <div class="eyebrow">Consumer Timeline</div>
-        <h1 class="headline">{E(title)}</h1>
-        <div class="chip-row">
+    <section class="card page-head">
+      <h1 class="page-title">{E(title)}</h1>
+    </section>
+
+    <div class="toolbar-stick">
+      <div class="card timeline-toolbar">
+        <div class="toolbar-meta">
           <div class="chip">def_id <strong>{E(defId)}</strong></div>
           <div class="chip">def_version <strong>{E(defVersionId)}</strong></div>
           <div class="chip">entity <strong class="mono">{E(entityShort)}</strong></div>
+          <div class="chip">records <strong>{items.Count}</strong></div>
+        </div>
+        <div class="toolbar-actions">
+          <button class="btn-toolbar" onclick="collapseAll()">Collapse All</button>
+          <button class="btn-toolbar" onclick="expandAll()">Expand All</button>
         </div>
       </div>
-      <div class="hero-kpis">
-        {Kpi("records",      items.Count.ToString(),      $"{transCount} transition \u00b7 {hookCount} hook")}
-        {Kpi("inbox_failed", failedCount.ToString(),      "")}
-        {Kpi("attempts",     totalAttempts.ToString(),    "inbox total")}
-        {Kpi("ack_history",  totalHistory.ToString(),     "outbox rows")}
-      </div>
-    </section>
-
-    <div class="timeline-toolbar">
-      <span class="timeline-label">Events</span>
-      <button class="btn-toolbar" onclick="collapseAll()">Collapse All</button>
-      <button class="btn-toolbar" onclick="expandAll()">Expand All</button>
     </div>
 
     <section class="timeline">
@@ -550,13 +575,6 @@ internal static class ControlBoardTLR {
     private static string RailIdRow(string key, string val) =>
         $"<div><span class=\"prop-key\" style=\"display:block\">{E(key)}</span>" +
         $"<span class=\"mono\" style=\"font-size:.82rem;overflow-wrap:anywhere\">{E(val)}</span></div>";
-
-    private static string Kpi(string label, string value, string sub) {
-        var subHtml = !string.IsNullOrEmpty(sub)
-            ? $"<div style=\"font-size:.8rem;color:var(--muted)\">{E(sub)}</div>"
-            : string.Empty;
-        return $"<div class=\"kpi\"><div class=\"k-label\">{E(label)}</div><div class=\"k-value\">{E(value)}</div>{subHtml}</div>";
-    }
 
     private static string Stat(string value, string label) =>
         $"<div class=\"stat\"><strong>{E(value)}</strong><div style=\"font-size:.8rem;color:var(--muted)\">{E(label)}</div></div>";
