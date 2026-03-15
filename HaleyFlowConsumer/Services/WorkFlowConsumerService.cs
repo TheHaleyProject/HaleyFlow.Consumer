@@ -128,7 +128,7 @@ namespace Haley.Services {
             var consumer = await GetConsumerAsync(ct);
             var timeline = await consumer.GetConsumerTimelineAsync(instanceGuid, ct);
             if (timeline == null || string.IsNullOrWhiteSpace(timeline.InstanceGuid)) return null;
-            return ConsumerTimelineTLR.Render(timeline, consumer.ConsumerGuid, displayName, color);
+            return ControlBoardTLR.Render(timeline, consumer.ConsumerGuid, displayName, color);
         }
 
         public async Task<string> CreateEntityAsync(CancellationToken ct = default) {

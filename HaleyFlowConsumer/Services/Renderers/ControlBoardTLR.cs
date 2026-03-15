@@ -9,7 +9,7 @@ namespace Haley.Services;
 /// Converts a <see cref="ConsumerTimeline"/> into a self-contained HTML page.
 ///
 /// Design mirrors docs/consumer_timeline_preview.html:
-///   • Sticky rail sidebar — instance info, summary stats, retry heat bars.
+///   • Sticky rail sidebar — instance info, summary stats, trigger heat bars.
 ///   • Main column — hero header (KPIs + chips), then a collapsible card per event.
 ///     Each card shows: inbox status, outbox delivery, step checkpoints, and the
 ///     full outbox retry history table.
@@ -17,7 +17,7 @@ namespace Haley.Services;
 /// Global "Collapse All" / "Expand All" toolbar and per-card click-to-expand
 /// are embedded in the page; no external dependencies.
 /// </summary>
-internal static class ConsumerTimelineTLR {
+internal static class ControlBoardTLR {
 
     public static string Render(ConsumerTimeline timeline, string? consumerGuid = null, string? displayName = null, string? color = null) {
         if (timeline == null) return string.Empty;
@@ -265,7 +265,7 @@ internal static class ConsumerTimelineTLR {
       </div>
     </section>
     <section class="card">
-      <div class="section-title">Retry Heat</div>
+    <div class="section-title">Trigger Heat</div>
       <div class="heat-stack">
 """);
 
