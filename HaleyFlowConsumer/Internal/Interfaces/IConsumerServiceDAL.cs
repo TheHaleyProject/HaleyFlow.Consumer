@@ -1,12 +1,13 @@
 namespace Haley.Internal {
     /// <summary>Aggregates all consumer-side DAL sub-interfaces.</summary>
-    public interface IConsumerServiceDAL {
-        IConsumerWorkflowDAL Workflow { get; }
+    internal interface IConsumerServiceDAL {
+        IConsumerInboxDAL Workflow { get; }
         IConsumerBusinessActionDAL BusinessAction { get; }
-        IConsumerInboxDAL Inbox { get; }
+        IConsumerInboxStatusDAL Inbox { get; }
         IConsumerInboxStepDAL InboxStep { get; }
         IConsumerOutboxDAL Outbox { get; }
         IConsumerEntityDAL Entity { get; }
-        IConsumerEntityWorkflowDAL EntityWorkflow { get; }
+        IConsumerWorkflowDAL EntityWorkflow { get; }
+        IConsumerTimelineDAL Timeline { get; }
     }
 }

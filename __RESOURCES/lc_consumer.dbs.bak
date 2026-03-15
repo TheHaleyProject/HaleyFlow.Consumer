@@ -286,18 +286,20 @@
 			</column>
 			<column name="def_name" type="VARCHAR" length="120" mandatory="y" />
 			<column name="instance_id" type="VARCHAR" length="42" mandatory="y" />
+			<column name="def_version" type="INT" mandatory="y" >
+				<defo><![CDATA[1]]></defo>
+			</column>
 			<column name="is_triggered" type="BIT" mandatory="y" >
 				<defo><![CDATA[0]]></defo>
 			</column>
 			<index name="pk_workflow" unique="PRIMARY_KEY" >
 				<column name="id" />
 			</index>
+			<index name="fk_workflow_entity" unique="NORMAL" >
+				<column name="entity" />
+			</index>
 			<index name="unq_workflow" unique="UNIQUE_KEY" >
 				<column name="def_name" />
-				<column name="entity" />
-				<column name="instance_id" />
-			</index>
-			<index name="fk_workflow_entity" unique="NORMAL" >
 				<column name="entity" />
 			</index>
 			<fk name="fk_workflow_entity" to_schema="lc_consumer" to_table="entity" >

@@ -121,14 +121,14 @@ namespace Haley.Abstractions {
         protected async Task<bool> IsBusinessActionCompletedAsync(ConsumerContext ctx, long defId, string entityId, int actionCode) {
             if (string.IsNullOrWhiteSpace(entityId)) return false;
             var row = await BusinessActionDal.GetByKeyAsync(
-                ctx.ConsumerId, defId, entityId, actionCode,
+                defId, entityId, actionCode,
                 new DbExecutionLoad(ctx.CancellationToken));
             return row?.Status == BusinessActionStatus.Completed;
         }
 
         protected Task<BusinessActionRecord?> GetBusinessActionAsync(ConsumerContext ctx, long defId, string entityId, int actionCode) {
             return BusinessActionDal.GetByKeyAsync(
-                ctx.ConsumerId, defId, entityId, actionCode,
+                defId, entityId, actionCode,
                 new DbExecutionLoad(ctx.CancellationToken));
         }
 
@@ -139,7 +139,7 @@ namespace Haley.Abstractions {
             if (actionCode <= 0) throw new ArgumentOutOfRangeException(nameof(actionCode));
 
             var load = new DbExecutionLoad(ctx.CancellationToken);
-            var existing = await BusinessActionDal.GetByKeyAsync(ctx.ConsumerId, defId, entityId, actionCode, load);
+            var existing = await BusinessActionDal.GetByKeyAsync(defId, entityId, actionCode, load);
 
             if (mode == BusinessActionExecutionMode.SkipIfCompleted &&
                 existing != null &&
@@ -153,7 +153,6 @@ namespace Haley.Abstractions {
             }
 
             var actionId = existing?.Id ?? await BusinessActionDal.UpsertReturnIdAsync(
-                ctx.ConsumerId,
                 defId,
                 entityId,
                 actionCode,

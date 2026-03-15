@@ -14,7 +14,7 @@ namespace Haley.Internal {
         Task AddHistoryAsync(long wfId, AckOutcome outcome, OutboxStatus status, string? responsePayload, string? error, DbExecutionLoad load = default);
         /// <summary>Returns pending outbox rows whose next_retry_at is due (or null), joined with workflow for ack_guid.</summary>
         Task<DbRows> ListDuePendingAsync(int take, DbExecutionLoad load = default);
-        Task<DbRows> ListPagedAsync(int? status, int skip, int take, DbExecutionLoad load = default);
+        Task<DbRows> ListPagedAsync(ConsumerOutboxFilter filter, DbExecutionLoad load = default);
         Task<long> CountPendingAsync(DbExecutionLoad load = default);
     }
 }

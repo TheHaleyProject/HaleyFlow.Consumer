@@ -9,9 +9,8 @@ namespace Haley.Internal {
     internal sealed class MariaConsumerBusinessActionDAL : MariaDALBase, IConsumerBusinessActionDAL {
         public MariaConsumerBusinessActionDAL(IDALUtilBase db) : base(db) { }
 
-        public async Task<long> UpsertReturnIdAsync(long consumerId, long defId, string entityId, int actionCode, BusinessActionStatus status, DbExecutionLoad load = default) {
+        public async Task<long> UpsertReturnIdAsync(long defId, string entityId, int actionCode, BusinessActionStatus status, DbExecutionLoad load = default) {
             var existingId = await Db.ScalarAsync<long?>(QRY_BUSINESS_ACTION.SELECT_ID_BY_KEY, load,
-                (CONSUMER_ID, consumerId),
                 (DEF_ID, defId),
                 (ENTITY_ID, entityId),
                 (ACTION_CODE, actionCode));
@@ -19,7 +18,6 @@ namespace Haley.Internal {
 
             // Insert path still uses UPSERT so a concurrent inserter resolves to the same row safely.
             var id = await Db.ScalarAsync<long?>(QRY_BUSINESS_ACTION.UPSERT_RETURN_ID, load,
-                (CONSUMER_ID, consumerId),
                 (DEF_ID, defId),
                 (ENTITY_ID, entityId),
                 (ACTION_CODE, actionCode),
@@ -33,9 +31,8 @@ namespace Haley.Internal {
             return row == null ? null : MapRow(row);
         }
 
-        public async Task<BusinessActionRecord?> GetByKeyAsync(long consumerId, long defId, string entityId, int actionCode, DbExecutionLoad load = default) {
+        public async Task<BusinessActionRecord?> GetByKeyAsync(long defId, string entityId, int actionCode, DbExecutionLoad load = default) {
             var row = await Db.RowAsync(QRY_BUSINESS_ACTION.SELECT_BY_KEY, load,
-                (CONSUMER_ID, consumerId),
                 (DEF_ID, defId),
                 (ENTITY_ID, entityId),
                 (ACTION_CODE, actionCode));
@@ -61,7 +58,6 @@ namespace Haley.Internal {
 
         private static BusinessActionRecord MapRow(DbRow r) => new() {
             Id = r.GetLong(KEY_ID),
-            ConsumerId = r.GetLong(KEY_CONSUMER_ID),
             DefId = r.GetLong(KEY_DEF_ID),
             EntityId = r.GetString(KEY_ENTITY_ID) ?? string.Empty,
             ActionCode = r.GetInt(KEY_ACTION_CODE),

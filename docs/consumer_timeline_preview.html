@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Consumer Timeline Preview</title>
+  <style>
+    :root {
+      --bg-a: #f8f4ec;
+      --bg-b: #ece2d4;
+      --card: rgba(255, 251, 245, 0.92);
+      --card-strong: #fffdf9;
+      --ink: #1d2830;
+      --muted: #68747d;
+      --line: rgba(23, 37, 44, 0.12);
+      --teal: #0f6a70;
+      --amber: #9d6b17;
+      --red: #b24a34;
+      --green: #2f714e;
+      --shadow: 0 24px 70px rgba(23, 30, 26, 0.12);
+      --radius-xl: 30px;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --mono: "Consolas", "Lucida Console", monospace;
+      --ui: "Bahnschrift", "Trebuchet MS", sans-serif;
+      --serif: "Georgia", "Palatino Linotype", serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      min-width: 0;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+    }
+
+    body {
+      font-family: var(--ui);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(15, 106, 112, 0.15), transparent 30%),
+        radial-gradient(circle at top right, rgba(178, 74, 52, 0.14), transparent 28%),
+        linear-gradient(180deg, var(--bg-a) 0%, var(--bg-b) 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(29, 40, 48, 0.028) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(29, 40, 48, 0.028) 1px, transparent 1px);
+      background-size: 22px 22px;
+      mask-image: radial-gradient(circle at center, black 35%, transparent 95%);
+    }
+
+    .shell {
+      position: relative;
+      z-index: 1;
+      max-width: 1560px;
+      margin: 0 auto;
+      padding: 26px;
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 26px;
+      align-items: start;
+    }
+
+    .rail {
+      position: sticky;
+      top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      align-self: start;
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .card,
+    .hero,
+    .event-card {
+      background: var(--card);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .card {
+      border-radius: var(--radius-xl);
+      padding: 20px;
+    }
+
+    .hero {
+      border-radius: 34px;
+      padding: 28px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+      gap: 20px;
+    }
+
+    .eyebrow,
+    .section-title,
+    .k-label,
+    .meta-label,
+    .ledger-label {
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .eyebrow {
+      color: var(--teal);
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .headline {
+      margin: 0 0 14px;
+      font-family: var(--serif);
+      font-size: clamp(2rem, 3vw, 3.3rem);
+      line-height: 0.98;
+      max-width: 12ch;
+    }
+
+    .copy,
+    .subtext,
+    .hint {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .chip-row {
+      margin-top: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .chip {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.74);
+      font-size: 0.83rem;
+    }
+
+    .chip strong,
+    .mono {
+      font-family: var(--mono);
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .hero-kpis,
+    .stats-grid,
+    .meta-grid,
+    .duo-grid,
+    .summary-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .hero-kpis,
+    .stats-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .kpi,
+    .stat,
+    .meta-item,
+    .mini-panel {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.74);
+      border-radius: 18px;
+    }
+
+    .kpi {
+      min-height: 98px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .k-value {
+      font-family: var(--serif);
+      font-size: 2rem;
+      line-height: 1;
+      margin: 8px 0;
+    }
+
+    .stat {
+      padding: 14px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 1.32rem;
+      margin-bottom: 4px;
+    }
+
+    .heat-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .heat-row {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.74);
+      border-radius: 16px;
+      padding: 12px;
+    }
+
+    .heat-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+      align-items: center;
+    }
+
+    .bar {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(23, 37, 44, 0.08);
+      overflow: hidden;
+    }
+
+    .fill {
+      height: 100%;
+      background: linear-gradient(90deg, #d69229, #b24a34);
+    }
+
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .event-card {
+      border-radius: 30px;
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .event-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 7px;
+      background: var(--accent, var(--teal));
+    }
+
+    .event-head {
+      display: grid;
+      grid-template-columns: 68px minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: start;
+      margin-bottom: 18px;
+    }
+
+    .event-mark {
+      width: 68px;
+      height: 68px;
+      border-radius: 22px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-size: 1.4rem;
+      font-weight: 700;
+      background: linear-gradient(160deg, var(--accent, var(--teal)), rgba(22, 29, 35, 0.96));
+    }
+
+    .event-title {
+      margin: 0 0 8px;
+      font-family: var(--serif);
+      font-size: 1.52rem;
+      line-height: 1.1;
+    }
+
+    .badge-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 9px 14px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.79rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .badge.fail {
+      background: rgba(178, 74, 52, 0.13);
+      color: var(--red);
+    }
+
+    .badge.warn {
+      background: rgba(157, 107, 23, 0.14);
+      color: var(--amber);
+    }
+
+    .badge.good {
+      background: rgba(47, 113, 78, 0.14);
+      color: var(--green);
+    }
+
+    .badge.info {
+      background: rgba(15, 106, 112, 0.12);
+      color: var(--teal);
+    }
+
+    .meta-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-bottom: 18px;
+    }
+
+    .meta-item {
+      padding: 14px 16px;
+    }
+
+    .meta-value {
+      margin-top: 6px;
+      line-height: 1.55;
+    }
+
+    .duo-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-bottom: 18px;
+    }
+
+    .section-box {
+      border-radius: 22px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.76);
+    }
+
+    .summary-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-top: 12px;
+    }
+
+    .mini-panel {
+      padding: 12px 14px;
+    }
+
+    .mini-value {
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    .scroll-box {
+      margin-top: 12px;
+      max-height: 126px;
+      overflow: auto;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(178, 74, 52, 0.16);
+      background: rgba(178, 74, 52, 0.08);
+      color: #8d3928;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .neutral-box {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(23, 37, 44, 0.04);
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .table-wrap {
+      margin-top: 12px;
+      max-height: 360px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card-strong);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      text-align: left;
+      padding: 12px 14px;
+      background: #f6eee1;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    tbody td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(23, 37, 44, 0.08);
+      vertical-align: top;
+      line-height: 1.45;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .empty {
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px dashed rgba(23, 37, 44, 0.14);
+      background: rgba(23, 37, 44, 0.04);
+      color: var(--muted);
+    }
+
+    .steps-box {
+      margin-bottom: 18px;
+    }
+
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(23, 37, 44, 0.05);
+      border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(23, 37, 44, 0.22);
+      border-radius: 999px;
+    }
+
+    @media (max-width: 1220px) {
+      .shell,
+      .hero,
+      .meta-grid,
+      .duo-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .rail {
+        position: static;
+      }
+
+      .badge-stack {
+        align-items: flex-start;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        padding: 14px;
+        gap: 16px;
+      }
+
+      .hero,
+      .event-card,
+      .card {
+        border-radius: 22px;
+      }
+
+      .event-head {
+        grid-template-columns: 1fr;
+      }
+
+      .event-mark {
+        width: 58px;
+        height: 58px;
+        border-radius: 18px;
+      }
+
+      .hero-kpis,
+      .stats-grid,
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="rail">
+      <section class="card">
+        <div class="section-title">Instance</div>
+        <div class="mono" id="instanceGuid"></div>
+        <div class="hint" id="entityNote"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">Pressure</div>
+        <div class="stats-grid" id="railStats"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">Retry Heat</div>
+        <div class="heat-stack" id="heat"></div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <section class="hero">
+        <div>
+          <div class="eyebrow">Consumer Timeline Study</div>
+          <h1 class="headline">Dispatch records rendered for debugging, not storytelling.</h1>
+          <div class="copy">
+            This preview treats each inbox row as an operational case card. The focus is inbox failure state,
+            retry churn, and ACK confirmation density. It is meant to show how the consumer timeline could look
+            before we wire the actual HTML renderer.
+          </div>
+          <div class="chip-row" id="chips"></div>
+        </div>
+
+        <div class="hero-kpis" id="kpis"></div>
+      </section>
+
+      <section class="timeline" id="items"></section>
+    </main>
+  </div>
+
+  <script>
+    const DATA = {
+      "instanceGuid": "30012930-2018-11f1-8441-8c8caad7d6a5",
+      "items": [
+        {
+          "inboxId": 5,
+          "ackGuid": "300491a0-2018-11f1-8441-8c8caad7d6a5",
+          "entityId": "d244fd5b-775c-4d8b-b06e-b7841cb7a451",
+          "kind": "Transition",
+          "defId": 1998,
+          "defVersionId": 1988,
+          "handlerVersion": 1988,
+          "eventCode": 4000,
+          "route": "",
+          "runCount": 1,
+          "occurred": "2026-03-15T02:39:11",
+          "created": "2026-03-15T06:39:13",
+          "inboxStatus": {
+            "status": "Failed",
+            "attemptCount": 11,
+            "lastError": "Cannot dynamically create an instance of type 'WFE.Test.UseCases.ChangeRequest.ChangeRequestWrapper'. Reason: No parameterless constructor defined.",
+            "receivedAt": "2026-03-15T06:39:13",
+            "modified": "2026-03-15T02:43:13"
+          },
+          "outbox": {
+            "outcome": "Retry",
+            "status": "Confirmed",
+            "nextRetryAt": null,
+            "lastError": "",
+            "modified": "2026-03-15T02:43:13",
+            "history": [
+              { "attemptNo": 1, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:39:36" },
+              { "attemptNo": 2, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:40:01" },
+              { "attemptNo": 3, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:40:25" },
+              { "attemptNo": 4, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:40:48" },
+              { "attemptNo": 5, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:41:12" },
+              { "attemptNo": 6, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:41:37" },
+              { "attemptNo": 7, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:42:00" },
+              { "attemptNo": 8, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:42:24" },
+              { "attemptNo": 9, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:42:49" },
+              { "attemptNo": 10, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:43:13" }
+            ]
+          },
+          "steps": []
+        },
+        {
+          "inboxId": 11,
+          "ackGuid": "300cecfe-2018-11f1-8441-8c8caad7d6a5",
+          "entityId": "d244fd5b-775c-4d8b-b06e-b7841cb7a451",
+          "kind": "Hook",
+          "defId": 1998,
+          "defVersionId": 1988,
+          "handlerVersion": 1988,
+          "eventCode": null,
+          "route": "APP.CHANGE.IMPACT.ASSESS",
+          "runCount": 1,
+          "occurred": "2026-03-15T02:39:11",
+          "created": "2026-03-15T06:39:14",
+          "inboxStatus": {
+            "status": "Failed",
+            "attemptCount": 11,
+            "lastError": "Cannot dynamically create an instance of type 'WFE.Test.UseCases.ChangeRequest.ChangeRequestWrapper'. Reason: No parameterless constructor defined.",
+            "receivedAt": "2026-03-15T06:39:14",
+            "modified": "2026-03-15T02:43:13"
+          },
+          "outbox": {
+            "outcome": "Retry",
+            "status": "Confirmed",
+            "nextRetryAt": null,
+            "lastError": "",
+            "modified": "2026-03-15T02:43:14",
+            "history": [
+              { "attemptNo": 1, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:39:14" },
+              { "attemptNo": 2, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:39:37" },
+              { "attemptNo": 3, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:40:01" },
+              { "attemptNo": 4, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:40:26" },
+              { "attemptNo": 5, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:40:48" },
+              { "attemptNo": 6, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:41:13" },
+              { "attemptNo": 7, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:41:37" },
+              { "attemptNo": 8, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:42:00" },
+              { "attemptNo": 9, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:42:24" },
+              { "attemptNo": 10, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:42:49" },
+              { "attemptNo": 11, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:43:14" }
+            ]
+          },
+          "steps": []
+        },
+        {
+          "inboxId": 12,
+          "ackGuid": "300a9950-2018-11f1-8441-8c8caad7d6a5",
+          "entityId": "d244fd5b-775c-4d8b-b06e-b7841cb7a451",
+          "kind": "Hook",
+          "defId": 1998,
+          "defVersionId": 1988,
+          "handlerVersion": 1988,
+          "eventCode": null,
+          "route": "APP.CHANGE.IMPACT.AUDIT.LOG",
+          "runCount": 1,
+          "occurred": "2026-03-15T02:39:11",
+          "created": "2026-03-15T06:39:14",
+          "inboxStatus": {
+            "status": "Failed",
+            "attemptCount": 11,
+            "lastError": "Cannot dynamically create an instance of type 'WFE.Test.UseCases.ChangeRequest.ChangeRequestWrapper'. Reason: No parameterless constructor defined.",
+            "receivedAt": "2026-03-15T06:39:14",
+            "modified": "2026-03-15T02:43:13"
+          },
+          "outbox": {
+            "outcome": "Retry",
+            "status": "Confirmed",
+            "nextRetryAt": null,
+            "lastError": "",
+            "modified": "2026-03-15T02:43:14",
+            "history": [
+              { "attemptNo": 1, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:39:14" },
+              { "attemptNo": 2, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:39:37" },
+              { "attemptNo": 3, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:40:01" },
+              { "attemptNo": 4, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:40:26" },
+              { "attemptNo": 5, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:40:48" },
+              { "attemptNo": 6, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:41:13" },
+              { "attemptNo": 7, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:41:37" },
+              { "attemptNo": 8, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:42:00" },
+              { "attemptNo": 9, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:42:24" },
+              { "attemptNo": 10, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:42:49" },
+              { "attemptNo": 11, "outcome": "Retry", "status": "Confirmed", "responsePayload": "", "error": "", "createdAt": "2026-03-15T06:43:14" }
+            ]
+          },
+          "steps": []
+        }
+      ]
+    };
+
+    const fmt = new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+
+    const shortFmt = new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+
+    function parseDate(value) {
+      if (!value) return null;
+      const normalized = value.replace(" ", "T");
+      const date = new Date(normalized.endsWith("Z") ? normalized : normalized + "Z");
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function pretty(value, short = false) {
+      const date = parseDate(value);
+      if (!date) return "n/a";
+      return short ? shortFmt.format(date) : fmt.format(date);
+    }
+
+    function esc(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function tone(status) {
+      const key = (status || "").toLowerCase();
+      if (key.includes("fail")) return "fail";
+      if (key.includes("retry") || key.includes("pending")) return "warn";
+      if (key.includes("confirm") || key.includes("process")) return "good";
+      return "info";
+    }
+
+    function accent(kind) {
+      return kind === "Hook" ? "#9d6b17" : "#0f6a70";
+    }
+
+    const items = DATA.items;
+    const failedCount = items.filter(item => item.inboxStatus?.status === "Failed").length;
+    const hookCount = items.filter(item => item.kind === "Hook").length;
+    const transitionCount = items.filter(item => item.kind === "Transition").length;
+    const totalAttempts = items.reduce((sum, item) => sum + (item.inboxStatus?.attemptCount || 0), 0);
+    const totalHistory = items.reduce((sum, item) => sum + ((item.outbox?.history || []).length), 0);
+
+    document.getElementById("instanceGuid").textContent = DATA.instanceGuid;
+    document.getElementById("entityNote").textContent =
+      `Entity ${items[0].entityId} produced ${items.length} consumer records. This view is optimized for support and retry analysis while the left rail stays stable.`;
+
+    document.getElementById("chips").innerHTML = [
+      `<div class="chip">Definition <strong>${items[0].defId}</strong></div>`,
+      `<div class="chip">Version <strong>${items[0].defVersionId}</strong></div>`,
+      `<div class="chip">Entity <strong>${esc(items[0].entityId.slice(0, 12))}...</strong></div>`
+    ].join("");
+
+    document.getElementById("kpis").innerHTML = [
+      metricCard("Consumer items", items.length, `${transitionCount} transition, ${hookCount} hook`),
+      metricCard("Failed inbox", failedCount, "current failure pressure"),
+      metricCard("Inbox attempts", totalAttempts, "cumulative execution attempts"),
+      metricCard("ACK history", totalHistory, "outbox confirmations on record")
+    ].join("");
+
+    document.getElementById("railStats").innerHTML = [
+      statCard(totalAttempts, "total attempts"),
+      statCard(totalHistory, "history rows"),
+      statCard(hookCount, "hook items"),
+      statCard(transitionCount, "transition items")
+    ].join("");
+
+    const maxAttempts = Math.max(...items.map(item => item.inboxStatus?.attemptCount || 0), 1);
+    document.getElementById("heat").innerHTML = items.map(item => {
+      const attempts = item.inboxStatus?.attemptCount || 0;
+      const width = Math.max(12, Math.round((attempts / maxAttempts) * 100));
+      const label = item.kind === "Hook" ? item.route : `EVENT ${item.eventCode}`;
+      return `
+        <div class="heat-row">
+          <div class="heat-head">
+            <span class="mono" style="font-size:.76rem;color:var(--muted)">${esc(label)}</span>
+            <strong>${attempts}</strong>
+          </div>
+          <div class="bar"><div class="fill" style="width:${width}%"></div></div>
+        </div>
+      `;
+    }).join("");
+
+    document.getElementById("items").innerHTML = items.map(renderItem).join("");
+
+    function metricCard(label, value, detail) {
+      return `
+        <div class="kpi">
+          <div class="k-label">${esc(label)}</div>
+          <div class="k-value">${esc(value)}</div>
+          <div class="subtext">${esc(detail)}</div>
+        </div>
+      `;
+    }
+
+    function statCard(value, label) {
+      return `
+        <div class="stat">
+          <strong>${esc(value)}</strong>
+          <div class="subtext">${esc(label)}</div>
+        </div>
+      `;
+    }
+
+    function renderItem(item) {
+      const eventTitle = item.kind === "Hook" ? item.route : `Event ${item.eventCode}`;
+      const history = item.outbox?.history || [];
+      const historyRows = history.map(attempt => `
+        <tr>
+          <td>${esc(attempt.attemptNo)}</td>
+          <td>${esc(attempt.outcome)}</td>
+          <td>${esc(attempt.status)}</td>
+          <td>${esc(pretty(attempt.createdAt))}</td>
+          <td>${esc(attempt.error || "")}</td>
+        </tr>
+      `).join("");
+
+      return `
+        <article class="event-card" style="--accent:${accent(item.kind)};">
+          <div class="event-head">
+            <div class="event-mark">${item.kind === "Hook" ? "H" : "T"}</div>
+            <div>
+              <div class="section-title">${esc(item.kind)} dispatch record</div>
+              <h2 class="event-title">${esc(eventTitle)}</h2>
+              <div class="subtext">
+                Inbox row <strong>#${item.inboxId}</strong> for definition <strong>${item.defId}</strong> version
+                <strong>${item.defVersionId}</strong>. Occurred <strong>${esc(pretty(item.occurred))}</strong> and landed
+                in the consumer <strong>${esc(pretty(item.created))}</strong>.
+              </div>
+            </div>
+            <div class="badge-stack">
+              <div class="badge ${tone(item.inboxStatus?.status)}">${esc(item.inboxStatus?.status)}</div>
+              <div class="badge ${tone(item.outbox?.outcome || item.outbox?.status)}">${esc(item.outbox?.outcome)} / ${esc(item.outbox?.status)}</div>
+            </div>
+          </div>
+
+          <div class="meta-grid">
+            <div class="meta-item">
+              <div class="meta-label">Ack guid</div>
+              <div class="meta-value mono">${esc(item.ackGuid)}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Entity</div>
+              <div class="meta-value mono">${esc(item.entityId)}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Handler version</div>
+              <div class="meta-value">${esc(item.handlerVersion)}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Run count</div>
+              <div class="meta-value">${esc(item.runCount)}</div>
+            </div>
+          </div>
+
+          <div class="duo-grid">
+            <section class="section-box">
+              <div class="section-title">Inbox execution</div>
+              <div class="summary-grid">
+                <div class="mini-panel">
+                  <div class="meta-label">Status</div>
+                  <div class="mini-value">${esc(item.inboxStatus?.status)}</div>
+                </div>
+                <div class="mini-panel">
+                  <div class="meta-label">Attempts</div>
+                  <div class="mini-value">${esc(item.inboxStatus?.attemptCount)}</div>
+                </div>
+                <div class="mini-panel">
+                  <div class="meta-label">Received</div>
+                  <div class="mini-value">${esc(pretty(item.inboxStatus?.receivedAt))}</div>
+                </div>
+                <div class="mini-panel">
+                  <div class="meta-label">Modified</div>
+                  <div class="mini-value">${esc(pretty(item.inboxStatus?.modified))}</div>
+                </div>
+              </div>
+              ${(item.inboxStatus?.lastError || "").trim()
+                ? `<div class="scroll-box">${esc(item.inboxStatus.lastError)}</div>`
+                : `<div class="neutral-box">No inbox error was captured for this record.</div>`}
+            </section>
+
+            <section class="section-box">
+              <div class="section-title">Outbox acknowledgement</div>
+              <div class="summary-grid">
+                <div class="mini-panel">
+                  <div class="meta-label">Outcome</div>
+                  <div class="mini-value">${esc(item.outbox?.outcome)}</div>
+                </div>
+                <div class="mini-panel">
+                  <div class="meta-label">Status</div>
+                  <div class="mini-value">${esc(item.outbox?.status)}</div>
+                </div>
+                <div class="mini-panel">
+                  <div class="meta-label">Next retry</div>
+                  <div class="mini-value">${esc(pretty(item.outbox?.nextRetryAt))}</div>
+                </div>
+                <div class="mini-panel">
+                  <div class="meta-label">Modified</div>
+                  <div class="mini-value">${esc(pretty(item.outbox?.modified))}</div>
+                </div>
+              </div>
+              ${(item.outbox?.lastError || "").trim()
+                ? `<div class="scroll-box">${esc(item.outbox.lastError)}</div>`
+                : `<div class="neutral-box">No transport error was captured. ACKs were confirmed despite the retry outcome.</div>`}
+            </section>
+          </div>
+
+          <section class="section-box steps-box">
+            <div class="section-title">Consumer steps</div>
+            <div class="neutral-box">No step-level action records were captured for this item.</div>
+          </section>
+
+          <section class="section-box">
+            <div class="section-title">Outbox attempt ledger</div>
+            ${history.length ? `
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Attempt</th>
+                      <th>Outcome</th>
+                      <th>Status</th>
+                      <th>Created</th>
+                      <th>Error</th>
+                    </tr>
+                  </thead>
+                  <tbody>${historyRows}</tbody>
+                </table>
+              </div>
+            ` : `
+              <div class="empty" style="margin-top:12px;">No outbox history rows were recorded.</div>
+            `}
+          </section>
+        </article>
+      `;
+    }
+  </script>
+</body>
+</html>

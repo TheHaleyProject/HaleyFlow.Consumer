@@ -4,25 +4,23 @@ namespace Haley.Internal {
     internal static class QRY_BUSINESS_ACTION {
         public const string SELECT_ID_BY_KEY =
             $@"SELECT id FROM business_action
-               WHERE consumer_id = {CONSUMER_ID}
-                 AND def_id = {DEF_ID}
+               WHERE def_id = {DEF_ID}
                  AND entity_id = lower(trim({ENTITY_ID}))
                  AND action_code = {ACTION_CODE}
                LIMIT 1;";
 
         public const string UPSERT_RETURN_ID =
-            $@"INSERT INTO business_action (consumer_id, def_id, entity_id, action_code, status)
-               VALUES ({CONSUMER_ID}, {DEF_ID}, lower(trim({ENTITY_ID})), {ACTION_CODE}, {STATUS})
+            $@"INSERT INTO business_action (def_id, entity_id, action_code, status)
+               VALUES ({DEF_ID}, lower(trim({ENTITY_ID})), {ACTION_CODE}, {STATUS})
                ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id);
-               SELECT LAST_INSERT_ID() AS id;";
+                SELECT LAST_INSERT_ID() AS id;";
 
         public const string SELECT_BY_ID =
             $@"SELECT * FROM business_action WHERE id = {ID} LIMIT 1;";
 
         public const string SELECT_BY_KEY =
             $@"SELECT * FROM business_action
-               WHERE consumer_id = {CONSUMER_ID}
-                 AND def_id = {DEF_ID}
+               WHERE def_id = {DEF_ID}
                  AND entity_id = lower(trim({ENTITY_ID}))
                  AND action_code = {ACTION_CODE}
                LIMIT 1;";

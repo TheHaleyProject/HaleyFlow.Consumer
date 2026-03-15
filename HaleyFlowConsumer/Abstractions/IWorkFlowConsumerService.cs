@@ -10,11 +10,13 @@ namespace Haley.Abstractions {
         Task StopAsync(CancellationToken ct = default);
 
         // ── Administrative reads ──────────────────────────────────────────────
-        Task<DbRows> ListWorkflowsAsync(int skip, int take, CancellationToken ct = default);
-        Task<DbRows> ListInboxAsync(int? status, int skip, int take, CancellationToken ct = default);
-        Task<DbRows> ListOutboxAsync(int? status, int skip, int take, CancellationToken ct = default);
+        Task<DbRows> ListWorkflowsAsync(ConsumerWorkflowFilter filter, CancellationToken ct = default);
+        Task<DbRows> ListInboxAsync(ConsumerInboxFilter filter, CancellationToken ct = default);
+        Task<DbRows> ListInboxStatusesAsync(ConsumerInboxStatusFilter filter, CancellationToken ct = default);
+        Task<DbRows> ListOutboxAsync(ConsumerOutboxFilter filter, CancellationToken ct = default);
         Task<long> CountPendingInboxAsync(CancellationToken ct = default);
         Task<long> CountPendingOutboxAsync(CancellationToken ct = default);
+        Task<ConsumerTimeline> GetConsumerTimelineAsync(string instanceGuid, CancellationToken ct = default);
 
         // ── Entity & Workflow management (client-facing) ──────────────────────
         /// <summary>

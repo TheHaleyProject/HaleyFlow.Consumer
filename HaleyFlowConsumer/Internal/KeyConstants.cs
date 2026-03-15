@@ -29,5 +29,19 @@ namespace Haley.Internal {
         public const string KEY_INSTANCE_ID = "instance_id";
         public const string KEY_IS_TRIGGERED = "is_triggered";
         public const string KEY_ENTITY = "entity";
+        // inbox_status
+        public const string KEY_ATTEMPT_COUNT = "attempt_count";
+        public const string KEY_RECEIVED_AT = "received_at";
+        public const string KEY_MODIFIED = "modified";
+        // outbox
+        public const string KEY_NEXT_RETRY_AT = "next_retry_at";
+        // shared read keys
+        public const string KEY_LAST_ERROR = "last_error";
+        // outbox_history
+        public const string KEY_ATTEMPT_NO = "attempt_no";
+        public const string KEY_OUTCOME = "outcome";
+        public const string KEY_RESPONSE_PAYLOAD = "response_payload_json";
+        public const string KEY_ERROR = "error";
+        public const string KEY_CREATED_AT = "created_at";
     }
 }

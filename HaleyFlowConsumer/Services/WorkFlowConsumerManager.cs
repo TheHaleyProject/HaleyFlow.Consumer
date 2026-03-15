@@ -51,7 +51,7 @@ namespace Haley.Services {
         /// <inheritdoc/>
         public event Func<LifeCycleNotice, Task>? NoticeRaised;
 
-        public WorkFlowConsumerManager(ILifeCycleEngineProxy feed, IConsumerServiceDAL dal, IServiceProvider sp, WorkFlowConsumerOptions? options = null) {
+        internal WorkFlowConsumerManager(ILifeCycleEngineProxy feed, IConsumerServiceDAL dal, IServiceProvider sp, WorkFlowConsumerOptions? options = null) {
             _feed = feed ?? throw new ArgumentNullException(nameof(feed));
             _dal = dal ?? throw new ArgumentNullException(nameof(dal));
             _sp = sp ?? throw new ArgumentNullException(nameof(sp));
@@ -79,20 +79,26 @@ namespace Haley.Services {
         // Administrative reads (consumer DB)
         // ----------------------------------------------------------------
 
-        public Task<DbRows> ListWorkflowsAsync(int skip, int take, CancellationToken ct = default)
-            => _dal.Workflow.ListPagedAsync(skip, take, new DbExecutionLoad(ct));
+        public Task<DbRows> ListWorkflowsAsync(ConsumerWorkflowFilter filter, CancellationToken ct = default)
+            => _dal.EntityWorkflow.ListPagedAsync(filter ?? new ConsumerWorkflowFilter(), new DbExecutionLoad(ct));
 
-        public Task<DbRows> ListInboxAsync(int? status, int skip, int take, CancellationToken ct = default)
-            => _dal.Inbox.ListPagedAsync(status, skip, take, new DbExecutionLoad(ct));
+        public Task<DbRows> ListInboxAsync(ConsumerInboxFilter filter, CancellationToken ct = default)
+            => _dal.Workflow.ListPagedAsync(filter ?? new ConsumerInboxFilter(), new DbExecutionLoad(ct));
 
-        public Task<DbRows> ListOutboxAsync(int? status, int skip, int take, CancellationToken ct = default)
-            => _dal.Outbox.ListPagedAsync(status, skip, take, new DbExecutionLoad(ct));
+        public Task<DbRows> ListInboxStatusesAsync(ConsumerInboxStatusFilter filter, CancellationToken ct = default)
+            => _dal.Inbox.ListPagedAsync(filter ?? new ConsumerInboxStatusFilter(), new DbExecutionLoad(ct));
+
+        public Task<DbRows> ListOutboxAsync(ConsumerOutboxFilter filter, CancellationToken ct = default)
+            => _dal.Outbox.ListPagedAsync(filter ?? new ConsumerOutboxFilter(), new DbExecutionLoad(ct));
 
         public Task<long> CountPendingInboxAsync(CancellationToken ct = default)
             => _dal.Inbox.CountPendingAsync(new DbExecutionLoad(ct));
 
         public Task<long> CountPendingOutboxAsync(CancellationToken ct = default)
             => _dal.Outbox.CountPendingAsync(new DbExecutionLoad(ct));
+
+        public Task<ConsumerTimeline> GetConsumerTimelineAsync(string instanceGuid, CancellationToken ct = default)
+            => _dal.Timeline.GetByInstanceGuidAsync(instanceGuid, new DbExecutionLoad(ct));
 
         // ----------------------------------------------------------------
         // Lifecycle
@@ -243,7 +249,7 @@ namespace Haley.Services {
         //   Step 1: Check the registry — do we have a wrapper for this definition? If not, ignore it.
         //           (Events for definitions this consumer doesn't handle will be dispatched to other consumers.)
         //
-        //   Step 2: Upsert the workflow row — UNIQUE(consumer_id, ack_guid) makes this idempotent.
+        //   Step 2: Upsert the inbox row — UNIQUE(ack_guid) makes this idempotent.
         //           If the same event is delivered twice (monitor resend), we get the existing row, not a duplicate.
         //
         //   Step 3: Pin the handler version on first delivery for this entity.
@@ -281,7 +287,7 @@ namespace Haley.Services {
                 return;
             }
 
-            // 1. Upsert workflow row (idempotent via UNIQUE(consumer_id, ack_guid))
+            // 1. Upsert inbox row (idempotent via UNIQUE(ack_guid))
             var load = new DbExecutionLoad(ct);
             var wfRecord = BuildWorkflowRecord(item);
             var (wfId, isNew) = await _dal.Workflow.UpsertAsync(wfRecord, load);

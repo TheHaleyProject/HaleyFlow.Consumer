@@ -3,22 +3,24 @@ using Haley.Utils;
 
 namespace Haley.Internal {
     internal sealed class MariaConsumerServiceDAL : DALUtilBase, IConsumerServiceDAL {
-        public IConsumerWorkflowDAL Workflow { get; }
+        public IConsumerInboxDAL Workflow { get; }
         public IConsumerBusinessActionDAL BusinessAction { get; }
-        public IConsumerInboxDAL Inbox { get; }
+        public IConsumerInboxStatusDAL Inbox { get; }
         public IConsumerInboxStepDAL InboxStep { get; }
         public IConsumerOutboxDAL Outbox { get; }
         public IConsumerEntityDAL Entity { get; }
-        public IConsumerEntityWorkflowDAL EntityWorkflow { get; }
+        public IConsumerWorkflowDAL EntityWorkflow { get; }
+        public IConsumerTimelineDAL Timeline { get; }
 
         public MariaConsumerServiceDAL(IAdapterGateway agw, string key) : base (agw,key) {
-            Workflow = new MariaConsumerWorkflowDAL(this);
+            Workflow = new MariaConsumerInboxDAL(this);
             BusinessAction = new MariaConsumerBusinessActionDAL(this);
-            Inbox = new MariaConsumerInboxDAL(this);
+            Inbox = new MariaConsumerInboxStatusDAL(this);
             InboxStep = new MariaConsumerInboxStepDAL(this);
             Outbox = new MariaConsumerOutboxDAL(this);
             Entity = new MariaConsumerEntityDAL(this);
-            EntityWorkflow = new MariaConsumerEntityWorkflowDAL(this);
+            EntityWorkflow = new MariaConsumerWorkflowDAL(this);
+            Timeline = new MariaConsumerTimelineDAL(this);
         }
     }
 }

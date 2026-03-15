@@ -89,19 +89,24 @@ namespace Haley.Services {
             }
         }
 
-        public async Task<DbRows> ListWorkflowsAsync(int skip, int take, CancellationToken ct = default) {
+        public async Task<DbRows> ListWorkflowsAsync(ConsumerWorkflowFilter filter, CancellationToken ct = default) {
             var consumer = await GetConsumerAsync(ct);
-            return await consumer.ListWorkflowsAsync(skip, take, ct);
+            return await consumer.ListWorkflowsAsync(filter, ct);
         }
 
-        public async Task<DbRows> ListInboxAsync(int? status, int skip, int take, CancellationToken ct = default) {
+        public async Task<DbRows> ListInboxAsync(ConsumerInboxFilter filter, CancellationToken ct = default) {
             var consumer = await GetConsumerAsync(ct);
-            return await consumer.ListInboxAsync(status, skip, take, ct);
+            return await consumer.ListInboxAsync(filter, ct);
         }
 
-        public async Task<DbRows> ListOutboxAsync(int? status, int skip, int take, CancellationToken ct = default) {
+        public async Task<DbRows> ListInboxStatusesAsync(ConsumerInboxStatusFilter filter, CancellationToken ct = default) {
             var consumer = await GetConsumerAsync(ct);
-            return await consumer.ListOutboxAsync(status, skip, take, ct);
+            return await consumer.ListInboxStatusesAsync(filter, ct);
+        }
+
+        public async Task<DbRows> ListOutboxAsync(ConsumerOutboxFilter filter, CancellationToken ct = default) {
+            var consumer = await GetConsumerAsync(ct);
+            return await consumer.ListOutboxAsync(filter, ct);
         }
 
         public async Task<long> CountPendingInboxAsync(CancellationToken ct = default) {
@@ -112,6 +117,11 @@ namespace Haley.Services {
         public async Task<long> CountPendingOutboxAsync(CancellationToken ct = default) {
             var consumer = await GetConsumerAsync(ct);
             return await consumer.CountPendingOutboxAsync(ct);
+        }
+
+        public async Task<ConsumerTimeline> GetConsumerTimelineAsync(string instanceGuid, CancellationToken ct = default) {
+            var consumer = await GetConsumerAsync(ct);
+            return await consumer.GetConsumerTimelineAsync(instanceGuid, ct);
         }
 
         public async Task<string> CreateEntityAsync(CancellationToken ct = default) {

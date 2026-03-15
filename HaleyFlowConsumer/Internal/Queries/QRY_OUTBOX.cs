@@ -44,10 +44,20 @@ namespace Haley.Internal {
 
         public const string LIST_PAGED =
             $@"SELECT o.inbox_id, o.current_outcome, o.status, o.next_retry_at, o.last_error, o.modified,
-              i.entity_id, i.instance_guid, i.kind, i.route, i.event_code
+              i.ack_guid, i.entity_id, i.instance_guid, i.kind, i.def_id, i.def_version_id,
+              i.route, i.event_code, i.occurred, i.created
        FROM outbox o
        JOIN inbox i ON i.id = o.inbox_id
-       WHERE ({STATUS} < 0 OR o.status = {STATUS})
+       WHERE ({STATUS} IS NULL OR o.status = {STATUS})
+         AND ({OUTCOME} IS NULL OR o.current_outcome = {OUTCOME})
+         AND ({KIND} IS NULL OR i.kind = {KIND})
+         AND ({DEF_ID} IS NULL OR i.def_id = {DEF_ID})
+         AND ({DEF_VERSION_ID} IS NULL OR i.def_version_id = {DEF_VERSION_ID})
+         AND (NULLIF(TRIM({ENTITY_ID}), '') IS NULL OR i.entity_id = lower(trim({ENTITY_ID})))
+         AND (NULLIF(TRIM({INSTANCE_GUID}), '') IS NULL OR i.instance_guid = trim({INSTANCE_GUID}))
+         AND (NULLIF(TRIM({ACK_GUID}), '') IS NULL OR i.ack_guid = trim({ACK_GUID}))
+         AND (NULLIF(TRIM({ROUTE}), '') IS NULL OR i.route = trim({ROUTE}))
+         AND ({EVENT_CODE} IS NULL OR i.event_code = {EVENT_CODE})
        ORDER BY o.modified DESC
        LIMIT {TAKE} OFFSET {SKIP};";
 

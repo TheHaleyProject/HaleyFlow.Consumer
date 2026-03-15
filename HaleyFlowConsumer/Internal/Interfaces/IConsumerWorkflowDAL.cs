@@ -1,23 +1,28 @@
-using Haley.Enums;
-using Haley.Models;
-using System.Threading.Tasks;
 using Haley.Models;
 
 namespace Haley.Internal {
+    /// <summary>
+    /// Manages the <c>workflow</c> table — tracks which workflow definitions an entity is enrolled in
+    /// and whether the engine trigger has been called.
+    /// </summary>
     public interface IConsumerWorkflowDAL {
         /// <summary>
-        /// Updates the existing workflow row when (consumer_id, ack_guid) is already present.
-        /// Falls back to insert/upsert only when the row does not exist yet, so repeated calls
-        /// do not burn auto-increment values on duplicate-key updates.
+        /// Inserts or updates an entity-workflow mapping row.
+        /// Returns the surrogate row ID.
         /// </summary>
-        Task<(long wfId, bool isNew)> UpsertAsync(WorkflowRecord record, DbExecutionLoad load = default);
-        Task<WorkflowRecord?> GetByIdAsync(long wfId, DbExecutionLoad load = default);
+        Task<long> UpsertAsync(EntityWorkflowRecord record, DbExecutionLoad load = default);
+
+        Task<EntityWorkflowRecord?> GetByIdAsync(long id, DbExecutionLoad load = default);
+
+        Task<DbRows> ListPagedAsync(ConsumerWorkflowFilter filter, DbExecutionLoad load = default);
+
+        /// <summary>Returns all workflow rows for the given entity, ordered newest first.</summary>
+        Task<DbRows> GetByEntityAsync(string entityId, DbExecutionLoad load = default);
+
         /// <summary>
-        /// Returns the handler_version pinned on the earliest event for this (def_id, entity_id) pair.
-        /// Null if no prior event has been pinned yet.
+        /// After a successful engine trigger, stamps the instance GUID and marks is_triggered = true.
+        /// Matches on UNIQUE(def_name, entity), so the correct row is updated regardless of ID.
         /// </summary>
-        Task<int?> GetPinnedHandlerVersionAsync(long defId, string entityId, DbExecutionLoad load = default);
-        Task SetHandlerVersionAsync(long wfId, int handlerVersion, HandlerUpgrade upgrade, DbExecutionLoad load = default);
-        Task<DbRows> ListPagedAsync(int skip, int take, DbExecutionLoad load = default);
+        Task SetTriggeredAsync(string entityId, string defName, string instanceId, DbExecutionLoad load = default);
     }
 }

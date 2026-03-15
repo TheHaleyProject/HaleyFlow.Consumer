@@ -103,20 +103,30 @@ namespace Haley.Utils {
             return services;
         }
 
-        public static IReadOnlyList<Dictionary<string, object?>> ToWorkflowDictionaries(this DbRows rows) {
+        public static IReadOnlyList<Dictionary<string, object?>> ToConsumerWorkflowDictionaries(this DbRows rows) {
             var items = rows.ToDictionaries();
             for (var i = 0; i < items.Count; i++) {
-                var item = items[i];
-                item.MapEnumField<WorkflowKind>("kind");
-                item.MapEnumField<InboxStatus>("inbox_status");
-                item.MapEnumField<OutboxStatus>("outbox_status");
-                item.MapEnumField<AckOutcome>("current_outcome");
+                NormalizeBoolField(items[i], "is_triggered");
             }
 
             return items;
         }
 
-        public static IReadOnlyList<Dictionary<string, object?>> ToInboxDictionaries(this DbRows rows) {
+        public static IReadOnlyList<Dictionary<string, object?>> ToWorkflowDictionaries(this DbRows rows)
+            => rows.ToConsumerWorkflowDictionaries();
+
+        public static IReadOnlyList<Dictionary<string, object?>> ToInboxItemDictionaries(this DbRows rows) {
+            var items = rows.ToDictionaries();
+            for (var i = 0; i < items.Count; i++) {
+                var item = items[i];
+                item.MapEnumField<WorkflowKind>("kind");
+                item.MapEnumField<HandlerUpgrade>("handler_upgrade");
+            }
+
+            return items;
+        }
+
+        public static IReadOnlyList<Dictionary<string, object?>> ToInboxStatusDictionaries(this DbRows rows) {
             var items = rows.ToDictionaries();
             for (var i = 0; i < items.Count; i++) {
                 var item = items[i];
@@ -126,6 +136,9 @@ namespace Haley.Utils {
 
             return items;
         }
+
+        public static IReadOnlyList<Dictionary<string, object?>> ToInboxDictionaries(this DbRows rows)
+            => rows.ToInboxStatusDictionaries();
 
         public static IReadOnlyList<Dictionary<string, object?>> ToOutboxDictionaries(this DbRows rows) {
             var items = rows.ToDictionaries();
@@ -137,6 +150,23 @@ namespace Haley.Utils {
             }
 
             return items;
+        }
+
+        private static void NormalizeBoolField(Dictionary<string, object?> item, string fieldName) {
+            if (!item.TryGetValue(fieldName, out var raw) || raw == null) return;
+            item[fieldName] = raw switch {
+                bool value => value,
+                byte value => value != 0,
+                sbyte value => value != 0,
+                short value => value != 0,
+                int value => value != 0,
+                long value => value != 0,
+                ulong value => value != 0,
+                byte[] value when value.Length > 0 => value[0] != 0,
+                string value when bool.TryParse(value, out var parsed) => parsed,
+                string value when int.TryParse(value, out var parsed) => parsed != 0,
+                _ => raw
+            };
         }
     }
 }

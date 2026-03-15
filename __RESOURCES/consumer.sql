@@ -140,10 +140,11 @@ CREATE TABLE IF NOT EXISTS `workflow` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `entity` varchar(42) NOT NULL COMMENT 'one workflow can have only one entity.. but same entity can be part of multiple workflow.',
   `def_name` varchar(120) NOT NULL,
-  `instance_id` varchar(42) NOT NULL,
+  `instance_id` varchar(42) DEFAULT NULL,
   `is_triggered` bit(1) NOT NULL DEFAULT b'0',
+  `def_version` int(11) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `unq_workflow` (`def_name`,`entity`,`instance_id`),
+  UNIQUE KEY `unq_workflow` (`def_name`,`entity`),
   KEY `fk_workflow_entity` (`entity`),
   CONSTRAINT `fk_workflow_entity` FOREIGN KEY (`entity`) REFERENCES `entity` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='An entity can be part of different defintion.. for each definitoin it can generate a workflow id.. and we also capture and set the instance id. (coming from the engine)';
