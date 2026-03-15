@@ -149,7 +149,7 @@ namespace Haley.Services {
             _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             var token = _cts.Token;
             _ = Task.Run(() => HeartbeatLoopAsync(token), token);  // keeps consumer row alive
-            _ = Task.Run(() => PollLoopAsync(token), token);        // fetches and dispatches due events
+            _ = Task.Run(() => PollLoopAsync(token), token);        // fetches and dispatches due events from the feed not directly from engine.. 
             _ = Task.Run(() => OutboxLoopAsync(token), token);      // retries failed ACK deliveries
         }
 
