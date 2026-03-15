@@ -5,8 +5,8 @@ using Haley.Utils;
 using static Haley.Internal.QueryFields;
 
 namespace Haley.Internal {
-    internal sealed class MariaConsumerInboxStatusDAL : MariaDALBase, IConsumerInboxStatusDAL {
-        public MariaConsumerInboxStatusDAL(IDALUtilBase db) : base(db) { }
+    internal sealed class MariaInboxStatusDAL : MariaDALBase, IInboxStatusDAL {
+        public MariaInboxStatusDAL(IDALUtilBase db) : base(db) { }
 
         public Task UpsertAsync(long wfId, string? paramsJson, DbExecutionLoad load = default)
             => Db.ExecAsync(QRY_INBOX_STATUS.UPSERT, load,
@@ -30,9 +30,6 @@ namespace Haley.Internal {
             return Db.RowsAsync(QRY_INBOX_STATUS.LIST_PAGED, load,
                 (STATUS, filter.Status.HasValue ? (object?)(byte)filter.Status.Value : DBNull.Value),
                 (KIND, filter.Kind.HasValue ? (object?)(byte)filter.Kind.Value : DBNull.Value),
-                (DEF_ID, filter.DefId.HasValue ? (object?)filter.DefId.Value : DBNull.Value),
-                (DEF_VERSION_ID, filter.DefVersionId.HasValue ? (object?)filter.DefVersionId.Value : DBNull.Value),
-                (ENTITY_ID, string.IsNullOrWhiteSpace(filter.EntityId) ? DBNull.Value : filter.EntityId.Trim()),
                 (INSTANCE_GUID, string.IsNullOrWhiteSpace(filter.InstanceGuid) ? DBNull.Value : filter.InstanceGuid.Trim()),
                 (ACK_GUID, string.IsNullOrWhiteSpace(filter.AckGuid) ? DBNull.Value : filter.AckGuid.Trim()),
                 (ROUTE, string.IsNullOrWhiteSpace(filter.Route) ? DBNull.Value : filter.Route.Trim()),

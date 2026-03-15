@@ -27,8 +27,8 @@ namespace Haley.Internal {
         /// </summary>
         public const string LIST_DUE_PENDING =
             $@"SELECT o.inbox_id, o.current_outcome, o.status, o.next_retry_at,
-                      i.ack_guid, i.consumer_id,
-                      COALESCE((SELECT MAX(oh.attempt_no) FROM outbox_history oh WHERE oh.outbox_id = o.inbox_id), 0) AS last_attempt_no
+                      i.ack_guid,
+                      COALESCE((SELECT MAX(oh.attempt_no) FROM outbox_history oh WHERE oh.inbox_id = o.inbox_id), 0) AS last_attempt_no
                FROM outbox o
                JOIN inbox i ON i.id = o.inbox_id
                WHERE o.status = 1
@@ -37,29 +37,27 @@ namespace Haley.Internal {
                LIMIT {TAKE};";
 
         public const string ADD_HISTORY =
-            $@"INSERT INTO outbox_history (outbox_id, outcome, status, attempt_no, response_payload_json, error)
+            $@"INSERT INTO outbox_history (inbox_id, outcome, status, attempt_no, response, error)
                VALUES ({INBOX_ID}, {OUTCOME}, {STATUS},
-                       COALESCE((SELECT MAX(attempt_no) FROM outbox_history WHERE outbox_id = {INBOX_ID}), 0) + 1,
+                       COALESCE((SELECT MAX(attempt_no) FROM outbox_history WHERE inbox_id = {INBOX_ID}), 0) + 1,
                        {RESPONSE_PAYLOAD}, {ERROR});";
 
         public const string LIST_PAGED =
             $@"SELECT o.inbox_id, o.current_outcome, o.status, o.next_retry_at, o.last_error, o.modified,
-              i.ack_guid, i.entity_id, i.instance_guid, i.kind, i.def_id, i.def_version_id,
-              i.route, i.event_code, i.occurred, i.created
-       FROM outbox o
-       JOIN inbox i ON i.id = o.inbox_id
-       WHERE ({STATUS} IS NULL OR o.status = {STATUS})
-         AND ({OUTCOME} IS NULL OR o.current_outcome = {OUTCOME})
-         AND ({KIND} IS NULL OR i.kind = {KIND})
-         AND ({DEF_ID} IS NULL OR i.def_id = {DEF_ID})
-         AND ({DEF_VERSION_ID} IS NULL OR i.def_version_id = {DEF_VERSION_ID})
-         AND (NULLIF(TRIM({ENTITY_ID}), '') IS NULL OR i.entity_id = lower(trim({ENTITY_ID})))
-         AND (NULLIF(TRIM({INSTANCE_GUID}), '') IS NULL OR i.instance_guid = trim({INSTANCE_GUID}))
-         AND (NULLIF(TRIM({ACK_GUID}), '') IS NULL OR i.ack_guid = trim({ACK_GUID}))
-         AND (NULLIF(TRIM({ROUTE}), '') IS NULL OR i.route = trim({ROUTE}))
-         AND ({EVENT_CODE} IS NULL OR i.event_code = {EVENT_CODE})
-       ORDER BY o.modified DESC
-       LIMIT {TAKE} OFFSET {SKIP};";
+                      i.ack_guid, i.kind, i.route, i.event_code, i.occurred, i.created,
+                      inst.guid AS instance_guid, inst.entity_guid, inst.def_name
+               FROM outbox o
+               JOIN inbox i ON i.id = o.inbox_id
+               JOIN instance inst ON inst.id = i.instance_id
+               WHERE ({STATUS} IS NULL OR o.status = {STATUS})
+                 AND ({OUTCOME} IS NULL OR o.current_outcome = {OUTCOME})
+                 AND ({KIND} IS NULL OR i.kind = {KIND})
+                 AND (NULLIF(TRIM({INSTANCE_GUID}), '') IS NULL OR inst.guid = trim({INSTANCE_GUID}))
+                 AND (NULLIF(TRIM({ACK_GUID}), '') IS NULL OR i.ack_guid = trim({ACK_GUID}))
+                 AND (NULLIF(TRIM({ROUTE}), '') IS NULL OR i.route = trim({ROUTE}))
+                 AND ({EVENT_CODE} IS NULL OR i.event_code = {EVENT_CODE})
+               ORDER BY o.modified DESC
+               LIMIT {TAKE} OFFSET {SKIP};";
 
         public const string COUNT_PENDING =
             @"SELECT COUNT(*) FROM outbox WHERE status = 1;";

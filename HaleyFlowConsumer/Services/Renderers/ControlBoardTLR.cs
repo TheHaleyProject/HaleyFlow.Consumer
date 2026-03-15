@@ -7,15 +7,6 @@ namespace Haley.Services;
 
 /// <summary>
 /// Converts a <see cref="ConsumerTimeline"/> into a self-contained HTML page.
-///
-/// Design mirrors docs/consumer_timeline_preview.html:
-///   • Wider rail sidebar — fixed instance card plus scrollable summary / trigger heat.
-///   • Main column — simple title, sticky action bar, then a collapsible card per event.
-///     Each card shows: inbox status, outbox delivery, step checkpoints, and the
-///     full outbox retry history table.
-///
-/// Global "Collapse All" / "Expand All" toolbar and per-card click-to-expand
-/// are embedded in the page; no external dependencies.
 /// </summary>
 internal static class ControlBoardTLR {
 
@@ -202,7 +193,7 @@ internal static class ControlBoardTLR {
     tbody td { padding: 12px 14px; border-bottom: 1px solid rgba(23,37,44,.08); vertical-align: top; line-height: 1.45; }
     tbody tr:last-child td { border-bottom: 0; }
     .empty { padding: 14px; border-radius: 14px; border: 1px dashed rgba(23,37,44,.14); background: rgba(23,37,44,.04); color: var(--muted); font-size: .85rem; }
-    .steps-box { margin-bottom: 18px; }
+    .actions-box { margin-bottom: 18px; }
     .timeline-toolbar {
       display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
       margin-bottom: 4px;
@@ -248,7 +239,6 @@ internal static class ControlBoardTLR {
 <body>
 """);
 
-        // Optional teal accent override (accepts a plain CSS color value, e.g. "#1a6b4a")
         if (!string.IsNullOrWhiteSpace(color))
             sb.Append($"<style>:root {{ --teal: {E(color.Trim())}; }}</style>\n");
     }
@@ -256,10 +246,9 @@ internal static class ControlBoardTLR {
     // ── Rail ─────────────────────────────────────────────────────────────────
 
     private static void WriteRail(StringBuilder sb, ConsumerTimeline timeline, IReadOnlyList<ConsumerTimelineItem> items, string? consumerGuid) {
-        var entityId     = items.Count > 0 ? items[0].EntityId : string.Empty;
-        var failedCount  = CountWhere(items, i => i.InboxStatus?.Status == "Failed");
-        var hookCount    = CountWhere(items, i => i.Kind == "Hook");
-        var transCount   = CountWhere(items, i => i.Kind == "Transition");
+        var failedCount   = CountWhere(items, i => i.InboxStatus?.Status == "Failed");
+        var hookCount     = CountWhere(items, i => i.Kind == "Hook");
+        var transCount    = CountWhere(items, i => i.Kind == "Transition");
         var totalAttempts = SumInt(items, i => i.InboxStatus?.AttemptCount ?? 0);
         var totalHistory  = SumInt(items, i => i.Outbox?.History?.Count ?? 0);
         var maxAttempts   = MaxInt(items, i => i.InboxStatus?.AttemptCount ?? 0);
@@ -276,8 +265,11 @@ internal static class ControlBoardTLR {
         if (!string.IsNullOrWhiteSpace(consumerGuid))
             sb.Append($"        {RailIdRow("consumer", consumerGuid)}\n");
 
-        if (!string.IsNullOrWhiteSpace(entityId))
-            sb.Append($"        {RailIdRow("entity", entityId)}\n");
+        if (!string.IsNullOrWhiteSpace(timeline.EntityGuid))
+            sb.Append($"        {RailIdRow("entity", timeline.EntityGuid)}\n");
+
+        if (!string.IsNullOrWhiteSpace(timeline.DefName))
+            sb.Append($"        {RailIdRow("definition", timeline.DefName)}\n");
 
         sb.Append($"        {RailIdRow("records", items.Count.ToString())}\n");
         sb.Append("""
@@ -333,13 +325,10 @@ internal static class ControlBoardTLR {
     // ── Main ─────────────────────────────────────────────────────────────────
 
     private static void WriteMain(StringBuilder sb, ConsumerTimeline timeline, IReadOnlyList<ConsumerTimelineItem> items, string? displayName) {
-        var title       = !string.IsNullOrWhiteSpace(displayName) ? displayName : timeline.InstanceGuid;
-        var first       = items.Count > 0 ? items[0] : null;
-        var defId       = first?.DefId.ToString()        ?? "\u2014";
-        var defVersionId = first?.DefVersionId.ToString() ?? "\u2014";
-        var entityShort = first != null && !string.IsNullOrWhiteSpace(first.EntityId)
-            ? first.EntityId
-            : "\u2014";
+        var title = !string.IsNullOrWhiteSpace(displayName) ? displayName : timeline.InstanceGuid;
+        var versionChip = timeline.DefVersion > 0
+            ? $"<div class=\"chip\">version <strong>{timeline.DefVersion}</strong></div>"
+            : string.Empty;
 
         sb.Append($"""
   <main class="main">
@@ -350,9 +339,9 @@ internal static class ControlBoardTLR {
     <div class="toolbar-stick">
       <div class="card timeline-toolbar">
         <div class="toolbar-meta">
-          <div class="chip">def_id <strong>{E(defId)}</strong></div>
-          <div class="chip">def_version <strong>{E(defVersionId)}</strong></div>
-          <div class="chip">entity <strong class="mono">{E(entityShort)}</strong></div>
+          <div class="chip">definition <strong>{E(timeline.DefName ?? "\u2014")}</strong></div>
+          {versionChip}
+          <div class="chip">entity <strong class="mono">{E(timeline.EntityGuid ?? "\u2014")}</strong></div>
           <div class="chip">records <strong>{items.Count}</strong></div>
         </div>
         <div class="toolbar-actions">
@@ -377,14 +366,14 @@ internal static class ControlBoardTLR {
     // ── Event card ───────────────────────────────────────────────────────────
 
     private static void WriteItem(StringBuilder sb, ConsumerTimelineItem item) {
-        var isHook      = item.Kind == "Hook";
-        var accent      = isHook ? "#9d6b17" : "#0f6a70";
-        var mark        = isHook ? "H" : "T";
-        var eventTitle  = isHook
+        var isHook     = item.Kind == "Hook";
+        var accent     = isHook ? "#9d6b17" : "#0f6a70";
+        var mark       = isHook ? "H" : "T";
+        var eventTitle = isHook
             ? (item.Route ?? "hook")
             : $"event_code: {item.EventCode?.ToString() ?? "\u2014"}";
 
-        var inboxTone  = Tone(item.InboxStatus?.Status);
+        var inboxTone   = Tone(item.InboxStatus?.Status);
         var outboxBadge = $"{item.Outbox?.Outcome ?? "\u2014"} / {item.Outbox?.Status ?? "\u2014"}";
         var outboxTone  = Tone(item.Outbox?.Outcome);
 
@@ -396,11 +385,9 @@ internal static class ControlBoardTLR {
             <div class="section-title">{E(item.Kind)}</div>
             <h2 class="event-title">{E(eventTitle)}</h2>
             <div class="prop-row">
-              {Prop("inbox_id",    item.InboxId.ToString())}
-              {Prop("def_id",      item.DefId.ToString())}
-              {Prop("def_version", item.DefVersionId.ToString())}
-              {Prop("occurred",    FmtFull(item.Occurred))}
-              {Prop("created",     FmtFull(item.Created))}
+              {Prop("inbox_id", item.InboxId.ToString())}
+              {Prop("occurred", FmtFull(item.Occurred))}
+              {Prop("created",  FmtFull(item.Created))}
             </div>
           </div>
           <div class="badge-stack">
@@ -434,7 +421,7 @@ internal static class ControlBoardTLR {
           </div>
 """);
 
-        WriteStepsSection(sb, item.Steps);
+        WriteActionsSection(sb, item.Actions);
         WriteOutboxHistorySection(sb, item.Outbox?.History);
 
         sb.Append("""
@@ -474,11 +461,11 @@ internal static class ControlBoardTLR {
     // ── Outbox panel ─────────────────────────────────────────────────────────
 
     private static void WriteOutboxPanel(StringBuilder sb, ConsumerTimelineOutbox? o) {
-        var outcome    = o?.Outcome ?? "\u2014";
-        var status     = o?.Status  ?? "\u2014";
-        var nextRetry  = o?.NextRetryAt != null ? FmtFull(o.NextRetryAt.Value.UtcDateTime) : "\u2014";
-        var modified   = o != null ? FmtFull(o.Modified) : "\u2014";
-        var hasError   = !string.IsNullOrWhiteSpace(o?.LastError);
+        var outcome   = o?.Outcome ?? "\u2014";
+        var status    = o?.Status  ?? "\u2014";
+        var nextRetry = o?.NextRetryAt != null ? FmtFull(o.NextRetryAt.Value.UtcDateTime) : "\u2014";
+        var modified  = o != null ? FmtFull(o.Modified) : "\u2014";
+        var hasError  = !string.IsNullOrWhiteSpace(o?.LastError);
 
         sb.Append($"""
             <section class="section-box">
@@ -499,33 +486,34 @@ internal static class ControlBoardTLR {
         sb.Append("            </section>\n");
     }
 
-    // ── Steps section ────────────────────────────────────────────────────────
+    // ── Actions section ──────────────────────────────────────────────────────
 
-    private static void WriteStepsSection(StringBuilder sb, IReadOnlyList<ConsumerTimelineStep>? steps) {
+    private static void WriteActionsSection(StringBuilder sb, IReadOnlyList<ConsumerTimelineAction>? actions) {
         sb.Append("""
-          <section class="section-box steps-box">
-            <div class="section-title">steps</div>
+          <section class="section-box actions-box">
+            <div class="section-title">business actions</div>
 """);
 
-        if (steps == null || steps.Count == 0) {
+        if (actions == null || actions.Count == 0) {
             sb.Append("            <div class=\"neutral-box\">\u2014</div>\n");
         } else {
             sb.Append("""
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>step_code</th><th>status</th><th>started_at</th><th>completed_at</th><th>error</th></tr>
+                  <tr><th>action_code</th><th>delivery</th><th>business</th><th>started_at</th><th>completed_at</th><th>error</th></tr>
                 </thead>
                 <tbody>
 """);
-            for (var i = 0; i < steps.Count; i++) {
-                var step = steps[i];
+            for (var i = 0; i < actions.Count; i++) {
+                var a = actions[i];
                 sb.Append($"                  <tr>" +
-                    $"<td>{E(step.StepCode.ToString())}</td>" +
-                    $"<td>{E(step.Status)}</td>" +
-                    $"<td>{E(step.StartedAt.HasValue ? FmtFull(step.StartedAt.Value) : "\u2014")}</td>" +
-                    $"<td>{E(step.CompletedAt.HasValue ? FmtFull(step.CompletedAt.Value) : "\u2014")}</td>" +
-                    $"<td>{E(step.LastError ?? "")}</td>" +
+                    $"<td>{E(a.ActionCode.ToString())}</td>" +
+                    $"<td>{E(a.DeliveryStatus)}</td>" +
+                    $"<td>{E(a.BusinessStatus)}</td>" +
+                    $"<td>{E(a.StartedAt.HasValue ? FmtFull(a.StartedAt.Value) : "\u2014")}</td>" +
+                    $"<td>{E(a.CompletedAt.HasValue ? FmtFull(a.CompletedAt.Value) : "\u2014")}</td>" +
+                    $"<td>{E(a.DeliveryError ?? "")}</td>" +
                     $"</tr>\n");
             }
             sb.Append("                </tbody>\n              </table>\n            </div>\n");
@@ -571,7 +559,6 @@ internal static class ControlBoardTLR {
 
     // ── Small HTML builders ───────────────────────────────────────────────────
 
-    // Full-width key + value row for the rail instance card — value wraps, never truncates.
     private static string RailIdRow(string key, string val) =>
         $"<div><span class=\"prop-key\" style=\"display:block\">{E(key)}</span>" +
         $"<span class=\"mono\" style=\"font-size:.82rem;overflow-wrap:anywhere\">{E(val)}</span></div>";
@@ -600,7 +587,7 @@ internal static class ControlBoardTLR {
 
     private static string E(string s) => WebUtility.HtmlEncode(s);
 
-    // ── Aggregate helpers (no LINQ dependency) ────────────────────────────────
+    // ── Aggregate helpers ─────────────────────────────────────────────────────
 
     private static int CountWhere(IReadOnlyList<ConsumerTimelineItem> items, Func<ConsumerTimelineItem, bool> pred) {
         var n = 0;

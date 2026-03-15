@@ -6,22 +6,25 @@ using static Haley.Internal.KeyConstants;
 using Haley.Utils;
 
 namespace Haley.Internal {
-    internal sealed class MariaConsumerBusinessActionDAL : MariaDALBase, IConsumerBusinessActionDAL {
-        public MariaConsumerBusinessActionDAL(IDALUtilBase db) : base(db) { }
+    internal sealed class MariaBusinessActionDAL : MariaDALBase, IBusinessActionDAL {
+        public MariaBusinessActionDAL(IDALUtilBase db) : base(db) { }
 
-        public async Task<long> UpsertReturnIdAsync(long defId, string entityId, int actionCode, BusinessActionStatus status, DbExecutionLoad load = default) {
+        public async Task<long> UpsertReturnIdAsync(long instanceId, int actionCode, BusinessActionStatus status, DbExecutionLoad load = default) {
+            // Fast path: action already exists for this instance.
             var existingId = await Db.ScalarAsync<long?>(QRY_BUSINESS_ACTION.SELECT_ID_BY_KEY, load,
-                (DEF_ID, defId),
-                (ENTITY_ID, entityId),
+                (INSTANCE_ID, instanceId),
                 (ACTION_CODE, actionCode));
             if (existingId.HasValue && existingId.Value > 0) return existingId.Value;
 
-            // Insert path still uses UPSERT so a concurrent inserter resolves to the same row safely.
-            var id = await Db.ScalarAsync<long?>(QRY_BUSINESS_ACTION.UPSERT_RETURN_ID, load,
-                (DEF_ID, defId),
-                (ENTITY_ID, entityId),
+            // INSERT IGNORE never burns an auto_increment slot on duplicate.
+            await Db.ExecAsync(QRY_BUSINESS_ACTION.INSERT_IGNORE, load,
+                (INSTANCE_ID, instanceId),
                 (ACTION_CODE, actionCode),
                 (STATUS, (byte)status));
+
+            var id = await Db.ScalarAsync<long?>(QRY_BUSINESS_ACTION.SELECT_ID_BY_KEY, load,
+                (INSTANCE_ID, instanceId),
+                (ACTION_CODE, actionCode));
             if (id == null || id.Value <= 0) throw new InvalidOperationException("business_action upsert failed.");
             return id.Value;
         }
@@ -31,10 +34,9 @@ namespace Haley.Internal {
             return row == null ? null : MapRow(row);
         }
 
-        public async Task<BusinessActionRecord?> GetByKeyAsync(long defId, string entityId, int actionCode, DbExecutionLoad load = default) {
+        public async Task<BusinessActionRecord?> GetByKeyAsync(long instanceId, int actionCode, DbExecutionLoad load = default) {
             var row = await Db.RowAsync(QRY_BUSINESS_ACTION.SELECT_BY_KEY, load,
-                (DEF_ID, defId),
-                (ENTITY_ID, entityId),
+                (INSTANCE_ID, instanceId),
                 (ACTION_CODE, actionCode));
             return row == null ? null : MapRow(row);
         }
@@ -50,21 +52,21 @@ namespace Haley.Internal {
                 (STATUS, (byte)BusinessActionStatus.Completed),
                 (RESULT_JSON, (object?)resultJson ?? DBNull.Value));
 
-        public Task SetFailedAsync(long id, string? resultJson = null, DbExecutionLoad load = default)
+        public Task SetFailedAsync(long id, string? errorMessage = null, DbExecutionLoad load = default)
             => Db.ExecAsync(QRY_BUSINESS_ACTION.SET_FAILED, load,
                 (ID, id),
                 (STATUS, (byte)BusinessActionStatus.Failed),
-                (RESULT_JSON, (object?)resultJson ?? DBNull.Value));
+                (LAST_ERROR, (object?)errorMessage ?? DBNull.Value));
 
         private static BusinessActionRecord MapRow(DbRow r) => new() {
-            Id = r.GetLong(KEY_ID),
-            DefId = r.GetLong(KEY_DEF_ID),
-            EntityId = r.GetString(KEY_ENTITY_ID) ?? string.Empty,
+            Id         = r.GetLong(KEY_ID),
+            InstanceId = r.GetLong(KEY_INSTANCE_ID),
             ActionCode = r.GetInt(KEY_ACTION_CODE),
-            Status = (BusinessActionStatus)r.GetInt(KEY_STATUS),
-            StartedAt = r.GetDateTime(KEY_STARTED_AT) ?? DateTime.UtcNow,
+            Status     = (BusinessActionStatus)r.GetInt(KEY_STATUS),
+            StartedAt  = r.GetDateTime(KEY_STARTED_AT) ?? default,
             CompletedAt = r.GetDateTime(KEY_COMPLETED_AT),
-            ResultJson = r.GetString(KEY_RESULT_JSON)
+            ResultJson = r.GetString(KEY_RESULT_JSON),
+            LastError  = r.GetString(KEY_LAST_ERROR),
         };
     }
 }

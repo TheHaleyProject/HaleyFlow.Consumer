@@ -22,25 +22,17 @@ USE `lc_consumer`;
 -- Dumping structure for table lc_consumer.business_action
 CREATE TABLE IF NOT EXISTS `business_action` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'Internal surrogate identifier.',
-  `entity_id` varchar(40) NOT NULL COMMENT 'External business entity identifier (for example submission or application id).',
-  `def_id` bigint(20) NOT NULL COMMENT 'Workflow definition identifier.',
+  `instance_id` bigint(20) NOT NULL,
   `action_code` int(11) NOT NULL COMMENT 'Business action code (example: 100=SendLoginCredentials, 200=SendWarningEmail).',
   `status` int(11) NOT NULL COMMENT 'Action execution state: 1=Pending, 2=Running, 3=Completed, 4=Failed.',
-  `started_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'Execution start timestamp.',
+  `started_at` datetime NOT NULL COMMENT 'Execution start timestamp.',
   `completed_at` datetime(6) DEFAULT NULL COMMENT 'Execution completion timestamp.',
   `result_json` longtext DEFAULT NULL COMMENT 'Structured execution result payload (JSON).',
+  `last_error` text DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `unq_business_action` (`def_id`,`entity_id`,`action_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Idempotent record of business side-effects executed by a consumer for a workflow entity.';
-
--- Data exporting was unselected.
-
--- Dumping structure for table lc_consumer.entity
-CREATE TABLE IF NOT EXISTS `entity` (
-  `id` varchar(42) NOT NULL DEFAULT uuid() COMMENT 'Auto generated GUID',
-  `created` datetime NOT NULL DEFAULT current_timestamp(),
-  UNIQUE KEY `unq_entity` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='one entity can go through different workflow.. so dont restrict it here.. this is just a common id generator table';
+  UNIQUE KEY `unq_business_action` (`instance_id`,`action_code`),
+  CONSTRAINT `fk_business_action_instance` FOREIGN KEY (`instance_id`) REFERENCES `instance` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Idempotent record of business side-effects executed by a consumer for a workflow instance.';
 
 -- Data exporting was unselected.
 
@@ -48,13 +40,8 @@ CREATE TABLE IF NOT EXISTS `entity` (
 CREATE TABLE IF NOT EXISTS `inbox` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT 'Internal surrogate identifier.',
   `ack_guid` varchar(64) NOT NULL COMMENT 'External acknowledgement GUID used for idempotency and correlation.',
-  `entity_id` varchar(40) NOT NULL COMMENT 'External business entity identifier (for example submission or application id).See if two different consumers are involved, adn one of the consumer doesn'' t even have this entity refercne, it can for the first time, call a relevant DB which it knows for sure contains the referenced entity_id.. then update it in the internal database (for the consumer database)>.. this is more good, because we know that this workflow was not initated here (if the entity id is not present in the entity table here.. )',
   `kind` tinyint(3) unsigned NOT NULL COMMENT 'Workload kind: 1=Transition, 2=Hook.',
-  `consumer_id` int(10) unsigned NOT NULL COMMENT 'Registered consumer identifier.',
-  `def_id` bigint(20) unsigned NOT NULL COMMENT 'Workflow definition identifier.',
-  `def_version_id` bigint(20) unsigned NOT NULL COMMENT 'Definition version identifier captured when workload was created.',
   `handler_version` int(11) DEFAULT NULL COMMENT 'Pinned consumer handler version used for this workload.',
-  `instance_guid` varchar(36) DEFAULT NULL COMMENT 'Workflow instance GUID from engine.',
   `on_success` int(11) DEFAULT NULL COMMENT 'Optional consumer action code to execute after successful processing.',
   `on_failure` int(11) DEFAULT NULL COMMENT 'Optional consumer action code to execute after failed processing.',
   `occurred` datetime NOT NULL COMMENT 'Domain occurrence timestamp from source event.',
@@ -63,10 +50,28 @@ CREATE TABLE IF NOT EXISTS `inbox` (
   `created` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'UTC timestamp when the row was created.',
   `handler_upgrade` tinyint(4) NOT NULL DEFAULT 1 COMMENT 'Handler strategy: 1=PinnedVersion, 2=AllowUpgradeToLatest.',
   `run_count` int(11) NOT NULL DEFAULT 1 COMMENT 'Number of times this workload has been executed/retried.',
+  `instance_id` bigint(20) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `unq_workflow_ack_guid` (`ack_guid`),
-  KEY `idx_workflow_entity_def` (`entity_id`)
+  UNIQUE KEY `unq_inbox_ack_guid` (`ack_guid`),
+  KEY `idx_inbox_instance` (`instance_id`),
+  KEY `idx_inbox` (`route`),
+  KEY `idx_inbox_0` (`kind`),
+  CONSTRAINT `fk_inbox_instance` FOREIGN KEY (`instance_id`) REFERENCES `instance` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Canonical consumer-side record for one engine-raised transition or hook workload.';
+
+-- Data exporting was unselected.
+
+-- Dumping structure for table lc_consumer.inbox_action
+CREATE TABLE IF NOT EXISTS `inbox_action` (
+  `inbox_id` bigint(20) unsigned NOT NULL COMMENT 'Inbox record identifier (FK to inbox.wf_id).',
+  `action_id` bigint(20) NOT NULL DEFAULT 0 COMMENT 'Consumer business action',
+  `last_error` text DEFAULT NULL COMMENT 'Last captured error message for troubleshooting.',
+  `status` tinyint(4) NOT NULL DEFAULT 1 COMMENT '1 - Attempted, 2 - Completed, 3 - Failed',
+  PRIMARY KEY (`inbox_id`,`action_id`),
+  KEY `fk_inbox_action_business_action` (`action_id`),
+  CONSTRAINT `fk_inbox_action_business_action` FOREIGN KEY (`action_id`) REFERENCES `business_action` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `fk_inbox_step_inbox` FOREIGN KEY (`inbox_id`) REFERENCES `inbox` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Step-level execution tracking for inbox items to support deterministic, idempotent processing.';
 
 -- Data exporting was unselected.
 
@@ -81,24 +86,24 @@ CREATE TABLE IF NOT EXISTS `inbox_status` (
   `last_error` text DEFAULT NULL COMMENT 'Last captured error message for troubleshooting.',
   PRIMARY KEY (`inbox_id`),
   KEY `idx_inbox_status` (`status`,`received_at`),
-  CONSTRAINT `fk_inbox_workflow` FOREIGN KEY (`inbox_id`) REFERENCES `inbox` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
+  CONSTRAINT `fk_inbox_status_inbox` FOREIGN KEY (`inbox_id`) REFERENCES `inbox` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Durable inbound work queue for engine-raised workflow items received by a consumer.';
 
 -- Data exporting was unselected.
 
--- Dumping structure for table lc_consumer.inbox_step
-CREATE TABLE IF NOT EXISTS `inbox_step` (
-  `inbox_id` bigint(20) unsigned NOT NULL COMMENT 'Inbox record identifier (FK to inbox.wf_id).',
-  `action_code` int(11) NOT NULL DEFAULT 0 COMMENT 'Consumer-defined business action code.',
-  `status` tinyint(3) unsigned NOT NULL DEFAULT 1 COMMENT 'Step state: 1=Pending, 2=Running, 3=Completed, 4=Failed.',
-  `started_at` datetime(6) DEFAULT NULL COMMENT 'Execution start timestamp.',
-  `completed_at` datetime(6) DEFAULT NULL COMMENT 'Execution completion timestamp.',
-  `result_json` longtext DEFAULT NULL COMMENT 'Structured execution result payload (JSON).',
-  `last_error` text DEFAULT NULL COMMENT 'Last captured error message for troubleshooting.',
-  PRIMARY KEY (`inbox_id`,`action_code`),
-  KEY `idx_inbox_step_status` (`status`),
-  CONSTRAINT `fk_inbox_step_inbox` FOREIGN KEY (`inbox_id`) REFERENCES `inbox` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Step-level execution tracking for inbox items to support deterministic, idempotent processing.';
+-- Dumping structure for table lc_consumer.instance
+CREATE TABLE IF NOT EXISTS `instance` (
+  `guid` varchar(42) NOT NULL COMMENT 'instance guid (not generated here.. coming from the engine).. stored here as a duplicate only for proper sql queries and also for generating reports and easy tracking.',
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `def_name` varchar(120) NOT NULL,
+  `def_version` int(11) NOT NULL COMMENT 'Actual definition version number from the engine (v1, v2, v3...).',
+  `entity_guid` varchar(42) NOT NULL,
+  `created` datetime NOT NULL COMMENT 'when this instance wsa created at the engine side.. not when this is created here in the consumer db.',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unq_instance_guid` (`guid`),
+  KEY `idx_instance` (`def_name`,`entity_guid`),
+  KEY `idx_instance_0` (`entity_guid`,`def_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='An entity can be part of different defintion.. for each definitoin it can generate a workflow id.. and we also capture and set the instance id. (coming from the engine)';
 
 -- Data exporting was unselected.
 
@@ -112,7 +117,7 @@ CREATE TABLE IF NOT EXISTS `outbox` (
   `modified` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'UTC timestamp when the row was last updated.',
   PRIMARY KEY (`inbox_id`),
   KEY `idx_outbox_send_status` (`status`,`next_retry_at`),
-  CONSTRAINT `fk_outbox_workflow` FOREIGN KEY (`inbox_id`) REFERENCES `inbox` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
+  CONSTRAINT `fk_outbox_inbox` FOREIGN KEY (`inbox_id`) REFERENCES `inbox` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Outbound acknowledgement queue from consumer to engine with retry scheduling.';
 
 -- Data exporting was unselected.
@@ -120,34 +125,18 @@ CREATE TABLE IF NOT EXISTS `outbox` (
 -- Dumping structure for table lc_consumer.outbox_history
 CREATE TABLE IF NOT EXISTS `outbox_history` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT 'Internal surrogate identifier.',
-  `outbox_id` bigint(20) unsigned NOT NULL COMMENT 'Outbox record identifier (FK to outbox.wf_id).',
+  `inbox_id` bigint(20) unsigned NOT NULL COMMENT 'Outbox record identifier (FK to outbox.wf_id).',
   `outcome` tinyint(3) unsigned NOT NULL COMMENT 'Attempt outcome: 1=Delivered, 2=Processed, 3=Retry, 4=Failed.',
   `status` tinyint(3) unsigned NOT NULL COMMENT 'Attempt send state: 1=Pending, 2=Sent, 3=Confirmed, 4=Failed.',
   `attempt_no` int(10) unsigned NOT NULL COMMENT 'Monotonic attempt sequence number.',
   `modified` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'UTC timestamp when the row was last updated.',
-  `response_payload_json` longtext DEFAULT NULL COMMENT 'Raw response payload captured from engine/API (JSON).',
+  `response` longtext DEFAULT NULL COMMENT 'Raw response payload captured from engine/API (JSON). response payload _json',
   `error` text DEFAULT NULL COMMENT 'Error details captured for this send attempt.',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `unq_outbox_attempt` (`outbox_id`,`attempt_no`),
-  KEY `idx_outbox_history_outbox_sent` (`outbox_id`,`modified`),
-  CONSTRAINT `fk_outbox_history_outbox` FOREIGN KEY (`outbox_id`) REFERENCES `outbox` (`inbox_id`) ON DELETE CASCADE ON UPDATE NO ACTION
+  UNIQUE KEY `unq_outbox_attempt` (`inbox_id`,`attempt_no`),
+  KEY `idx_outbox_history_outbox_sent` (`inbox_id`,`modified`),
+  CONSTRAINT `fk_outbox_history_inbox` FOREIGN KEY (`inbox_id`) REFERENCES `inbox` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Immutable attempt history for outbox sends, responses, and failures.';
-
--- Data exporting was unselected.
-
--- Dumping structure for table lc_consumer.workflow
-CREATE TABLE IF NOT EXISTS `workflow` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `entity` varchar(42) NOT NULL COMMENT 'one workflow can have only one entity.. but same entity can be part of multiple workflow.',
-  `def_name` varchar(120) NOT NULL,
-  `instance_id` varchar(42) DEFAULT NULL,
-  `is_triggered` bit(1) NOT NULL DEFAULT b'0',
-  `def_version` int(11) NOT NULL DEFAULT 1,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `unq_workflow` (`def_name`,`entity`),
-  KEY `fk_workflow_entity` (`entity`),
-  CONSTRAINT `fk_workflow_entity` FOREIGN KEY (`entity`) REFERENCES `entity` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='An entity can be part of different defintion.. for each definitoin it can generate a workflow id.. and we also capture and set the instance id. (coming from the engine)';
 
 -- Data exporting was unselected.
 

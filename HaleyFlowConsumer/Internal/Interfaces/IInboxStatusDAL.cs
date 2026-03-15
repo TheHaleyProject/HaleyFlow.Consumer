@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Haley.Models;
 
 namespace Haley.Internal {
-    public interface IConsumerInboxStatusDAL {
+    internal interface IInboxStatusDAL {
         /// <summary>INSERT IGNORE — creates inbox row on first receive; no-op if already exists.</summary>
         Task UpsertAsync(long wfId, string? paramsJson, DbExecutionLoad load = default);
         Task SetStatusAsync(long wfId, InboxStatus status, string? error = null, DbExecutionLoad load = default);

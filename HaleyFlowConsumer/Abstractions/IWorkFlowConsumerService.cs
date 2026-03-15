@@ -10,7 +10,7 @@ namespace Haley.Abstractions {
         Task StopAsync(CancellationToken ct = default);
 
         // ── Administrative reads ──────────────────────────────────────────────
-        Task<DbRows> ListWorkflowsAsync(ConsumerWorkflowFilter filter, CancellationToken ct = default);
+        Task<DbRows> ListInstancesAsync(ConsumerInstanceFilter filter, CancellationToken ct = default);
         Task<DbRows> ListInboxAsync(ConsumerInboxFilter filter, CancellationToken ct = default);
         Task<DbRows> ListInboxStatusesAsync(ConsumerInboxStatusFilter filter, CancellationToken ct = default);
         Task<DbRows> ListOutboxAsync(ConsumerOutboxFilter filter, CancellationToken ct = default);
@@ -19,22 +19,16 @@ namespace Haley.Abstractions {
         Task<ConsumerTimeline> GetConsumerTimelineAsync(string instanceGuid, CancellationToken ct = default);
         Task<string?> GetConsumerTimelineHtmlAsync(string instanceGuid, string? displayName = null, string? color = null, CancellationToken ct = default);
 
-        // ── Entity & Workflow management (client-facing) ──────────────────────
+        // ── Instance management (client-facing) ──────────────────────────────
         /// <summary>
-        /// Generates a new entity GUID, persists it, and returns it to the caller.
-        /// The client stores this ID as their cross-system entity reference.
+        /// Triggers a new workflow instance on the engine for the given entity GUID and records
+        /// the consumer-side instance mirror. Returns the engine's trigger result.
         /// </summary>
-        Task<string> CreateEntityAsync(CancellationToken ct = default);
+        Task<LifeCycleTriggerResult> CreateWorkflowAsync(string entityGuid, string defName, CreateWorkflowRequest request, CancellationToken ct = default);
 
         /// <summary>
-        /// Records a workflow for the given entity and immediately triggers it on the engine.
-        /// Returns the engine's trigger result (including InstanceGuid, Applied, state transition).
+        /// Returns all instances associated with the given entity GUID across all definitions.
         /// </summary>
-        Task<LifeCycleTriggerResult> CreateWorkflowAsync(string entityId, string defName, CreateWorkflowRequest request, CancellationToken ct = default);
-
-        /// <summary>
-        /// Returns all workflows the entity is enrolled in across all definitions.
-        /// </summary>
-        Task<DbRows> GetWorkflowsByEntityAsync(string entityId, CancellationToken ct = default);
+        Task<DbRows> GetInstancesByEntityAsync(string entityGuid, CancellationToken ct = default);
     }
 }

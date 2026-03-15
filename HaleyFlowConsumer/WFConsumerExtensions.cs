@@ -20,7 +20,7 @@ namespace Haley.Utils {
             if (input.EngineProxy == null) throw new InvalidOperationException("EngineProxy is required to build WorkFlowConsumerManager.");
             if (input.ServiceProvider == null) throw new InvalidOperationException("ServiceProvider is required to build WorkFlowConsumerManager.");
             var adapterKey = await input.Initialize(agw); //Base names are already coming from the concrete implementation of DBInstanceMaker
-            var dal = new MariaConsumerServiceDAL(agw, adapterKey);
+            var dal = new MariaServiceDAL(agw, adapterKey);
             return new WorkFlowConsumerManager(input.EngineProxy,dal,input.ServiceProvider, input.Options);
         }
 
@@ -103,17 +103,18 @@ namespace Haley.Utils {
             return services;
         }
 
-        public static IReadOnlyList<Dictionary<string, object?>> ToConsumerWorkflowDictionaries(this DbRows rows) {
-            var items = rows.ToDictionaries();
-            for (var i = 0; i < items.Count; i++) {
-                NormalizeBoolField(items[i], "is_triggered");
-            }
+        public static IReadOnlyList<Dictionary<string, object?>> ToConsumerInstanceDictionaries(this DbRows rows)
+            => rows.ToDictionaries();
 
-            return items;
-        }
+        public static IReadOnlyList<Dictionary<string, object?>> ToInstanceDictionaries(this DbRows rows)
+            => rows.ToConsumerInstanceDictionaries();
+
+        // Compatibility aliases for older callers.
+        public static IReadOnlyList<Dictionary<string, object?>> ToConsumerWorkflowDictionaries(this DbRows rows)
+            => rows.ToConsumerInstanceDictionaries();
 
         public static IReadOnlyList<Dictionary<string, object?>> ToWorkflowDictionaries(this DbRows rows)
-            => rows.ToConsumerWorkflowDictionaries();
+            => rows.ToConsumerInstanceDictionaries();
 
         public static IReadOnlyList<Dictionary<string, object?>> ToInboxItemDictionaries(this DbRows rows) {
             var items = rows.ToDictionaries();
@@ -152,21 +153,5 @@ namespace Haley.Utils {
             return items;
         }
 
-        private static void NormalizeBoolField(Dictionary<string, object?> item, string fieldName) {
-            if (!item.TryGetValue(fieldName, out var raw) || raw == null) return;
-            item[fieldName] = raw switch {
-                bool value => value,
-                byte value => value != 0,
-                sbyte value => value != 0,
-                short value => value != 0,
-                int value => value != 0,
-                long value => value != 0,
-                ulong value => value != 0,
-                byte[] value when value.Length > 0 => value[0] != 0,
-                string value when bool.TryParse(value, out var parsed) => parsed,
-                string value when int.TryParse(value, out var parsed) => parsed != 0,
-                _ => raw
-            };
-        }
     }
 }

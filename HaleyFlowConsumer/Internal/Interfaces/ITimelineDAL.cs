@@ -1,7 +1,7 @@
 using Haley.Models;
 
 namespace Haley.Internal {
-    public interface IConsumerTimelineDAL {
+    internal interface ITimelineDAL {
         Task<ConsumerTimeline> GetByInstanceGuidAsync(string instanceGuid, DbExecutionLoad load = default);
     }
 }

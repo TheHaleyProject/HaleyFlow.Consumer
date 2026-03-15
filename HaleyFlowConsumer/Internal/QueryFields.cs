@@ -1,13 +1,14 @@
 namespace Haley.Internal {
     internal static class QueryFields {
-        // workflow
-        public const string WF_ID = "@WF_ID";
+        // shared
+        public const string ID = "@ID";
+        public const string GUID = "@GUID";
+        public const string STATUS = "@STATUS";
+        public const string LAST_ERROR = "@LAST_ERROR";
+        // inbox
+        public const string INBOX_ROW_ID = "@INBOX_ROW_ID";
         public const string ACK_GUID = "@ACK_GUID";
-        public const string ENTITY_ID = "@ENTITY_ID";
         public const string KIND = "@KIND";
-        public const string CONSUMER_ID = "@CONSUMER_ID";
-        public const string DEF_ID = "@DEF_ID";
-        public const string DEF_VERSION_ID = "@DEF_VERSION_ID";
         public const string HANDLER_VERSION = "@HANDLER_VERSION";
         public const string HANDLER_UPGRADE = "@HANDLER_UPGRADE";
         public const string INSTANCE_GUID = "@INSTANCE_GUID";
@@ -17,20 +18,17 @@ namespace Haley.Internal {
         public const string EVENT_CODE = "@EVENT_CODE";
         public const string ROUTE = "@ROUTE";
         public const string RUN_COUNT = "@RUN_COUNT";
-        public const string ID = "@ID";
         public const string ACTION_CODE = "@ACTION_CODE";
-        // inbox
-        public const string PARAMS_JSON = "@PARAMS_JSON";
-        public const string STATUS = "@STATUS";
-        public const string LAST_ERROR = "@LAST_ERROR";
-        // inbox_status, inbox_step, outbox FK to inbox.id
+        public const string ACTION_ID = "@ACTION_ID";
+        // inbox_status / inbox_action / outbox FK to inbox.id
         public const string INBOX_ID = "@INBOX_ID";
-        public const string STEP_CODE = "@STEP_CODE";
-        // entity workflow
+        public const string PARAMS_JSON = "@PARAMS_JSON";
+        // instance
         public const string DEF_NAME = "@DEF_NAME";
+        public const string DEF_VERSION = "@DEF_VERSION";
+        public const string ENTITY_GUID = "@ENTITY_GUID";
         public const string INSTANCE_ID = "@INSTANCE_ID";
-        public const string IS_TRIGGERED = "@IS_TRIGGERED";
-        public const string ENTITY = "@ENTITY";
+        // business_action
         public const string RESULT_JSON = "@RESULT_JSON";
         // outbox
         public const string OUTCOME = "@OUTCOME";

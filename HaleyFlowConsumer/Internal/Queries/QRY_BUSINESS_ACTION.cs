@@ -4,24 +4,20 @@ namespace Haley.Internal {
     internal static class QRY_BUSINESS_ACTION {
         public const string SELECT_ID_BY_KEY =
             $@"SELECT id FROM business_action
-               WHERE def_id = {DEF_ID}
-                 AND entity_id = lower(trim({ENTITY_ID}))
+               WHERE instance_id = {INSTANCE_ID}
                  AND action_code = {ACTION_CODE}
                LIMIT 1;";
 
-        public const string UPSERT_RETURN_ID =
-            $@"INSERT INTO business_action (def_id, entity_id, action_code, status)
-               VALUES ({DEF_ID}, lower(trim({ENTITY_ID})), {ACTION_CODE}, {STATUS})
-               ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id);
-                SELECT LAST_INSERT_ID() AS id;";
+        public const string INSERT_IGNORE =
+            $@"INSERT IGNORE INTO business_action (instance_id, action_code, status, started_at)
+               VALUES ({INSTANCE_ID}, {ACTION_CODE}, {STATUS}, UTC_TIMESTAMP());";
 
         public const string SELECT_BY_ID =
             $@"SELECT * FROM business_action WHERE id = {ID} LIMIT 1;";
 
         public const string SELECT_BY_KEY =
             $@"SELECT * FROM business_action
-               WHERE def_id = {DEF_ID}
-                 AND entity_id = lower(trim({ENTITY_ID}))
+               WHERE instance_id = {INSTANCE_ID}
                  AND action_code = {ACTION_CODE}
                LIMIT 1;";
 
@@ -29,7 +25,8 @@ namespace Haley.Internal {
             $@"UPDATE business_action
                SET status = {STATUS},
                    started_at = UTC_TIMESTAMP(),
-                   completed_at = NULL
+                   completed_at = NULL,
+                   last_error = NULL
                WHERE id = {ID};";
 
         public const string SET_COMPLETED =
@@ -43,7 +40,7 @@ namespace Haley.Internal {
             $@"UPDATE business_action
                SET status = {STATUS},
                    completed_at = UTC_TIMESTAMP(6),
-                   result_json = {RESULT_JSON}
+                   last_error = {LAST_ERROR}
                WHERE id = {ID};";
     }
 }

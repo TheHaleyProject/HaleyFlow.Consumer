@@ -1,14 +1,10 @@
 namespace Haley.Internal {
     internal static class KeyConstants {
         public const string KEY_ID = "id";
+        public const string KEY_GUID = "guid";
         public const string KEY_ACK_GUID = "ack_guid";
-        public const string KEY_ENTITY_ID = "entity_id";
         public const string KEY_KIND = "kind";
-        public const string KEY_CONSUMER_ID = "consumer_id";
-        public const string KEY_DEF_ID = "def_id";
-        public const string KEY_DEF_VERSION_ID = "def_version_id";
         public const string KEY_HANDLER_VERSION = "handler_version";
-        public const string KEY_INSTANCE_GUID = "instance_guid";
         public const string KEY_ON_SUCCESS = "on_success";
         public const string KEY_ON_FAILURE = "on_failure";
         public const string KEY_OCCURRED = "occurred";
@@ -20,15 +16,17 @@ namespace Haley.Internal {
         public const string KEY_INBOX_ID = "inbox_id";
         public const string KEY_CURRENT_OUTCOME = "current_outcome";
         public const string KEY_ACTION_CODE = "action_code";
+        public const string KEY_ACTION_ID = "action_id";
         public const string KEY_RESULT_JSON = "result_json";
         public const string KEY_STARTED_AT = "started_at";
         public const string KEY_COMPLETED_AT = "completed_at";
         public const string KEY_RUN_COUNT = "run_count";
-        // entity workflow
+        // instance
         public const string KEY_DEF_NAME = "def_name";
+        public const string KEY_DEF_VERSION = "def_version";
+        public const string KEY_ENTITY_GUID = "entity_guid";
         public const string KEY_INSTANCE_ID = "instance_id";
-        public const string KEY_IS_TRIGGERED = "is_triggered";
-        public const string KEY_ENTITY = "entity";
+        public const string KEY_INSTANCE_GUID = "instance_guid";   // alias for joined column
         // inbox_status
         public const string KEY_ATTEMPT_COUNT = "attempt_count";
         public const string KEY_RECEIVED_AT = "received_at";
@@ -40,7 +38,7 @@ namespace Haley.Internal {
         // outbox_history
         public const string KEY_ATTEMPT_NO = "attempt_no";
         public const string KEY_OUTCOME = "outcome";
-        public const string KEY_RESPONSE_PAYLOAD = "response_payload_json";
+        public const string KEY_RESPONSE_PAYLOAD = "response";
         public const string KEY_ERROR = "error";
         public const string KEY_CREATED_AT = "created_at";
     }

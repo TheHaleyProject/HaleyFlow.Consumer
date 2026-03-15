@@ -1,6 +1,7 @@
 namespace Haley.Internal {
     internal sealed class WrapperRegistration {
         public long DefId { get; init; }
+        public string DefinitionName { get; init; } = string.Empty;
         public Type WrapperType { get; init; } = null!;
         private int? _maxVersion;
 

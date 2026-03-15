@@ -57,14 +57,10 @@ namespace Haley.Internal {
         public void Register<T>(long defId) where T : LifeCycleWrapper
             => Register(defId, typeof(T));
 
-        public void Register(long defId, Type wrapperType) {
-            // Guard against mistakes at registration time rather than at dispatch time.
-            // A wrapper that doesn't inherit LifeCycleWrapper would pass the dictionary
-            // lookup but fail when ConsumerService tries to call DispatchTransitionAsync
-            // or DispatchHookAsync — better to fail loudly here.
+        public void Register(long defId, Type wrapperType, string definitionName = "") {
             if (!typeof(LifeCycleWrapper).IsAssignableFrom(wrapperType))
                 throw new ArgumentException($"{wrapperType.Name} must inherit LifeCycleWrapper.");
-            _byDefId[defId] = new WrapperRegistration { DefId = defId, WrapperType = wrapperType };
+            _byDefId[defId] = new WrapperRegistration { DefId = defId, WrapperType = wrapperType, DefinitionName = definitionName };
         }
 
         // ── Assembly scan (name-based — defId resolved later via engine) ───────
@@ -113,11 +109,8 @@ namespace Haley.Internal {
         /// it because the consumer simply doesn't have a handler for that definition.
         /// </summary>
         public void Resolve(string name, long defId) {
-            // Promote from name index to defId index. After this point the name entry in
-            // _byName still exists (it's not removed) but GetPendingNames() won't surface it
-            // again because the defId is now present in _byDefId with the same WrapperType.
             if (_byName.TryGetValue(name, out var wrapperType))
-                Register(defId, wrapperType);
+                Register(defId, wrapperType, name);
         }
 
         // ── Dispatch ────────────────────────────────────────────────────────────

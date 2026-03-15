@@ -2,26 +2,27 @@ using Haley.Abstractions;
 using Haley.Enums;
 using Haley.Models;
 using static Haley.Internal.QueryFields;
+using static Haley.Internal.KeyConstants;
 
 namespace Haley.Internal {
-    internal sealed class MariaConsumerOutboxDAL : MariaDALBase, IConsumerOutboxDAL {
-        public MariaConsumerOutboxDAL(IDALUtilBase db) : base(db) { }
+    internal sealed class MariaOutboxDAL : MariaDALBase, IOutboxDAL {
+        public MariaOutboxDAL(IDALUtilBase db) : base(db) { }
 
-        public Task UpsertAsync(long wfId, AckOutcome outcome, DbExecutionLoad load = default)
+        public Task UpsertAsync(long inboxId, AckOutcome outcome, DbExecutionLoad load = default)
             => Db.ExecAsync(QRY_OUTBOX.UPSERT, load,
-                (INBOX_ID, wfId),
+                (INBOX_ID, inboxId),
                 (OUTCOME, (byte)outcome));
 
-        public Task SetStatusAsync(long wfId, OutboxStatus status, string? error = null, DateTimeOffset? nextRetryAt = null, DbExecutionLoad load = default)
+        public Task SetStatusAsync(long inboxId, OutboxStatus status, string? error = null, DateTimeOffset? nextRetryAt = null, DbExecutionLoad load = default)
             => Db.ExecAsync(QRY_OUTBOX.SET_STATUS, load,
-                (INBOX_ID, wfId),
+                (INBOX_ID, inboxId),
                 (STATUS, (byte)status),
                 (LAST_ERROR, (object?)error ?? DBNull.Value),
                 (NEXT_RETRY_AT, (object?)nextRetryAt?.UtcDateTime ?? DBNull.Value));
 
-        public Task AddHistoryAsync(long wfId, AckOutcome outcome, OutboxStatus status, string? responsePayload, string? error, DbExecutionLoad load = default)
+        public Task AddHistoryAsync(long inboxId, AckOutcome outcome, OutboxStatus status, string? responsePayload, string? error, DbExecutionLoad load = default)
             => Db.ExecAsync(QRY_OUTBOX.ADD_HISTORY, load,
-                (INBOX_ID, wfId),
+                (INBOX_ID, inboxId),
                 (OUTCOME, (byte)outcome),
                 (STATUS, (byte)status),
                 (RESPONSE_PAYLOAD, (object?)responsePayload ?? DBNull.Value),
@@ -36,9 +37,6 @@ namespace Haley.Internal {
                 (STATUS, filter.Status.HasValue ? (object?)(byte)filter.Status.Value : DBNull.Value),
                 (OUTCOME, filter.CurrentOutcome.HasValue ? (object?)(byte)filter.CurrentOutcome.Value : DBNull.Value),
                 (KIND, filter.Kind.HasValue ? (object?)(byte)filter.Kind.Value : DBNull.Value),
-                (DEF_ID, filter.DefId.HasValue ? (object?)filter.DefId.Value : DBNull.Value),
-                (DEF_VERSION_ID, filter.DefVersionId.HasValue ? (object?)filter.DefVersionId.Value : DBNull.Value),
-                (ENTITY_ID, string.IsNullOrWhiteSpace(filter.EntityId) ? DBNull.Value : filter.EntityId.Trim()),
                 (INSTANCE_GUID, string.IsNullOrWhiteSpace(filter.InstanceGuid) ? DBNull.Value : filter.InstanceGuid.Trim()),
                 (ACK_GUID, string.IsNullOrWhiteSpace(filter.AckGuid) ? DBNull.Value : filter.AckGuid.Trim()),
                 (ROUTE, string.IsNullOrWhiteSpace(filter.Route) ? DBNull.Value : filter.Route.Trim()),

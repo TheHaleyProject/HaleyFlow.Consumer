@@ -6,20 +6,26 @@ using static Haley.Internal.KeyConstants;
 using static Haley.Internal.QueryFields;
 
 namespace Haley.Internal {
-    internal sealed class MariaConsumerTimelineDAL : MariaDALBase, IConsumerTimelineDAL {
-        public MariaConsumerTimelineDAL(IDALUtilBase db) : base(db) { }
+    internal sealed class MariaTimelineDAL : MariaDALBase, ITimelineDAL {
+        public MariaTimelineDAL(IDALUtilBase db) : base(db) { }
 
         public async Task<ConsumerTimeline> GetByInstanceGuidAsync(string instanceGuid, DbExecutionLoad load = default) {
             var guid = instanceGuid?.Trim() ?? string.Empty;
             var param = (INSTANCE_GUID, (object)guid);
 
+            var instanceRow = await Db.RowAsync(QRY_TIMELINE.INSTANCE_BY_GUID, load, param);
             var eventRows   = await Db.RowsAsync(QRY_TIMELINE.EVENTS_BY_INSTANCE,         load, param);
-            var stepRows    = await Db.RowsAsync(QRY_TIMELINE.STEPS_BY_INSTANCE,          load, param);
+            var actionRows  = await Db.RowsAsync(QRY_TIMELINE.ACTIONS_BY_INSTANCE,        load, param);
             var historyRows = await Db.RowsAsync(QRY_TIMELINE.OUTBOX_HISTORY_BY_INSTANCE, load, param);
 
-            // Index steps and history by inbox_id for O(1) lookup per event row.
-            var stepsByInboxId   = BuildStepsLookup(stepRows);
+            var actionsByInboxId = BuildActionsLookup(actionRows);
             var historyByInboxId = BuildHistoryLookup(historyRows);
+
+            var instanceId = instanceRow?.GetLong(KEY_ID) ?? 0;
+            var entityGuid = instanceRow?.GetString(KEY_ENTITY_GUID) ?? string.Empty;
+            var defName    = instanceRow?.GetString(KEY_DEF_NAME) ?? string.Empty;
+            var defVersion = instanceRow?.GetNullableInt(KEY_DEF_VERSION) ?? 0;
+            var created    = instanceRow?.GetDateTime(KEY_CREATED) ?? default;
 
             var items = new List<ConsumerTimelineItem>(eventRows.Count);
             foreach (var r in eventRows) {
@@ -31,8 +37,8 @@ namespace Haley.Internal {
                         Status       = ((InboxStatus)rawStatus).ToString(),
                         AttemptCount = r.GetNullableInt(KEY_ATTEMPT_COUNT) ?? 0,
                         LastError    = r.GetString("inbox_error"),
-                        ReceivedAt   = r.GetDateTime(KEY_RECEIVED_AT) ?? DateTime.UtcNow,
-                        Modified     = r.GetDateTime("inbox_modified") ?? DateTime.UtcNow,
+                        ReceivedAt   = r.GetDateTime(KEY_RECEIVED_AT) ?? r.GetDateTime(KEY_CREATED) ?? default,
+                        Modified     = r.GetDateTime("inbox_modified") ?? r.GetDateTime(KEY_RECEIVED_AT) ?? default,
                     };
                 }
 
@@ -43,7 +49,7 @@ namespace Haley.Internal {
                         Status      = ((OutboxStatus)(r.GetNullableByte("outbox_status") ?? 0)).ToString(),
                         NextRetryAt = r.GetDateTime(KEY_NEXT_RETRY_AT) is DateTime nra ? new DateTimeOffset(nra, TimeSpan.Zero) : null,
                         LastError   = r.GetString("outbox_error"),
-                        Modified    = r.GetDateTime("outbox_modified") ?? DateTime.UtcNow,
+                        Modified    = r.GetDateTime("outbox_modified") ?? default,
                         History     = historyByInboxId.TryGetValue(inboxId, out var hist) ? hist : Array.Empty<ConsumerTimelineOutboxHistory>(),
                     };
                 }
@@ -51,46 +57,58 @@ namespace Haley.Internal {
                 items.Add(new ConsumerTimelineItem {
                     InboxId        = inboxId,
                     AckGuid        = r.GetString(KEY_ACK_GUID) ?? string.Empty,
-                    EntityId       = r.GetString(KEY_ENTITY_ID) ?? string.Empty,
                     Kind           = ((WorkflowKind)r.GetByte(KEY_KIND)).ToString(),
-                    DefId          = r.GetLong(KEY_DEF_ID),
-                    DefVersionId   = r.GetLong(KEY_DEF_VERSION_ID),
                     HandlerVersion = r.GetNullableInt(KEY_HANDLER_VERSION),
                     EventCode      = r.GetNullableInt(KEY_EVENT_CODE),
                     Route          = r.GetString(KEY_ROUTE),
                     RunCount       = r.GetNullableInt(KEY_RUN_COUNT) ?? 1,
-                    Occurred       = r.GetDateTime(KEY_OCCURRED) ?? DateTime.UtcNow,
-                    Created        = r.GetDateTime(KEY_CREATED) ?? DateTime.UtcNow,
+                    Occurred       = r.GetDateTime(KEY_OCCURRED) ?? r.GetDateTime(KEY_CREATED) ?? default,
+                    Created        = r.GetDateTime(KEY_CREATED) ?? r.GetDateTime(KEY_OCCURRED) ?? default,
                     InboxStatus    = status,
                     Outbox         = outbox,
-                    Steps          = stepsByInboxId.TryGetValue(inboxId, out var steps) ? steps : Array.Empty<ConsumerTimelineStep>(),
+                    Actions        = actionsByInboxId.TryGetValue(inboxId, out var acts) ? acts : Array.Empty<ConsumerTimelineAction>(),
                 });
             }
 
             return new ConsumerTimeline {
+                InstanceId   = instanceId,
                 InstanceGuid = guid,
+                EntityGuid   = entityGuid,
+                DefName      = defName,
+                DefVersion   = defVersion,
+                Created      = created,
+                Instance     = instanceRow == null ? null : new ConsumerTimelineInstance {
+                    Id = instanceId,
+                    Guid = guid,
+                    EntityGuid = entityGuid,
+                    DefName = defName,
+                    DefVersion = defVersion,
+                    Created = created
+                },
                 Items        = items,
             };
         }
 
-        private static Dictionary<long, IReadOnlyList<ConsumerTimelineStep>> BuildStepsLookup(DbRows rows) {
-            var lookup = new Dictionary<long, List<ConsumerTimelineStep>>();
+        private static Dictionary<long, IReadOnlyList<ConsumerTimelineAction>> BuildActionsLookup(DbRows rows) {
+            var lookup = new Dictionary<long, List<ConsumerTimelineAction>>();
             foreach (var r in rows) {
                 var inboxId = r.GetLong(KEY_INBOX_ID);
                 if (!lookup.TryGetValue(inboxId, out var list)) {
-                    list = new List<ConsumerTimelineStep>();
+                    list = new List<ConsumerTimelineAction>();
                     lookup[inboxId] = list;
                 }
-                list.Add(new ConsumerTimelineStep {
-                    StepCode    = r.GetNullableInt(KEY_ACTION_CODE) ?? 0,
-                    Status      = ((InboxStepStatus)(r.GetNullableByte(KEY_STATUS) ?? 0)).ToString(),
-                    StartedAt   = r.GetDateTime(KEY_STARTED_AT),
-                    CompletedAt = r.GetDateTime(KEY_COMPLETED_AT),
-                    ResultJson  = r.GetString(KEY_RESULT_JSON),
-                    LastError   = r.GetString(KEY_LAST_ERROR),
+                list.Add(new ConsumerTimelineAction {
+                    ActionId       = r.GetLong(KEY_ACTION_ID),
+                    ActionCode     = r.GetNullableInt(KEY_ACTION_CODE) ?? 0,
+                    DeliveryStatus = ((InboxActionStatus)(r.GetNullableByte("inbox_action_status") ?? 0)).ToString(),
+                    DeliveryError  = r.GetString("inbox_action_error"),
+                    BusinessStatus = ((BusinessActionStatus)(r.GetNullableByte("business_status") ?? 0)).ToString(),
+                    StartedAt      = r.GetDateTime(KEY_STARTED_AT),
+                    CompletedAt    = r.GetDateTime(KEY_COMPLETED_AT),
+                    ResultJson     = r.GetString(KEY_RESULT_JSON),
                 });
             }
-            return lookup.ToDictionary(kv => kv.Key, kv => (IReadOnlyList<ConsumerTimelineStep>)kv.Value);
+            return lookup.ToDictionary(kv => kv.Key, kv => (IReadOnlyList<ConsumerTimelineAction>)kv.Value);
         }
 
         private static Dictionary<long, IReadOnlyList<ConsumerTimelineOutboxHistory>> BuildHistoryLookup(DbRows rows) {
@@ -107,7 +125,7 @@ namespace Haley.Internal {
                     Status          = ((OutboxStatus)(r.GetNullableByte(KEY_STATUS) ?? 0)).ToString(),
                     ResponsePayload = r.GetString(KEY_RESPONSE_PAYLOAD),
                     Error           = r.GetString(KEY_ERROR),
-                    CreatedAt       = r.GetDateTime(KEY_CREATED_AT) ?? DateTime.UtcNow,
+                    CreatedAt       = r.GetDateTime(KEY_CREATED_AT) ?? default,
                 });
             }
             return lookup.ToDictionary(kv => kv.Key, kv => (IReadOnlyList<ConsumerTimelineOutboxHistory>)kv.Value);

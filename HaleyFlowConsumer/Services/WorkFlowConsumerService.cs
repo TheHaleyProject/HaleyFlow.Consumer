@@ -89,9 +89,9 @@ namespace Haley.Services {
             }
         }
 
-        public async Task<DbRows> ListWorkflowsAsync(ConsumerWorkflowFilter filter, CancellationToken ct = default) {
+        public async Task<DbRows> ListInstancesAsync(ConsumerInstanceFilter filter, CancellationToken ct = default) {
             var consumer = await GetConsumerAsync(ct);
-            return await consumer.ListWorkflowsAsync(filter, ct);
+            return await consumer.ListInstancesAsync(filter, ct);
         }
 
         public async Task<DbRows> ListInboxAsync(ConsumerInboxFilter filter, CancellationToken ct = default) {
@@ -131,13 +131,8 @@ namespace Haley.Services {
             return ControlBoardTLR.Render(timeline, consumer.ConsumerGuid, displayName, color);
         }
 
-        public async Task<string> CreateEntityAsync(CancellationToken ct = default) {
-            var consumer = await GetConsumerAsync(ct);
-            return await consumer.CreateEntityAsync(ct);
-        }
-
-        public async Task<LifeCycleTriggerResult> CreateWorkflowAsync(string entityId, string defName, CreateWorkflowRequest request, CancellationToken ct = default) {
-            if (string.IsNullOrWhiteSpace(entityId)) throw new ArgumentException("entityId is required.", nameof(entityId));
+        public async Task<LifeCycleTriggerResult> CreateWorkflowAsync(string entityGuid, string defName, CreateWorkflowRequest request, CancellationToken ct = default) {
+            if (string.IsNullOrWhiteSpace(entityGuid)) throw new ArgumentException("entityGuid is required.", nameof(entityGuid));
             if (string.IsNullOrWhiteSpace(defName)) throw new ArgumentException("defName is required.", nameof(defName));
             if (request == null) throw new ArgumentNullException(nameof(request));
 
@@ -147,7 +142,7 @@ namespace Haley.Services {
             var triggerReq = new LifeCycleTriggerRequest {
                 EnvCode = _options.EnvCode,
                 DefName = defName,
-                EntityId = entityId,
+                EntityId = entityGuid,
                 Event = request.Event,
                 Actor = request.Actor,
                 Metadata = request.Metadata,
@@ -156,15 +151,15 @@ namespace Haley.Services {
             };
             var result = await _engineProxy.TriggerAsync(triggerReq, ct);
 
-            // Record the entity→workflow mapping in the consumer DB.
+            // Upsert the consumer-side instance mirror.
             var consumer = await GetConsumerAsync(ct);
-            await consumer.RecordEntityWorkflowAsync(entityId, defName, result, ct);
+            await consumer.RecordInstanceAsync(entityGuid, defName, result, ct);
             return result;
         }
 
-        public async Task<DbRows> GetWorkflowsByEntityAsync(string entityId, CancellationToken ct = default) {
+        public async Task<DbRows> GetInstancesByEntityAsync(string entityGuid, CancellationToken ct = default) {
             var consumer = await GetConsumerAsync(ct);
-            return await consumer.GetWorkflowsByEntityAsync(entityId, ct);
+            return await consumer.GetInstancesByEntityAsync(entityGuid, ct);
         }
 
         public async ValueTask DisposeAsync() {
