@@ -17,6 +17,7 @@ namespace Haley.Abstractions {
         Task<long> CountPendingInboxAsync(CancellationToken ct = default);
         Task<long> CountPendingOutboxAsync(CancellationToken ct = default);
         Task<ConsumerTimeline> GetConsumerTimelineAsync(string instanceGuid, CancellationToken ct = default);
+        Task<string?> GetConsumerTimelineHtmlAsync(string instanceGuid, string? displayName = null, string? color = null, CancellationToken ct = default);
 
         // ── Entity & Workflow management (client-facing) ──────────────────────
         /// <summary>

@@ -124,6 +124,13 @@ namespace Haley.Services {
             return await consumer.GetConsumerTimelineAsync(instanceGuid, ct);
         }
 
+        public async Task<string?> GetConsumerTimelineHtmlAsync(string instanceGuid, string? displayName = null, string? color = null, CancellationToken ct = default) {
+            var consumer = await GetConsumerAsync(ct);
+            var timeline = await consumer.GetConsumerTimelineAsync(instanceGuid, ct);
+            if (timeline == null || string.IsNullOrWhiteSpace(timeline.InstanceGuid)) return null;
+            return ConsumerTimelineTLR.Render(timeline, consumer.ConsumerGuid, displayName, color);
+        }
+
         public async Task<string> CreateEntityAsync(CancellationToken ct = default) {
             var consumer = await GetConsumerAsync(ct);
             return await consumer.CreateEntityAsync(ct);
