@@ -43,6 +43,10 @@ namespace Haley.Abstractions {
         internal IBusinessActionDAL? _businessActionDal;
         internal IInboxActionDAL? _inboxActionDal;
 
+        // Set by AutoTransitionAsync — read by the manager after dispatch to write to outbox.next_event.
+        // Safe because each event always gets a fresh wrapper instance (DI transient / Activator.CreateInstance).
+        internal int? _nextEvent;
+
         // ── Business action helpers ────────────────────────────────────────────
 
         protected async Task<bool> IsBusinessActionCompletedAsync(ConsumerContext ctx, int actionCode) {
@@ -121,6 +125,33 @@ namespace Haley.Abstractions {
             } catch {
                 return defaultValue;
             }
+        }
+
+        /// <summary>
+        /// Records the policy-defined next transition to fire after this event's ACK is confirmed.
+        /// Does NOT call the engine directly — the consumer manager fires the trigger after
+        /// AckAsync succeeds (both the inline path and the outbox retry path).
+        ///
+        /// This separation is critical: the engine's ACK gate blocks new triggers on an instance
+        /// while the current event's ACK is still pending. Firing after ACK confirmation avoids
+        /// that conflict entirely.
+        ///
+        /// On trigger failure the manager fires a NEXT_EVENT_FAILED notice. The ACK is already
+        /// confirmed at that point so it cannot be undone — the engine monitor will detect the
+        /// stale state and raise its own alert.
+        ///
+        /// NOTE: has nothing to do with AckOutcome. The handler returns its ACK outcome independently.
+        /// </summary>
+        protected Task AutoTransitionAsync(ConsumerContext ctx, bool success) {
+            var eventCode = success ? ctx.OnSuccessEvent : ctx.OnFailureEvent;
+            if (eventCode == null) {
+                var label = success ? "success" : "failure";
+                throw new InvalidOperationException(
+                    $"AutoTransitionAsync: no {label} event defined in policy for instance {ctx.InstanceGuid}. " +
+                    $"Add a complete.{label} event code to the matching policy rule.");
+            }
+            _nextEvent = eventCode.Value;
+            return Task.CompletedTask;
         }
 
         protected static string PickEvent(string? preferred, string fallback)

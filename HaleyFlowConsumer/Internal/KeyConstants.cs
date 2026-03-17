@@ -32,6 +32,7 @@ namespace Haley.Internal {
         public const string KEY_RECEIVED_AT = "received_at";
         public const string KEY_MODIFIED = "modified";
         // outbox
+        public const string KEY_NEXT_EVENT = "next_event";
         public const string KEY_NEXT_RETRY_AT = "next_retry_at";
         // shared read keys
         public const string KEY_LAST_ERROR = "last_error";

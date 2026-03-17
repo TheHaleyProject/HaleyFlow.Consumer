@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS `inbox` (
 
 -- Dumping structure for table lc_consumer.inbox_action
 CREATE TABLE IF NOT EXISTS `inbox_action` (
-  `inbox_id` bigint(20) unsigned NOT NULL COMMENT 'Inbox record identifier (FK to inbox.wf_id).',
+  `inbox_id` bigint(20) unsigned NOT NULL COMMENT 'Inbox record identifier (FK to inbox.id).',
   `action_id` bigint(20) NOT NULL DEFAULT 0 COMMENT 'Consumer business action',
   `last_error` text DEFAULT NULL COMMENT 'Last captured error message for troubleshooting.',
   `status` tinyint(4) NOT NULL DEFAULT 1 COMMENT '1 - Attempted, 2 - Completed, 3 - Failed',
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS `inbox_action` (
 
 -- Dumping structure for table lc_consumer.inbox_status
 CREATE TABLE IF NOT EXISTS `inbox_status` (
-  `inbox_id` bigint(20) unsigned NOT NULL COMMENT 'Workflow record identifier (FK to workflow.id).',
+  `inbox_id` bigint(20) unsigned NOT NULL COMMENT 'Inbox record identifier (FK to inbox.id).',
   `params_json` longtext DEFAULT NULL COMMENT 'Incoming parameter payload captured from engine (JSON).',
   `received_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'UTC timestamp when the item was received by the consumer.',
   `modified` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'UTC timestamp when the row was last updated.',
@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS `inbox_status` (
   PRIMARY KEY (`inbox_id`),
   KEY `idx_inbox_status` (`status`,`received_at`),
   CONSTRAINT `fk_inbox_status_inbox` FOREIGN KEY (`inbox_id`) REFERENCES `inbox` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Durable inbound work queue for engine-raised workflow items received by a consumer.';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Durable processing state for engine-raised inbox deliveries received by a consumer.';
 
 -- Data exporting was unselected.
 
@@ -96,25 +96,26 @@ CREATE TABLE IF NOT EXISTS `instance` (
   `guid` varchar(42) NOT NULL COMMENT 'instance guid (not generated here.. coming from the engine).. stored here as a duplicate only for proper sql queries and also for generating reports and easy tracking.',
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `def_name` varchar(120) NOT NULL,
-  `def_version` int(11) NOT NULL COMMENT 'Actual definition version number from the engine (v1, v2, v3...).',
+  `def_version_value` int(11) NOT NULL DEFAULT 1 COMMENT 'The actuval version value',
   `entity_guid` varchar(42) NOT NULL,
-  `created` datetime NOT NULL COMMENT 'when this instance wsa created at the engine side.. not when this is created here in the consumer db.',
+  `created` datetime NOT NULL COMMENT 'When this instance was created at the engine side, mirrored into the consumer database.',
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_instance_guid` (`guid`),
   KEY `idx_instance` (`def_name`,`entity_guid`),
   KEY `idx_instance_0` (`entity_guid`,`def_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='An entity can be part of different defintion.. for each definitoin it can generate a workflow id.. and we also capture and set the instance id. (coming from the engine)';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Consumer-side mirror of engine workflow instances. One row per engine instance guid.';
 
 -- Data exporting was unselected.
 
 -- Dumping structure for table lc_consumer.outbox
 CREATE TABLE IF NOT EXISTS `outbox` (
-  `inbox_id` bigint(20) unsigned NOT NULL COMMENT 'Inbox record identifier (FK to workflow.id).',
+  `inbox_id` bigint(20) unsigned NOT NULL COMMENT 'Inbox record identifier (FK to inbox.id).',
   `current_outcome` tinyint(3) unsigned DEFAULT NULL COMMENT 'Current outcome: 1=Delivered, 2=Processed, 3=Retry, 4=Failed.',
   `status` tinyint(3) unsigned NOT NULL DEFAULT 1 COMMENT 'Outbox send state: 1=Pending, 2=Sent, 3=Confirmed, 4=Failed.',
   `next_retry_at` datetime(6) DEFAULT NULL COMMENT 'Scheduled timestamp for next retry attempt.',
   `last_error` text DEFAULT NULL COMMENT 'Last captured error message for troubleshooting.',
   `modified` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'UTC timestamp when the row was last updated.',
+  `next_event` int(11) DEFAULT NULL,
   PRIMARY KEY (`inbox_id`),
   KEY `idx_outbox_send_status` (`status`,`next_retry_at`),
   CONSTRAINT `fk_outbox_inbox` FOREIGN KEY (`inbox_id`) REFERENCES `inbox` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
@@ -125,7 +126,7 @@ CREATE TABLE IF NOT EXISTS `outbox` (
 -- Dumping structure for table lc_consumer.outbox_history
 CREATE TABLE IF NOT EXISTS `outbox_history` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT 'Internal surrogate identifier.',
-  `inbox_id` bigint(20) unsigned NOT NULL COMMENT 'Outbox record identifier (FK to outbox.wf_id).',
+  `inbox_id` bigint(20) unsigned NOT NULL COMMENT 'Inbox record identifier (FK to outbox.inbox_id).',
   `outcome` tinyint(3) unsigned NOT NULL COMMENT 'Attempt outcome: 1=Delivered, 2=Processed, 3=Retry, 4=Failed.',
   `status` tinyint(3) unsigned NOT NULL COMMENT 'Attempt send state: 1=Pending, 2=Sent, 3=Confirmed, 4=Failed.',
   `attempt_no` int(10) unsigned NOT NULL COMMENT 'Monotonic attempt sequence number.',

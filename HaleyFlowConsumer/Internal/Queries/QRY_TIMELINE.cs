@@ -13,7 +13,7 @@ namespace Haley.Internal {
                   inst.guid,
                   inst.entity_guid,
                   inst.def_name,
-                  inst.def_version,
+                  inst.def_version_value AS def_version,
                   inst.created
                FROM instance inst
                WHERE inst.guid = {INSTANCE_GUID}
@@ -30,7 +30,7 @@ namespace Haley.Internal {
                   inst.guid        AS instance_guid,
                   inst.entity_guid,
                   inst.def_name,
-                  inst.def_version,
+                  inst.def_version_value AS def_version,
                   i.id             AS inbox_id,
                   i.ack_guid,
                   i.kind,

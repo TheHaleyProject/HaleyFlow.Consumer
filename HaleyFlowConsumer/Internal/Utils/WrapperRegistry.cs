@@ -124,6 +124,9 @@ namespace Haley.Internal {
         public bool TryGetRegistration(long defId, out WrapperRegistration? registration)
             => _byDefId.TryGetValue(defId, out registration);
 
+        public IReadOnlyList<WrapperRegistration> GetResolvedRegistrations()
+            => _byDefId.Values.ToArray();
+
         /// <summary>
         /// Determines which handler version the wrapper should use for a given event.
         ///

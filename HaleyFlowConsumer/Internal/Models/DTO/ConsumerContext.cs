@@ -26,6 +26,18 @@ namespace Haley.Models {
         /// Always 1 for transition events.
         /// </summary>
         public int RunCount { get; init; } = 1;
+        /// <summary>
+        /// Event code to trigger on success — from the policy's complete.success field.
+        /// Null if the policy rule has no success event defined.
+        /// Use AutoTransitionAsync to fire this without boilerplate.
+        /// </summary>
+        public int? OnSuccessEvent { get; init; }
+        /// <summary>
+        /// Event code to trigger on failure — from the policy's complete.failure field.
+        /// Null if the policy rule has no failure event defined.
+        /// Use AutoTransitionAsync to fire this without boilerplate.
+        /// </summary>
+        public int? OnFailureEvent { get; init; }
         public CancellationToken CancellationToken { get; init; }
     }
 }

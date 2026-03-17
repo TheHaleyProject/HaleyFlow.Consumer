@@ -8,20 +8,25 @@ namespace Haley.Internal {
         /// created is not overwritten on duplicate — preserves the first-seen timestamp.
         /// </summary>
         public const string INSERT_IGNORE =
-            $@"INSERT IGNORE INTO instance (guid, def_name, def_version, entity_guid, created)
+            $@"INSERT IGNORE INTO instance (guid, def_name, def_version_value, entity_guid, created)
                VALUES ({GUID}, {DEF_NAME}, {DEF_VERSION}, {ENTITY_GUID}, {OCCURRED});";
 
         public const string SELECT_ID_BY_GUID =
             $@"SELECT id FROM instance WHERE guid = {GUID} LIMIT 1;";
 
         public const string SELECT_BY_ID =
-            $@"SELECT * FROM instance WHERE id = {ID};";
+            $@"SELECT inst.id, inst.guid, inst.def_name, inst.def_version_value AS def_version, inst.entity_guid, inst.created
+               FROM instance inst
+               WHERE inst.id = {ID};";
 
         public const string SELECT_BY_GUID =
-            $@"SELECT * FROM instance WHERE guid = {GUID} LIMIT 1;";
+            $@"SELECT inst.id, inst.guid, inst.def_name, inst.def_version_value AS def_version, inst.entity_guid, inst.created
+               FROM instance inst
+               WHERE inst.guid = {GUID}
+               LIMIT 1;";
 
         public const string LIST_PAGED =
-            $@"SELECT inst.id, inst.guid, inst.def_name, inst.def_version, inst.entity_guid, inst.created
+            $@"SELECT inst.id, inst.guid, inst.def_name, inst.def_version_value AS def_version, inst.entity_guid, inst.created
                FROM instance inst
                WHERE (NULLIF(TRIM({ENTITY_GUID}), '') IS NULL OR inst.entity_guid = lower(trim({ENTITY_GUID})))
                  AND (NULLIF(TRIM({DEF_NAME}), '') IS NULL OR inst.def_name = trim({DEF_NAME}))
@@ -30,6 +35,9 @@ namespace Haley.Internal {
                LIMIT {TAKE} OFFSET {SKIP};";
 
         public const string SELECT_BY_ENTITY =
-            $@"SELECT * FROM instance WHERE entity_guid = lower(trim({ENTITY_GUID})) ORDER BY id DESC;";
+            $@"SELECT inst.id, inst.guid, inst.def_name, inst.def_version_value AS def_version, inst.entity_guid, inst.created
+               FROM instance inst
+               WHERE inst.entity_guid = lower(trim({ENTITY_GUID}))
+               ORDER BY inst.id DESC;";
     }
 }

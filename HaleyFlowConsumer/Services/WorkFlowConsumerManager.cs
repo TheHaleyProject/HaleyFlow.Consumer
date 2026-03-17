@@ -88,6 +88,8 @@ namespace Haley.Services {
                 }
             }
 
+            ValidateWrapperActivation();
+
             await _feed.RegisterEnvironmentAsync(_opt.EnvCode, null, ct);
             _consumerId = await _feed.RegisterConsumerAsync(_opt.EnvCode, _opt.ConsumerGuid, ct);
 
@@ -174,6 +176,18 @@ namespace Haley.Services {
             }
         }
 
+        private void ValidateWrapperActivation() {
+            foreach (var reg in _registry.GetResolvedRegistrations()) {
+                if (_sp.GetService(reg.WrapperType) != null) continue;
+                if (reg.WrapperType.GetConstructor(Type.EmptyTypes) != null) continue;
+
+                var defName = string.IsNullOrWhiteSpace(reg.DefinitionName) ? $"defId={reg.DefId}" : $"definition='{reg.DefinitionName}'";
+                throw new InvalidOperationException(
+                    $"Wrapper activation validation failed for {reg.WrapperType.FullName} ({defName}). " +
+                    "Register the wrapper type in DI, or add a parameterless constructor.");
+            }
+        }
+
         // ── Process one inbox delivery ───────────────────────────────────────
 
         private async Task ProcessItemAsync(ILifeCycleDispatchItem item, CancellationToken ct) {
@@ -241,22 +255,28 @@ namespace Haley.Services {
                 HandlerVersion = effectiveVersion,
                 HandlerUpgrade = inbox.HandlerUpgrade,
                 RunCount       = inboxRecord.RunCount,
+                OnSuccessEvent = inboxRecord.OnSuccess,
+                OnFailureEvent = inboxRecord.OnFailure,
                 CancellationToken = ct
             };
 
             AckOutcome outcome;
+            int? nextEvent = null;
             try {
                 var wrapper = (_sp.GetService(reg.WrapperType) ?? Activator.CreateInstance(reg.WrapperType))
                     as LifeCycleWrapper
                     ?? throw new InvalidOperationException($"Could not activate wrapper type {reg.WrapperType.Name}.");
-                wrapper._engine          = _feed;
+                wrapper._engine            = _feed;
                 wrapper._businessActionDal = _dal.BusinessAction;
-                wrapper._inboxActionDal  = _dal.InboxAction;
+                wrapper._inboxActionDal    = _dal.InboxAction;
 
                 outcome = item.Kind == LifeCycleEventKind.Transition
                     ? await wrapper.DispatchTransitionAsync((ILifeCycleTransitionEvent)evt, ctx)
                     : await wrapper.DispatchHookAsync((ILifeCycleHookEvent)evt, ctx);
 
+                // Capture before wrapper goes out of scope — safe because each dispatch
+                // activates a fresh wrapper instance, so _nextEvent belongs to this call only.
+                nextEvent = wrapper._nextEvent;
                 await _dal.InboxStatus.SetStatusAsync(inboxId, InboxStatus.Processed, load: load);
             } catch (Exception ex) {
                 outcome = AckOutcome.Retry;
@@ -265,16 +285,18 @@ namespace Haley.Services {
                     $"Wrapper threw during dispatch kind={item.Kind} defId={evt.DefinitionId} inboxId={inboxId} ackGuid={item.AckGuid}: {ex.Message}", ex));
             }
 
-            // 6. Write outbox and try immediate ACK.
-            await _dal.Outbox.UpsertAsync(inboxId, outcome, load);
+            // 6. Write outbox (persists next_event for retry path) and try immediate ACK.
+            await _dal.Outbox.UpsertAsync(inboxId, outcome, nextEvent, load);
             if (string.IsNullOrWhiteSpace(item.AckGuid)) {
                 await _dal.Outbox.SetStatusAsync(inboxId, OutboxStatus.Confirmed, load: load);
                 await _dal.Outbox.AddHistoryAsync(inboxId, outcome, OutboxStatus.Confirmed, null, null, load);
+                await FireNextEventAsync(ctx.InstanceGuid, nextEvent, ct);
             } else {
                 try {
                     await _feed.AckAsync(_consumerId, item.AckGuid, outcome, ct: ct);
                     await _dal.Outbox.SetStatusAsync(inboxId, OutboxStatus.Confirmed, load: load);
                     await _dal.Outbox.AddHistoryAsync(inboxId, outcome, OutboxStatus.Confirmed, null, null, load);
+                    await FireNextEventAsync(ctx.InstanceGuid, nextEvent, ct);
                 } catch (Exception ex) {
                     await _dal.Outbox.SetStatusAsync(inboxId, OutboxStatus.Pending,
                         error: ex.Message,
@@ -295,14 +317,19 @@ namespace Haley.Services {
                         var ackGuid = r.GetString(KEY_ACK_GUID) ?? string.Empty;
                         var outcome = (AckOutcome)r.GetByte(KEY_CURRENT_OUTCOME);
 
+                        var nextEvent    = r.GetNullableInt(KEY_NEXT_EVENT);
+                        var instanceGuid = r.GetString(KEY_INSTANCE_GUID) ?? string.Empty;
+
                         if (string.IsNullOrWhiteSpace(ackGuid)) {
                             await _dal.Outbox.SetStatusAsync(inboxId, OutboxStatus.Confirmed, load: load);
                             await _dal.Outbox.AddHistoryAsync(inboxId, outcome, OutboxStatus.Confirmed, null, null, load);
+                            await FireNextEventAsync(instanceGuid, nextEvent, ct);
                         } else {
                             try {
                                 await _feed.AckAsync(_consumerId, ackGuid, outcome, ct: ct);
                                 await _dal.Outbox.SetStatusAsync(inboxId, OutboxStatus.Confirmed, load: load);
                                 await _dal.Outbox.AddHistoryAsync(inboxId, outcome, OutboxStatus.Confirmed, null, null, load);
+                                await FireNextEventAsync(instanceGuid, nextEvent, ct);
                             } catch (Exception ex) {
                                 await _dal.Outbox.SetStatusAsync(inboxId, OutboxStatus.Pending,
                                     error: ex.Message,
@@ -323,6 +350,22 @@ namespace Haley.Services {
                         $"OutboxLoop error (consumer={_opt.ConsumerGuid}): {ex.Message}", ex));
                     await Task.Delay(_opt.OutboxInterval, ct);
                 }
+            }
+        }
+
+        // ── Post-ACK next event ──────────────────────────────────────────────
+
+        private async Task FireNextEventAsync(string instanceGuid, int? nextEvent, CancellationToken ct) {
+            if (nextEvent == null) return;
+            try {
+                await _feed.TriggerAsync(new LifeCycleTriggerRequest {
+                    InstanceGuid = instanceGuid,
+                    Event        = nextEvent.Value.ToString()
+                }, ct);
+            } catch (Exception ex) {
+                FireNotice(LifeCycleNotice.Error("NEXT_EVENT_FAILED", "NEXT_EVENT_FAILED",
+                    $"AutoTransition trigger failed after ACK — instance={instanceGuid} nextEvent={nextEvent}: {ex.Message}. " +
+                    $"ACK is already confirmed. Engine monitor will detect stale state.", ex));
             }
         }
 

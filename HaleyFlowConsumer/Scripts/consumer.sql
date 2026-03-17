@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS `instance` (
   `guid` varchar(42) NOT NULL COMMENT 'instance guid (not generated here.. coming from the engine).. stored here as a duplicate only for proper sql queries and also for generating reports and easy tracking.',
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `def_name` varchar(120) NOT NULL,
-  `def_version` int(11) NOT NULL COMMENT 'Actual definition version number from the engine (v1, v2, v3...).',
+  `def_version_value` int(11) NOT NULL DEFAULT 1 COMMENT 'The actuval version value',
   `entity_guid` varchar(42) NOT NULL,
   `created` datetime NOT NULL COMMENT 'When this instance was created at the engine side, mirrored into the consumer database.',
   PRIMARY KEY (`id`),
@@ -115,6 +115,7 @@ CREATE TABLE IF NOT EXISTS `outbox` (
   `next_retry_at` datetime(6) DEFAULT NULL COMMENT 'Scheduled timestamp for next retry attempt.',
   `last_error` text DEFAULT NULL COMMENT 'Last captured error message for troubleshooting.',
   `modified` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'UTC timestamp when the row was last updated.',
+  `next_event` int(11) DEFAULT NULL,
   PRIMARY KEY (`inbox_id`),
   KEY `idx_outbox_send_status` (`status`,`next_retry_at`),
   CONSTRAINT `fk_outbox_inbox` FOREIGN KEY (`inbox_id`) REFERENCES `inbox` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION

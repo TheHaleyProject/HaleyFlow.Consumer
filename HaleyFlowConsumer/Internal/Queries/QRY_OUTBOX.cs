@@ -8,10 +8,11 @@ namespace Haley.Internal {
         /// (e.g. if a prior attempt failed and we want to retry with a new outcome decision).
         /// </summary>
         public const string UPSERT =
-            $@"INSERT INTO outbox (inbox_id, current_outcome, status)
-               VALUES ({INBOX_ID}, {OUTCOME}, 1)
+            $@"INSERT INTO outbox (inbox_id, current_outcome, next_event, status)
+               VALUES ({INBOX_ID}, {OUTCOME}, {NEXT_EVENT}, 1)
                ON DUPLICATE KEY UPDATE
                    current_outcome = VALUES(current_outcome),
+                   next_event      = VALUES(next_event),
                    status          = 1,
                    next_retry_at   = NULL,
                    last_error      = NULL,
@@ -26,11 +27,13 @@ namespace Haley.Internal {
         /// Also calculates the next attempt number inline.
         /// </summary>
         public const string LIST_DUE_PENDING =
-            $@"SELECT o.inbox_id, o.current_outcome, o.status, o.next_retry_at,
+            $@"SELECT o.inbox_id, o.current_outcome, o.status, o.next_retry_at, o.next_event,
                       i.ack_guid,
+                      inst.guid AS instance_guid,
                       COALESCE((SELECT MAX(oh.attempt_no) FROM outbox_history oh WHERE oh.inbox_id = o.inbox_id), 0) AS last_attempt_no
                FROM outbox o
-               JOIN inbox i ON i.id = o.inbox_id
+               JOIN inbox i    ON i.id    = o.inbox_id
+               JOIN instance inst ON inst.id = i.instance_id
                WHERE o.status = 1
                  AND (o.next_retry_at IS NULL OR o.next_retry_at <= UTC_TIMESTAMP())
                ORDER BY o.modified ASC

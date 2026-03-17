@@ -257,6 +257,7 @@
     <div class="nav-section">
       <button class="nav-group-btn" onclick="toggleGroup(this)">Core Concepts <span class="caret">▾</span></button>
       <div class="nav-items">
+        <button class="nav-item" onclick="gotoSection('arch-philosophy')">Event Philosophy</button>
         <button class="nav-item" onclick="gotoSection('arch-loops')">Background Loops</button>
         <button class="nav-item" onclick="gotoSection('arch-wrapper')">LifeCycleWrapper</button>
         <button class="nav-item" onclick="gotoSection('arch-attrs')">Attributes</button>
@@ -398,6 +399,119 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
 <span class="kw">await</span> consumer.StartAsync(cancellationToken);</code><span class="lang-label">C#</span></pre>
   </section>
 
+  <!-- ──────────────── EVENT PHILOSOPHY ──────────────── -->
+  <section class="doc-section" id="arch-philosophy">
+    <div class="section-label">Core Concepts</div>
+    <h2 class="section-title">The Event Philosophy: Trigger vs Handler</h2>
+    <p>The single most important thing to understand before writing consumer handlers is that <strong>the same event code does two completely different jobs</strong> depending on who uses it and when.</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title"><span class="card-icon">📤</span> TriggerAsync(event = 200)</div>
+        <ul>
+          <li><strong>Who calls it:</strong> your application code (or <code>AutoTransitionAsync</code>)</li>
+          <li><strong>What it means:</strong> "please advance the state machine using event 200"</li>
+          <li><strong>What the engine does:</strong> validates the transition, records it, unlocks the next state</li>
+          <li><strong>When handlers run:</strong> <em>after</em> this returns — consumers are notified asynchronously</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="card-icon">📥</span> [TransitionHandler(200)]</div>
+        <ul>
+          <li><strong>Who runs it:</strong> the consumer library, via the PollLoop</li>
+          <li><strong>What it means:</strong> "event 200 was confirmed — run your business logic now"</li>
+          <li><strong>What you do:</strong> execute side-effects (send emails, call APIs, update records)</li>
+          <li><strong>ACK outcome:</strong> return <code>AckOutcome.Processed</code> when done</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">The key insight</div>
+      <code>TriggerAsync(event=200)</code> and <code>[TransitionHandler(200)]</code> share the same integer code, but they are not two halves of a round-trip call. <code>TriggerAsync</code> is a <em>command to the engine</em>. The handler is the engine's <em>notification back to you</em> — and it may fire for this consumer even if a completely different service sent the trigger.
+    </div>
+
+    <h3 class="sub-title">The Full Flow</h3>
+    <p>Here is a concrete example: an external system submits a loan application (event 100), the consumer sends a confirmation email and then uses <code>AutoTransitionAsync</code> to advance to the next state (event 200 = "move to review").</p>
+
+    <div class="flow">
+      <pre><code><span class="flow-blue">Step 1 — External caller</span>
+  engine.TriggerAsync({ Event: "100", EntityGuid: "loan-xyz" })
+        │
+        ▼ <span class="flow-hl">Engine validates &amp; records the state transition</span>
+        │  • Checks policy: is event 100 legal from current state?
+        │  • Creates lifecycle entry, creates ack_consumer rows
+        │  • Returns immediately — handler runs later
+        │
+<span class="flow-blue">Step 2 — Consumer PollLoop picks up the dispatch</span>
+  GetDueTransitionsAsync → [TransitionHandler(100)] fires
+        │
+        ▼ <span class="flow-hl">Handler runs business logic</span>
+        │  • Sends confirmation email (ExecuteBusinessActionAsync)
+        │  • Calls AutoTransitionAsync(ctx, success: true)
+        │    └─ records _nextEvent = ctx.OnSuccessEvent (200)
+        │  • Returns AckOutcome.Processed
+        │
+<span class="flow-blue">Step 3 — Consumer writes outbox row, ACKs engine</span>
+  outbox.next_event = 200 (persisted)
+  engine.AckAsync(ackGuid, Processed)
+        │
+        ▼ <span class="flow-hl">ACK confirmed — engine lifts its ACK gate for this instance</span>
+        │
+<span class="flow-blue">Step 4 — Consumer fires the next trigger (post-ACK)</span>
+  engine.TriggerAsync({ Event: "200", InstanceGuid: "..." })
+        │
+        ▼ <span class="flow-hl">Engine records transition to "review" state</span>
+        │
+<span class="flow-blue">Step 5 — PollLoop picks up event 200 dispatch</span>
+  [TransitionHandler(200)] fires → reviewer notification, etc.</code></pre>
+    </div>
+
+    <h3 class="sub-title">Why the Same Event Code Appears Twice</h3>
+    <p>Looking at event 100 above, it appears in both:</p>
+    <ul>
+      <li><code>TriggerAsync({ Event: "100" })</code> — the <em>request</em> to the engine</li>
+      <li><code>[TransitionHandler(100)]</code> — the engine's <em>notification</em> that the transition happened</li>
+    </ul>
+    <p>This is intentional. The event code is the shared vocabulary between the engine's state machine and your business logic. The engine uses it to look up which transitions are legal; the consumer uses it to route to the right handler. The same concept, two operations separated in time.</p>
+
+    <div class="callout warn">
+      <div class="callout-title">ACK gate — applies to [TransitionHandler] only</div>
+      The engine's ACK gate checks whether the <em>most recent lifecycle (transition) ACK</em> for the instance has been resolved before accepting a new trigger. The gate query joins <code>lc_ack</code> — it does <strong>not</strong> look at <code>hook_ack</code>.<br><br>
+      <strong>[TransitionHandler]:</strong> calling <code>Engine.TriggerAsync</code> here is blocked — the current transition's <code>lc_ack</code> row is still pending. Use <code>AutoTransitionAsync(ctx, success)</code> instead — it defers the trigger until after ACK is confirmed.<br><br>
+      <strong>[HookHandler]:</strong> calling <code>Engine.TriggerAsync</code> directly is safe — hook ACKs live in <code>hook_ack</code> which the gate never checks. The existing interactive hook wrappers exploit this intentionally.
+    </div>
+
+    <h3 class="sub-title">AutoTransitionAsync — Built-in State Chaining</h3>
+    <p>The policy attached to a workflow instance defines which event to fire on success and which to fire on failure (the <code>complete.success</code> and <code>complete.failure</code> fields). These are surfaced on <code>ConsumerContext</code> as <code>OnSuccessEvent</code> and <code>OnFailureEvent</code>. Instead of writing the trigger boilerplate yourself, call <code>AutoTransitionAsync</code>:</p>
+
+    <pre><code>[<span class="at">TransitionHandler</span>(<span class="jn">100</span>)]
+<span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnSubmitAsync(<span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)
+{
+    <span class="kw">var</span> result = <span class="kw">await</span> ExecuteBusinessActionAsync(ctx, ACTION_SEND_CONFIRM,
+        <span class="kw">async</span> (ct) => { <span class="kw">await</span> _email.SendConfirmationAsync(ctx.EntityGuid, ct); <span class="kw">return null</span>; });
+
+    <span class="cm">// Records intent to fire ctx.OnSuccessEvent (or OnFailureEvent) AFTER ACK.</span>
+    <span class="cm">// Does NOT call the engine here — safe inside a handler.</span>
+    <span class="kw">await</span> AutoTransitionAsync(ctx, success: <span class="nb">true</span>);
+
+    <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;  <span class="cm">// ACK outcome = delivery confirmed</span>
+}</code><span class="lang-label">C#</span></pre>
+
+    <p>Under the hood:</p>
+    <ol>
+      <li><code>AutoTransitionAsync</code> sets <code>_nextEvent</code> on the wrapper instance to the resolved event code.</li>
+      <li>After dispatch, the manager captures <code>wrapper._nextEvent</code> and persists it to <code>outbox.next_event</code>.</li>
+      <li>After <code>engine.AckAsync</code> succeeds (inline or via the OutboxLoop), the manager calls <code>engine.TriggerAsync({ Event: nextEvent.ToString() })</code>.</li>
+      <li>If that trigger fails, a <code>NEXT_EVENT_FAILED</code> notice is raised — the ACK is already confirmed and cannot be undone, but the engine's monitor will detect the stale state independently.</li>
+    </ol>
+
+    <div class="callout tip">
+      <div class="callout-title">AckOutcome.Processed ≠ business success</div>
+      <code>AckOutcome.Processed</code> means "I have received and processed this delivery — do not re-send it." It says nothing about whether the business logic succeeded or failed. <code>AutoTransitionAsync(ctx, success: true/false)</code> is what determines which next state the workflow moves to. The two are entirely orthogonal: you can <code>AutoTransitionAsync(ctx, success: false)</code> and still return <code>AckOutcome.Processed</code>, meaning "I handled this delivery; the workflow should now move to the failure branch."
+    </div>
+  </section>
+
   <!-- ──────────────── BACKGROUND LOOPS ──────────────── -->
   <section class="doc-section" id="arch-loops">
     <div class="section-label">Core Concepts</div>
@@ -480,8 +594,20 @@ WorkFlowConsumerManager
       </table>
     </div>
 
+    <h4 class="mini-title">State-chaining helper (protected)</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Method</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>AutoTransitionAsync(ctx, bool success)</code></td><td>Records the next event to fire after ACK is confirmed. Does <strong>not</strong> call the engine — the manager fires the trigger post-ACK. Reads <code>ctx.OnSuccessEvent</code> or <code>ctx.OnFailureEvent</code> from the policy; throws <code>InvalidOperationException</code> if no matching event is defined. See <a href="#" onclick="gotoSection('arch-philosophy');return false;">Event Philosophy</a>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
     <h4 class="mini-title">Engine access (protected)</h4>
-    <p>Use the <code>Engine</code> property inside handler methods to call the engine (trigger events, fetch timelines, read/write instance context, etc.). It is injected by the consumer manager before dispatch — do not inject <code>ILifeCycleExecution</code> via the constructor.</p>
+    <p>Use the <code>Engine</code> property inside handler methods to call the engine (trigger events, fetch timelines, read/write instance context, etc.). It is injected by the consumer manager before dispatch — do not inject <code>ILifeCycleExecution</code> via the constructor.<br>
+    <strong>[HookHandler] methods</strong> may call <code>Engine.TriggerAsync</code> directly — hook ACKs are not checked by the engine's ACK gate.<br>
+    <strong>[TransitionHandler] methods</strong> must not call <code>Engine.TriggerAsync</code> directly — the current transition's ACK is still pending and the gate will reject it. Use <code>AutoTransitionAsync</code> instead. See the <a href="#" onclick="gotoSection('arch-philosophy');return false;">Event Philosophy</a> section.</p>
     <pre><code><span class="cm">// Inside a handler method:</span>
 <span class="kw">await</span> Engine.TriggerAsync(<span class="kw">new</span> <span class="ty">LifeCycleTriggerRequest</span> { <span class="cm">/* ... */</span> }, ctx.CancellationToken);</code><span class="lang-label">C#</span></pre>
 
@@ -609,8 +735,8 @@ WorkFlowConsumerManager
           <tr><td><code>guid</code></td><td>The engine's <code>instance_guid</code> — unique; used as upsert deduplication key</td></tr>
           <tr><td><code>entity_guid</code></td><td>The application's business key — stored for query filtering (find all inbox rows for an order ID)</td></tr>
           <tr><td><code>def_name</code></td><td>Definition name (e.g. <code>"loan-approval"</code>)</td></tr>
-          <tr><td><code>def_version</code></td><td>Definition version string at time of first event</td></tr>
-          <tr><td><code>created</code></td><td>Timestamp of the first event received for this instance</td></tr>
+          <tr><td><code>def_version_value</code></td><td>Actual engine definition version value mirrored into the consumer instance row</td></tr>
+          <tr><td><code>created</code></td><td>Engine-side instance creation timestamp mirrored into the consumer database</td></tr>
         </tbody>
       </table>
     </div>
@@ -765,13 +891,13 @@ WorkFlowConsumerManager
       <li><div class="step-num">2</div><div class="step-body"><strong>Upsert inbox row</strong> — inserts a row in the <code>inbox</code> table keyed by <code>ack_guid</code> (unique). Stores kind, route, event code, <code>run_count</code>, etc. Returns <code>inboxId</code>.</div></li>
       <li><div class="step-num">3</div><div class="step-body"><strong>Pin handler version</strong> (first event for this instance only) — queries <code>inbox</code> for the earliest row with a <code>handler_version</code> for the same <code>instance_id</code>. Pins it permanently on the current inbox row.</div></li>
       <li><div class="step-num">4</div><div class="step-body"><strong>Build context</strong> — creates <code>ConsumerContext</code> with <code>InboxId</code>, <code>InstanceId</code>, <code>InstanceGuid</code>, <code>EntityGuid</code>, <code>AckGuid</code>, <code>HandlerVersion</code>, <code>RunCount</code>, <code>CancellationToken</code>, etc.</div></li>
-      <li><div class="step-num">5</div><div class="step-body"><strong>Resolve handler from DI</strong> — resolves the wrapper type from <code>IServiceProvider</code>. Falls back to <code>Activator.CreateInstance</code> if not registered. Injects business action DAL and inbox action DAL.</div></li>
+      <li><div class="step-num">5</div><div class="step-body"><strong>Resolve handler from DI</strong> — resolves the wrapper type from <code>IServiceProvider</code>. Startup validation now fails fast if a wrapper needs constructor injection but is not registered. A parameterless-constructor fallback is still allowed for simple wrappers. Injects business action DAL and inbox action DAL.</div></li>
       <li><div class="step-num">6</div><div class="step-body"><strong>Dispatch</strong> — calls <code>wrapper.DispatchTransitionAsync</code> or <code>wrapper.DispatchHookAsync</code>. The dispatcher selects the best-matching handler method by MinVersion. Returns <code>AckOutcome</code>.</div></li>
-      <li><div class="step-num">7</div><div class="step-body"><strong>Write outbox + attempt ACK</strong> — writes outcome to <code>outbox</code> table. Attempts to call <code>engine.AckAsync</code> immediately. If ACK fails, sets <code>next_retry_at</code> and the OutboxLoop retries later.</div></li>
+      <li><div class="step-num">7</div><div class="step-body"><strong>Write outbox + attempt ACK</strong> — captures <code>wrapper._nextEvent</code> (set by <code>AutoTransitionAsync</code> if called). Writes outcome + <code>next_event</code> to <code>outbox</code> table. Attempts to call <code>engine.AckAsync</code> immediately. On success: fires the next trigger if <code>next_event</code> is set. If ACK fails: sets <code>next_retry_at</code> and the OutboxLoop retries later — it too fires the next trigger after ACK is confirmed.</div></li>
     </ol>
     <div class="callout new">
-      <div class="callout-title">AckRequired = false</div>
-      If the engine dispatched the event with no <code>ack_guid</code> (AckRequired was false), the consumer marks the outbox row as Confirmed immediately without calling the engine. No deduplication by <code>ack_guid</code> occurs — each arrives as a separate inbox row.
+      <div class="callout-title">Acknowledgement is mandatory</div>
+      Every consumer delivery now carries an <code>ack_guid</code>. The consumer always records the inbox row, writes the outbox row, and confirms the ACK back to the engine. Deliveries with a missing <code>ack_guid</code> are treated as invalid and skipped with a notice.
     </div>
   </section>
 
@@ -941,6 +1067,151 @@ WorkFlowConsumerManager
     </div>
   </section>
 
+
+  <!-- ENGINE PROXY -->
+  <section id="arch-proxy" class="doc-section">
+    <div class="section-label">Architecture</div>
+    <h2 class="section-title">Engine Proxy</h2>
+
+    <p>
+      The consumer package has no dependency on the engine package. No consumer-side code ever
+      holds a reference to <code>IWorkFlowEngine</code> or <code>IWorkFlowEngineAccessor</code>.
+      All engine interaction flows through two layered interfaces — one for wrapper handlers,
+      one for consumer infrastructure.
+    </p>
+
+    <div class="callout tip">
+      <div class="callout-title">Two-level access boundary</div>
+      <strong>Wrapper handlers</strong> receive <code>ILifeCycleExecution</code> — everything they
+      need to call the engine (trigger, timeline, runtime log, etc.) with no access to
+      infrastructure-level polling.<br><br>
+      <strong>Consumer infrastructure</strong> (manager, service, DI) receives
+      <code>ILifeCycleEngineProxy</code> — extends <code>ILifeCycleExecution</code> with the
+      polling methods used exclusively by the internal dispatch loop.
+    </div>
+
+    <h3 class="sub-title">Interface hierarchy</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Interface</th><th>Extends</th><th>Who receives it</th><th>Extra surface</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>ILifeCycleExecution</code></td>
+            <td><code>ILifeCycleConsumerBus</code> + <code>ILifeCycleRuntimeBus</code></td>
+            <td>Wrapper handlers via <code>LifeCycleWrapper.Engine</code></td>
+            <td>None — this is the complete handler surface</td>
+          </tr>
+          <tr>
+            <td><code>ILifeCycleEngineProxy</code></td>
+            <td><code>ILifeCycleExecution</code></td>
+            <td>Consumer manager, consumer service, DI</td>
+            <td><code>GetDueTransitionsAsync</code>, <code>GetDueHooksAsync</code>, <code>NoticeRaised</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub-title">How wrappers get engine access</h3>
+    <p>
+      Wrappers do <strong>not</strong> receive <code>ILifeCycleExecution</code> via constructor
+      injection. The consumer manager sets it as an internal field immediately before dispatch —
+      exactly like <code>_stepDal</code> and <code>_businessActionDal</code>. Wrapper constructors
+      only carry the wrapper's own application services (repositories, HTTP clients, etc.).
+    </p>
+    <pre><code><span class="cm">// Wrapper constructor — only app services, nothing from the framework:</span>
+<span class="kw">public</span> <span class="ty">MyWrapper</span>(<span class="ty">IMyRepository</span> repo) { <span class="cm">/* ... */</span> }
+
+<span class="cm">// Inside a handler method — Engine is injected before dispatch by the manager:</span>
+[<span class="ty">HookHandler</span>(<span class="st">"APP.MY.HOOK"</span>)]
+<span class="kw">private async</span> <span class="ty">Task</span>&lt;<span class="ty">AckOutcome</span>&gt; <span class="fn">OnMyHookAsync</span>(<span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
+    <span class="kw">await</span> <span class="fn">Engine</span>.<span class="fn">TriggerAsync</span>(<span class="kw">new</span> <span class="ty">LifeCycleTriggerRequest</span> { <span class="cm">/* ... */</span> }, ctx.CancellationToken);
+    <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;
+}</code><span class="lang-label">C#</span></pre>
+
+    <h3 class="sub-title">Why wrappers cannot call GetDueTransitionsAsync</h3>
+    <p>
+      <code>GetDueTransitionsAsync</code> and <code>GetDueHooksAsync</code> drain the in-memory
+      delivery channels that the engine's <code>EventRaised</code> event writes into. If wrapper
+      code could call those methods, it would silently steal events from the dispatch pipeline —
+      events the consumer manager would never see. Because wrappers only receive
+      <code>ILifeCycleExecution</code> (which does not have those methods), this is impossible
+      by design.
+    </p>
+
+    <h3 class="sub-title">Proxy implementations</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Implementation</th><th>Package</th><th>When to use</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>InProcessEngineProxy</code></td>
+            <td>Engine package</td>
+            <td>Engine and consumer run in the same .NET host. Direct method calls to the engine; events buffered in in-memory channels. Engine resolved lazily on first call.</td>
+          </tr>
+          <tr>
+            <td><code>HttpEngineProxy</code> <em>(future)</em></td>
+            <td>Consumer package</td>
+            <td>Engine runs on a separate host. Every method issues an HTTP call to the engine's REST API. Consumer and wrapper code are unchanged.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub-title">Event delivery vs on-demand queries</h3>
+    <p>
+      Not all methods on the proxy work the same way:
+    </p>
+    <div class="card-grid" style="grid-template-columns:1fr 1fr">
+      <div class="card">
+        <div class="card-title"><span class="card-icon">📥</span> Event delivery (push → poll)</div>
+        <p style="font-size:13px;margin:0">
+          <code>GetDueTransitionsAsync</code> / <code>GetDueHooksAsync</code><br><br>
+          Exist because the engine has <code>EventRaised</code>. The proxy buffers those events
+          (in-process: in-memory channels; HTTP: server-side buffer). The consumer manager's poll
+          loop drains them every tick.
+          <br><br>
+          <strong>Consumer infrastructure only.</strong> Wrapper handlers cannot call these.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="card-icon">🔍</span> On-demand (consumer initiates)</div>
+        <p style="font-size:13px;margin:0">
+          All <code>ILifeCycleRuntimeBus</code> methods<br><br>
+          The consumer (or a wrapper handler) calls these at will — no engine event triggered
+          them. Examples: trigger next state, fetch timeline JSON, upsert runtime status,
+          suspend or reopen an instance.
+          <br><br>
+          In-process: direct engine call. HTTP: POST/GET to engine REST endpoint.
+        </p>
+      </div>
+    </div>
+    <div class="callout warn">
+      <div class="callout-title">Do not confuse</div>
+      <code>ListPendingAcksAsync</code> is an <strong>on-demand query</strong> — the consumer
+      asking "what's unresolved right now?". <code>GetDueTransitionsAsync</code> is
+      <strong>event delivery</strong> — draining events the engine already pushed into the
+      proxy's buffer. They are fundamentally different operations.
+    </div>
+
+    <h3 class="sub-title">DI registration (in-process host)</h3>
+    <p>
+      Register the proxy between the engine and consumer service calls. The engine package
+      provides the <code>AddInProcessEngineProxy()</code> extension:
+    </p>
+    <pre><code><span class="cm">// 1. Engine — registers IWorkFlowEngineAccessor:</span>
+services.<span class="fn">AddWorkFlowEngineService</span>(configuration);
+
+<span class="cm">// 2. Proxy — engine package; lazily resolves engine on first call:</span>
+services.<span class="fn">AddInProcessEngineProxy</span>();
+
+<span class="cm">// 3. Consumer — sees only ILifeCycleEngineProxy, never engine types:</span>
+services.<span class="fn">AddWorkFlowConsumerService</span>(configuration);</code><span class="lang-label">C#</span></pre>
+    <p>
+      For a remote deployment, skip step 2 and register an <code>HttpEngineProxy</code> instead.
+      Steps 1 and 3 are identical in both topologies.
+    </p>
+  </section>
+
   <!-- ──────────────── OPTIONS ──────────────── -->
   <section class="doc-section" id="ref-options">
     <div class="section-label">Reference</div>
@@ -996,8 +1267,8 @@ WorkFlowConsumerManager
         <tbody>
           <tr>
             <td><code>instance</code></td>
-            <td>One row per unique engine workflow instance. Creates a local bigint surrogate ID for efficient FK joins. Row is created lazily on first event arrival.</td>
-            <td><code>id</code> (bigint PK, surrogate), <code>guid</code> (engine instance_guid, UNIQUE), <code>entity_guid</code> (application business key), <code>def_name</code>, <code>def_version</code>, <code>created</code></td>
+            <td>One row per unique engine workflow instance. Creates a local bigint surrogate ID for efficient FK joins. The row is created when the consumer first mirrors the engine instance — typically immediately after <code>CreateWorkflowAsync</code> or on first delivery.</td>
+            <td><code>id</code> (bigint PK, surrogate), <code>guid</code> (engine instance_guid, UNIQUE), <code>entity_guid</code> (application business key), <code>def_name</code>, <code>def_version_value</code>, <code>created</code></td>
           </tr>
           <tr>
             <td><code>inbox</code></td>
@@ -1030,6 +1301,155 @@ WorkFlowConsumerManager
     <div class="callout tip">
       <div class="callout-title">How the tables relate</div>
       One <code>instance</code> row → many <code>inbox</code> rows (one per event delivery). One <code>inbox</code> row → one <code>outbox</code> row + many <code>inbox_action</code> audit rows. One <code>instance</code> row → many <code>business_action</code> rows (one per action code). The <code>instance</code> surrogate ID is the FK anchor for all cross-table joins.
+    </div>
+  </section>
+
+
+  <!-- ──────────────── CONSUMER NOTICE CODES ──────────────── -->
+  <section class="doc-section" id="ref-notices">
+    <div class="section-label">Reference</div>
+    <h2 class="section-title">Consumer Notice Codes</h2>
+    <p>Subscribe to <code>manager.NoticeRaised</code> to receive operational events from the consumer framework. These are distinct from the engine's notice codes — they are fired by the consumer library itself during polling, dispatch, and outbox operations.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Code</th><th>Severity</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>HEARTBEAT_ERROR</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>Heartbeat call to the engine (<code>BeatConsumerAsync</code>) failed. If this persists beyond the engine's <code>ConsumerTtlSeconds</code>, the engine will stop dispatching events to this consumer.</td>
+          </tr>
+          <tr>
+            <td><code>POLL_ERROR</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>Unhandled exception in the poll loop. The loop will sleep and retry. Individual dispatch errors are reported separately via <code>DISPATCH_ERROR</code>.</td>
+          </tr>
+          <tr>
+            <td><code>OUTBOX_ERROR</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>Unhandled exception in the outbox loop. Pending ACKs will not be retried until the loop recovers on its next cycle.</td>
+          </tr>
+          <tr>
+            <td><code>OUTBOX_ACK_FAILED</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>A specific outbox entry failed to reach the engine after the maximum number of retry attempts. The engine may not receive the ACK for this event — manual investigation may be required.</td>
+          </tr>
+          <tr>
+            <td><code>DISPATCH_SCHEDULE_ERROR</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>Failed to schedule an event item for dispatch (e.g. semaphore acquisition error). The engine's monitor will re-send the item after its <code>next_due</code> interval elapses.</td>
+          </tr>
+          <tr>
+            <td><code>DISPATCH_ERROR</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>Unhandled exception in <code>ProcessItemAsync</code> — thrown outside the handler delegate itself. The event will be re-delivered on the next poll cycle.</td>
+          </tr>
+          <tr>
+            <td><code>DISPATCH_INVALID_ACK</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>An event arrived with a missing or null <code>ack_guid</code> when one was expected. The event is skipped and will not be re-delivered.</td>
+          </tr>
+          <tr>
+            <td><code>WRAPPER_ERROR</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>The <code>LifeCycleWrapper</code> dispatch method threw an unhandled exception. The outcome is automatically set to <code>Retry</code> so the engine re-delivers the event.</td>
+          </tr>
+          <tr>
+            <td><code>REGISTRY_MISS</code></td>
+            <td><span class="badge warn">Warn</span></td>
+            <td>The consumer received an event for a definition ID that has no registered handler type. The event is silently ignored — check that the correct wrapper class is in scope and that <code>RegisterAssembly</code> was called.</td>
+          </tr>
+          <tr>
+            <td><code>REGISTRY_RESOLVE_FAILED</code></td>
+            <td><span class="badge warn">Warn</span></td>
+            <td>At startup, the engine could not find a definition matching the handler's declared <code>[LifeCycleDefinition("name")]</code>. Events for this definition will never be dispatched until the engine has the definition imported.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <pre><code><span class="cm">// Subscribe to consumer notices:</span>
+manager.NoticeRaised += (notice) => {
+    <span class="kw">switch</span> (notice.Code) {
+        <span class="kw">case</span> <span class="st">"HEARTBEAT_ERROR"</span>:
+            _logger.LogError(<span class="st">"Consumer heartbeat failed: {ex}"</span>, notice.Data[<span class="st">"exception"</span>]);
+            <span class="kw">break</span>;
+        <span class="kw">case</span> <span class="st">"REGISTRY_MISS"</span>:
+            _logger.LogWarning(<span class="st">"No handler for def_id={id}"</span>, notice.Data[<span class="st">"defId"</span>]);
+            <span class="kw">break</span>;
+        <span class="kw">case</span> <span class="st">"WRAPPER_ERROR"</span>:
+            _logger.LogError(<span class="st">"Handler threw, will retry: {ex}"</span>, notice.Data[<span class="st">"exception"</span>]);
+            <span class="kw">break</span>;
+    }
+    <span class="kw">return</span> Task.CompletedTask;
+};</code><span class="lang-label">C#</span></pre>
+  </section>
+
+  <!-- ──────────────── BACKGROUND LOOPS DETAIL ──────────────── -->
+  <section class="doc-section" id="ref-bg-loops">
+    <div class="section-label">Reference</div>
+    <h2 class="section-title">Three Background Loops — Detailed Reference</h2>
+    <p><code>WorkFlowConsumerManager.StartAsync</code> launches three independent background loops. Each runs on a separate thread-pool task and does not share state with the others.</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title"><span class="card-icon">♥</span> HeartbeatLoop</div>
+        <ul>
+          <li>Calls <code>engine.BeatConsumerAsync(consumerGuid, envCode, ttlSeconds)</code> every <code>heartbeat_interval</code></li>
+          <li>Default interval: <code>HeartbeatInterval</code> option (default 30 seconds)</li>
+          <li>Fires <code>HEARTBEAT_ERROR</code> notice on failure — does not crash the loop</li>
+          <li>If this loop stalls or errors for longer than the engine's <code>ConsumerTtlSeconds</code>, the engine marks the consumer as down and stops dispatching events to it</li>
+          <li>Keep <code>HeartbeatInterval</code> comfortably below <code>ConsumerTtlSeconds</code> (e.g. 30s interval with 120s TTL)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="card-icon">⟳</span> PollLoop</div>
+        <ul>
+          <li>Calls <code>engine.GetDueTransitionsAsync</code> and <code>engine.GetDueHooksAsync</code> in sequence</li>
+          <li>This is the <em>pull path</em> — it catches events that the engine's push (<code>EventRaised</code>) may have missed (e.g. engine in-process delivery skipped)</li>
+          <li>Dispatches each item via a <code>SemaphoreSlim</code>-bounded concurrency pool (<code>MaxConcurrency</code> option)</li>
+          <li>If events found: polls again immediately without sleeping</li>
+          <li>If no events: sleeps for <code>PollInterval</code> (default 5 seconds) before next poll</li>
+          <li>Fires <code>POLL_ERROR</code> notice on unhandled exception — sleeps and retries</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card-grid" style="margin-top:0">
+      <div class="card">
+        <div class="card-title"><span class="card-icon">📤</span> OutboxLoop</div>
+        <ul>
+          <li>Scans <code>outbox</code> rows with status Pending where <code>next_retry_at &lt;= now</code></li>
+          <li>For each pending row: calls <code>engine.AckAsync</code> with the stored outcome</li>
+          <li>On success: marks row Confirmed. On failure: updates <code>next_retry_at</code> and increments retry count</li>
+          <li>After max retries: fires <code>OUTBOX_ACK_FAILED</code> notice</li>
+          <li>If no pending rows: sleeps for <code>OutboxInterval</code> (default 15 seconds)</li>
+          <li>Guarantees at-least-once ACK delivery even when the engine is temporarily unreachable</li>
+          <li>Survives process crashes — outbox rows are durable in the consumer DB</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="card-icon">▶</span> Startup Sequence</div>
+        <ul>
+          <li>Scan registered assemblies for <code>[LifeCycleDefinition]</code> classes</li>
+          <li>Query engine to resolve definition names to IDs — logs <code>REGISTRY_RESOLVE_FAILED</code> for any unresolved names</li>
+          <li>Register consumer with engine via <code>RegisterConsumerAsync</code></li>
+          <li>Launch HeartbeatLoop, PollLoop, and OutboxLoop concurrently</li>
+        </ul>
+      </div>
+    </div>
+    <div class="flow">
+      <pre><code>HeartbeatLoop ──────────────────────────────────────► BeatConsumerAsync (every heartbeat_interval)
+
+PollLoop ─── GetDueTransitionsAsync ─┐
+         └── GetDueHooksAsync ────────┼─► Semaphore ──► ProcessItemAsync ──► OutboxRow
+                                      │                        │
+                                      │              ┌─────────▼──────────┐
+                                      │              │ handler.DispatchAsync│
+                                      │              │ returns AckOutcome  │
+                                      │              └─────────────────────┘
+                                      └─ (sleep PollInterval if empty)
+
+OutboxLoop ─── scan outbox (Pending, next_retry_at &lt;= now)
+           └──► engine.AckAsync ──► Confirmed / next_retry_at bumped</code></pre>
     </div>
   </section>
 
@@ -1093,10 +1513,14 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
   </section>
 
   <section class="doc-section" id="ex-transition">
-    <h3 class="sub-title">Example 2 — Transition Handler with Policy Params</h3>
-    <p>Using <code>OnSuccessEvent</code> and <code>OnFailureEvent</code> from the policy to automatically trigger the next macro transition.</p>
+    <h3 class="sub-title">Example 2 — Transition Handler with AutoTransitionAsync</h3>
+    <p>The policy defines which event to fire on success (<code>complete.success</code>) and failure (<code>complete.failure</code>). These are surfaced as <code>ctx.OnSuccessEvent</code> / <code>ctx.OnFailureEvent</code>. Use <code>AutoTransitionAsync</code> to record the next event intent — the consumer manager fires the trigger <strong>after</strong> ACK is confirmed, safely past the engine's ACK gate.</p>
+    <div class="callout warn" style="margin-bottom:16px">
+      <div class="callout-title">Do not call Engine.TriggerAsync inside a [TransitionHandler]</div>
+      The engine's ACK gate checks pending <code>lc_ack</code> rows for the instance. When your handler is running, the current transition's ACK row is still pending — calling <code>TriggerAsync</code> here returns <code>Applied=false, Reason="BlockedByPendingAck"</code>. <code>AutoTransitionAsync</code> stores the intent; the manager fires the trigger after ACK succeeds. This is safe in <code>[HookHandler]</code> methods — hook ACKs are not checked by the gate.
+    </div>
     <div class="callout tip" style="margin-bottom:16px">
-      <div class="callout-title">LifeCycleTriggerRequest.Metadata <span class="badge-new" style="background:#2563eb;color:#fff;font-size:9px;border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:700;">NEW</span></div>
+      <div class="callout-title">LifeCycleTriggerRequest.Metadata</div>
       When creating a new workflow instance, set <code>Metadata</code> to stamp an immutable tag on the instance. It is forwarded on every subsequent event via <code>evt.Metadata</code>. Example: <code>Metadata = "env=prod,tier=gold"</code>. On follow-up trigger calls the field is ignored — metadata is set once at creation only.
     </div>
     <pre><code>[<span class="at">LifeCycleDefinition</span>(<span class="st">"loan-approval"</span>)]
@@ -1113,21 +1537,17 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
         <span class="cm">// Read policy params (from policy JSON "params" block)</span>
         <span class="kw">var</span> slaHours = evt.Params?[<span class="st">"sla_hours"</span>]?.ToString() ?? <span class="st">"48"</span>;
 
-        <span class="cm">// Perform review work</span>
+        <span class="cm">// Perform business logic</span>
         <span class="kw">var</span> approved = <span class="kw">await</span> _review.RunAsync(evt.EntityId, slaHours, ctx.CancellationToken);
 
-        <span class="cm">// Use OnSuccessEvent / OnFailureEvent from policy to know the next event code</span>
-        <span class="kw">var</span> nextEvent = approved ? evt.OnSuccessEvent : evt.OnFailureEvent;
-        <span class="kw">if</span> (!<span class="ty">string</span>.IsNullOrWhiteSpace(nextEvent)) {
-            <span class="kw">await</span> Engine.TriggerAsync(<span class="kw">new</span> <span class="ty">LifeCycleTriggerRequest</span> {
-                EnvCode     = <span class="jn">1</span>, <span class="cm">// inject from config / ConsumerServiceOptions.EnvCode</span>
-                DefName     = <span class="st">"loan-approval"</span>,
-                EntityId    = evt.EntityId,
-                Event       = nextEvent,
-                AckRequired = <span class="nb">true</span>
-            }, ctx.CancellationToken);
-        }
+        <span class="cm">// Record intent to trigger the next state AFTER this ACK is confirmed.</span>
+        <span class="cm">// Reads ctx.OnSuccessEvent or ctx.OnFailureEvent (int?) from the policy.</span>
+        <span class="cm">// Throws InvalidOperationException if the policy has no matching event defined.</span>
+        <span class="cm">// DO NOT call Engine.TriggerAsync here — ACK gate will block it.</span>
+        <span class="kw">await</span> AutoTransitionAsync(ctx, success: approved);
 
+        <span class="cm">// AckOutcome.Processed = "delivery confirmed".</span>
+        <span class="cm">// This is independent of whether the business outcome was success or failure.</span>
         <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;
     }
 
@@ -1365,298 +1785,6 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
       <div class="callout-title">New ack_guid on every reopen</div>
       Each reopen creates a new <code>ack_guid</code> scoped to the new <code>hook_lc</code> row. The consumer <code>inbox</code> table gets a new row (deduplication key is <code>UNIQUE(ack_guid)</code>). The <code>instance</code> row is reused — same <code>instance_id</code>. Business actions from the prior run are still in <code>business_action</code> and will be found by <code>ExecuteBusinessActionAsync</code> on the rerun.
     </div>
-  </section>
-
-  <!-- ──────────────── CONSUMER NOTICE CODES ──────────────── -->
-  <section class="doc-section" id="ref-notices">
-    <div class="section-label">Reference</div>
-    <h2 class="section-title">Consumer Notice Codes</h2>
-    <p>Subscribe to <code>manager.NoticeRaised</code> to receive operational events from the consumer framework. These are distinct from the engine's notice codes — they are fired by the consumer library itself during polling, dispatch, and outbox operations.</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Code</th><th>Severity</th><th>Meaning</th></tr></thead>
-        <tbody>
-          <tr>
-            <td><code>HEARTBEAT_ERROR</code></td>
-            <td><span class="badge error">Error</span></td>
-            <td>Heartbeat call to the engine (<code>BeatConsumerAsync</code>) failed. If this persists beyond the engine's <code>ConsumerTtlSeconds</code>, the engine will stop dispatching events to this consumer.</td>
-          </tr>
-          <tr>
-            <td><code>POLL_ERROR</code></td>
-            <td><span class="badge error">Error</span></td>
-            <td>Unhandled exception in the poll loop. The loop will sleep and retry. Individual dispatch errors are reported separately via <code>DISPATCH_ERROR</code>.</td>
-          </tr>
-          <tr>
-            <td><code>OUTBOX_ERROR</code></td>
-            <td><span class="badge error">Error</span></td>
-            <td>Unhandled exception in the outbox loop. Pending ACKs will not be retried until the loop recovers on its next cycle.</td>
-          </tr>
-          <tr>
-            <td><code>OUTBOX_ACK_FAILED</code></td>
-            <td><span class="badge error">Error</span></td>
-            <td>A specific outbox entry failed to reach the engine after the maximum number of retry attempts. The engine may not receive the ACK for this event — manual investigation may be required.</td>
-          </tr>
-          <tr>
-            <td><code>DISPATCH_SCHEDULE_ERROR</code></td>
-            <td><span class="badge error">Error</span></td>
-            <td>Failed to schedule an event item for dispatch (e.g. semaphore acquisition error). The engine's monitor will re-send the item after its <code>next_due</code> interval elapses.</td>
-          </tr>
-          <tr>
-            <td><code>DISPATCH_ERROR</code></td>
-            <td><span class="badge error">Error</span></td>
-            <td>Unhandled exception in <code>ProcessItemAsync</code> — thrown outside the handler delegate itself. The event will be re-delivered on the next poll cycle.</td>
-          </tr>
-          <tr>
-            <td><code>DISPATCH_INVALID_ACK</code></td>
-            <td><span class="badge error">Error</span></td>
-            <td>An event arrived with a missing or null <code>ack_guid</code> when one was expected. The event is skipped and will not be re-delivered.</td>
-          </tr>
-          <tr>
-            <td><code>WRAPPER_ERROR</code></td>
-            <td><span class="badge error">Error</span></td>
-            <td>The <code>LifeCycleWrapper</code> dispatch method threw an unhandled exception. The outcome is automatically set to <code>Retry</code> so the engine re-delivers the event.</td>
-          </tr>
-          <tr>
-            <td><code>REGISTRY_MISS</code></td>
-            <td><span class="badge warn">Warn</span></td>
-            <td>The consumer received an event for a definition ID that has no registered handler type. The event is silently ignored — check that the correct wrapper class is in scope and that <code>RegisterAssembly</code> was called.</td>
-          </tr>
-          <tr>
-            <td><code>REGISTRY_RESOLVE_FAILED</code></td>
-            <td><span class="badge warn">Warn</span></td>
-            <td>At startup, the engine could not find a definition matching the handler's declared <code>[LifeCycleDefinition("name")]</code>. Events for this definition will never be dispatched until the engine has the definition imported.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <pre><code><span class="cm">// Subscribe to consumer notices:</span>
-manager.NoticeRaised += (notice) => {
-    <span class="kw">switch</span> (notice.Code) {
-        <span class="kw">case</span> <span class="st">"HEARTBEAT_ERROR"</span>:
-            _logger.LogError(<span class="st">"Consumer heartbeat failed: {ex}"</span>, notice.Data[<span class="st">"exception"</span>]);
-            <span class="kw">break</span>;
-        <span class="kw">case</span> <span class="st">"REGISTRY_MISS"</span>:
-            _logger.LogWarning(<span class="st">"No handler for def_id={id}"</span>, notice.Data[<span class="st">"defId"</span>]);
-            <span class="kw">break</span>;
-        <span class="kw">case</span> <span class="st">"WRAPPER_ERROR"</span>:
-            _logger.LogError(<span class="st">"Handler threw, will retry: {ex}"</span>, notice.Data[<span class="st">"exception"</span>]);
-            <span class="kw">break</span>;
-    }
-    <span class="kw">return</span> Task.CompletedTask;
-};</code><span class="lang-label">C#</span></pre>
-  </section>
-
-  <!-- ──────────────── BACKGROUND LOOPS DETAIL ──────────────── -->
-  <section class="doc-section" id="ref-bg-loops">
-    <div class="section-label">Reference</div>
-    <h2 class="section-title">Three Background Loops — Detailed Reference</h2>
-    <p><code>WorkFlowConsumerManager.StartAsync</code> launches three independent background loops. Each runs on a separate thread-pool task and does not share state with the others.</p>
-
-    <div class="card-grid">
-      <div class="card">
-        <div class="card-title"><span class="card-icon">♥</span> HeartbeatLoop</div>
-        <ul>
-          <li>Calls <code>engine.BeatConsumerAsync(consumerGuid, envCode, ttlSeconds)</code> every <code>heartbeat_interval</code></li>
-          <li>Default interval: <code>HeartbeatInterval</code> option (default 30 seconds)</li>
-          <li>Fires <code>HEARTBEAT_ERROR</code> notice on failure — does not crash the loop</li>
-          <li>If this loop stalls or errors for longer than the engine's <code>ConsumerTtlSeconds</code>, the engine marks the consumer as down and stops dispatching events to it</li>
-          <li>Keep <code>HeartbeatInterval</code> comfortably below <code>ConsumerTtlSeconds</code> (e.g. 30s interval with 120s TTL)</li>
-        </ul>
-      </div>
-      <div class="card">
-        <div class="card-title"><span class="card-icon">⟳</span> PollLoop</div>
-        <ul>
-          <li>Calls <code>engine.GetDueTransitionsAsync</code> and <code>engine.GetDueHooksAsync</code> in sequence</li>
-          <li>This is the <em>pull path</em> — it catches events that the engine's push (<code>EventRaised</code>) may have missed (e.g. engine in-process delivery skipped)</li>
-          <li>Dispatches each item via a <code>SemaphoreSlim</code>-bounded concurrency pool (<code>MaxConcurrency</code> option)</li>
-          <li>If events found: polls again immediately without sleeping</li>
-          <li>If no events: sleeps for <code>PollInterval</code> (default 5 seconds) before next poll</li>
-          <li>Fires <code>POLL_ERROR</code> notice on unhandled exception — sleeps and retries</li>
-        </ul>
-      </div>
-    </div>
-    <div class="card-grid" style="margin-top:0">
-      <div class="card">
-        <div class="card-title"><span class="card-icon">📤</span> OutboxLoop</div>
-        <ul>
-          <li>Scans <code>outbox</code> rows with status Pending where <code>next_retry_at &lt;= now</code></li>
-          <li>For each pending row: calls <code>engine.AckAsync</code> with the stored outcome</li>
-          <li>On success: marks row Confirmed. On failure: updates <code>next_retry_at</code> and increments retry count</li>
-          <li>After max retries: fires <code>OUTBOX_ACK_FAILED</code> notice</li>
-          <li>If no pending rows: sleeps for <code>OutboxInterval</code> (default 15 seconds)</li>
-          <li>Guarantees at-least-once ACK delivery even when the engine is temporarily unreachable</li>
-          <li>Survives process crashes — outbox rows are durable in the consumer DB</li>
-        </ul>
-      </div>
-      <div class="card">
-        <div class="card-title"><span class="card-icon">▶</span> Startup Sequence</div>
-        <ul>
-          <li>Scan registered assemblies for <code>[LifeCycleDefinition]</code> classes</li>
-          <li>Query engine to resolve definition names to IDs — logs <code>REGISTRY_RESOLVE_FAILED</code> for any unresolved names</li>
-          <li>Register consumer with engine via <code>RegisterConsumerAsync</code></li>
-          <li>Launch HeartbeatLoop, PollLoop, and OutboxLoop concurrently</li>
-        </ul>
-      </div>
-    </div>
-    <div class="flow">
-      <pre><code>HeartbeatLoop ──────────────────────────────────────► BeatConsumerAsync (every heartbeat_interval)
-
-PollLoop ─── GetDueTransitionsAsync ─┐
-         └── GetDueHooksAsync ────────┼─► Semaphore ──► ProcessItemAsync ──► OutboxRow
-                                      │                        │
-                                      │              ┌─────────▼──────────┐
-                                      │              │ handler.DispatchAsync│
-                                      │              │ returns AckOutcome  │
-                                      │              └─────────────────────┘
-                                      └─ (sleep PollInterval if empty)
-
-OutboxLoop ─── scan outbox (Pending, next_retry_at &lt;= now)
-           └──► engine.AckAsync ──► Confirmed / next_retry_at bumped</code></pre>
-    </div>
-  </section>
-
-  <!-- ENGINE PROXY -->
-  <section id="arch-proxy" class="doc-section">
-    <div class="section-label">Architecture</div>
-    <h2 class="section-title">Engine Proxy</h2>
-
-    <p>
-      The consumer package has no dependency on the engine package. No consumer-side code ever
-      holds a reference to <code>IWorkFlowEngine</code> or <code>IWorkFlowEngineAccessor</code>.
-      All engine interaction flows through two layered interfaces — one for wrapper handlers,
-      one for consumer infrastructure.
-    </p>
-
-    <div class="callout tip">
-      <div class="callout-title">Two-level access boundary</div>
-      <strong>Wrapper handlers</strong> receive <code>ILifeCycleExecution</code> — everything they
-      need to call the engine (trigger, timeline, runtime log, etc.) with no access to
-      infrastructure-level polling.<br><br>
-      <strong>Consumer infrastructure</strong> (manager, service, DI) receives
-      <code>ILifeCycleEngineProxy</code> — extends <code>ILifeCycleExecution</code> with the
-      polling methods used exclusively by the internal dispatch loop.
-    </div>
-
-    <h3 class="sub-title">Interface hierarchy</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Interface</th><th>Extends</th><th>Who receives it</th><th>Extra surface</th></tr></thead>
-        <tbody>
-          <tr>
-            <td><code>ILifeCycleExecution</code></td>
-            <td><code>ILifeCycleConsumerBus</code> + <code>ILifeCycleRuntimeBus</code></td>
-            <td>Wrapper handlers via <code>LifeCycleWrapper.Engine</code></td>
-            <td>None — this is the complete handler surface</td>
-          </tr>
-          <tr>
-            <td><code>ILifeCycleEngineProxy</code></td>
-            <td><code>ILifeCycleExecution</code></td>
-            <td>Consumer manager, consumer service, DI</td>
-            <td><code>GetDueTransitionsAsync</code>, <code>GetDueHooksAsync</code>, <code>NoticeRaised</code></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3 class="sub-title">How wrappers get engine access</h3>
-    <p>
-      Wrappers do <strong>not</strong> receive <code>ILifeCycleExecution</code> via constructor
-      injection. The consumer manager sets it as an internal field immediately before dispatch —
-      exactly like <code>_stepDal</code> and <code>_businessActionDal</code>. Wrapper constructors
-      only carry the wrapper's own application services (repositories, HTTP clients, etc.).
-    </p>
-    <pre><code><span class="cm">// Wrapper constructor — only app services, nothing from the framework:</span>
-<span class="kw">public</span> <span class="ty">MyWrapper</span>(<span class="ty">IMyRepository</span> repo) { <span class="cm">/* ... */</span> }
-
-<span class="cm">// Inside a handler method — Engine is injected before dispatch by the manager:</span>
-[<span class="ty">HookHandler</span>(<span class="st">"APP.MY.HOOK"</span>)]
-<span class="kw">private async</span> <span class="ty">Task</span>&lt;<span class="ty">AckOutcome</span>&gt; <span class="fn">OnMyHookAsync</span>(<span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
-    <span class="kw">await</span> <span class="fn">Engine</span>.<span class="fn">TriggerAsync</span>(<span class="kw">new</span> <span class="ty">LifeCycleTriggerRequest</span> { <span class="cm">/* ... */</span> }, ctx.CancellationToken);
-    <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;
-}</code><span class="lang-label">C#</span></pre>
-
-    <h3 class="sub-title">Why wrappers cannot call GetDueTransitionsAsync</h3>
-    <p>
-      <code>GetDueTransitionsAsync</code> and <code>GetDueHooksAsync</code> drain the in-memory
-      delivery channels that the engine's <code>EventRaised</code> event writes into. If wrapper
-      code could call those methods, it would silently steal events from the dispatch pipeline —
-      events the consumer manager would never see. Because wrappers only receive
-      <code>ILifeCycleExecution</code> (which does not have those methods), this is impossible
-      by design.
-    </p>
-
-    <h3 class="sub-title">Proxy implementations</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Implementation</th><th>Package</th><th>When to use</th></tr></thead>
-        <tbody>
-          <tr>
-            <td><code>InProcessEngineProxy</code></td>
-            <td>Engine package</td>
-            <td>Engine and consumer run in the same .NET host. Direct method calls to the engine; events buffered in in-memory channels. Engine resolved lazily on first call.</td>
-          </tr>
-          <tr>
-            <td><code>HttpEngineProxy</code> <em>(future)</em></td>
-            <td>Consumer package</td>
-            <td>Engine runs on a separate host. Every method issues an HTTP call to the engine's REST API. Consumer and wrapper code are unchanged.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3 class="sub-title">Event delivery vs on-demand queries</h3>
-    <p>
-      Not all methods on the proxy work the same way:
-    </p>
-    <div class="card-grid" style="grid-template-columns:1fr 1fr">
-      <div class="card">
-        <div class="card-title"><span class="card-icon">📥</span> Event delivery (push → poll)</div>
-        <p style="font-size:13px;margin:0">
-          <code>GetDueTransitionsAsync</code> / <code>GetDueHooksAsync</code><br><br>
-          Exist because the engine has <code>EventRaised</code>. The proxy buffers those events
-          (in-process: in-memory channels; HTTP: server-side buffer). The consumer manager's poll
-          loop drains them every tick.
-          <br><br>
-          <strong>Consumer infrastructure only.</strong> Wrapper handlers cannot call these.
-        </p>
-      </div>
-      <div class="card">
-        <div class="card-title"><span class="card-icon">🔍</span> On-demand (consumer initiates)</div>
-        <p style="font-size:13px;margin:0">
-          All <code>ILifeCycleRuntimeBus</code> methods<br><br>
-          The consumer (or a wrapper handler) calls these at will — no engine event triggered
-          them. Examples: trigger next state, fetch timeline JSON, upsert runtime status,
-          suspend or reopen an instance.
-          <br><br>
-          In-process: direct engine call. HTTP: POST/GET to engine REST endpoint.
-        </p>
-      </div>
-    </div>
-    <div class="callout warn">
-      <div class="callout-title">Do not confuse</div>
-      <code>ListPendingAcksAsync</code> is an <strong>on-demand query</strong> — the consumer
-      asking "what's unresolved right now?". <code>GetDueTransitionsAsync</code> is
-      <strong>event delivery</strong> — draining events the engine already pushed into the
-      proxy's buffer. They are fundamentally different operations.
-    </div>
-
-    <h3 class="sub-title">DI registration (in-process host)</h3>
-    <p>
-      Register the proxy between the engine and consumer service calls. The engine package
-      provides the <code>AddInProcessEngineProxy()</code> extension:
-    </p>
-    <pre><code><span class="cm">// 1. Engine — registers IWorkFlowEngineAccessor:</span>
-services.<span class="fn">AddWorkFlowEngineService</span>(configuration);
-
-<span class="cm">// 2. Proxy — engine package; lazily resolves engine on first call:</span>
-services.<span class="fn">AddInProcessEngineProxy</span>();
-
-<span class="cm">// 3. Consumer — sees only ILifeCycleEngineProxy, never engine types:</span>
-services.<span class="fn">AddWorkFlowConsumerService</span>(configuration);</code><span class="lang-label">C#</span></pre>
-    <p>
-      For a remote deployment, skip step 2 and register an <code>HttpEngineProxy</code> instead.
-      Steps 1 and 3 are identical in both topologies.
-    </p>
   </section>
 
   <hr class="divider">

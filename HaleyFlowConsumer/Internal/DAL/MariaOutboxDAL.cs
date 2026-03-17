@@ -8,10 +8,11 @@ namespace Haley.Internal {
     internal sealed class MariaOutboxDAL : MariaDALBase, IOutboxDAL {
         public MariaOutboxDAL(IDALUtilBase db) : base(db) { }
 
-        public Task UpsertAsync(long inboxId, AckOutcome outcome, DbExecutionLoad load = default)
+        public Task UpsertAsync(long inboxId, AckOutcome outcome, int? nextEvent = null, DbExecutionLoad load = default)
             => Db.ExecAsync(QRY_OUTBOX.UPSERT, load,
                 (INBOX_ID, inboxId),
-                (OUTCOME, (byte)outcome));
+                (OUTCOME, (byte)outcome),
+                (NEXT_EVENT, (object?)nextEvent ?? DBNull.Value));
 
         public Task SetStatusAsync(long inboxId, OutboxStatus status, string? error = null, DateTimeOffset? nextRetryAt = null, DbExecutionLoad load = default)
             => Db.ExecAsync(QRY_OUTBOX.SET_STATUS, load,

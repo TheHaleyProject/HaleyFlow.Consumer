@@ -102,7 +102,7 @@
 		<table name="inbox_action" prior="inbox_step" row_count="0" spec="" >
 			<comment><![CDATA[Step-level execution tracking for inbox items to support deterministic, idempotent processing.]]></comment>
 			<column name="inbox_id" prior="inbox_workflow_id" type="BIGINT" length="20" mandatory="y" unsigned="y" >
-				<comment><![CDATA[Inbox record identifier (FK to inbox.wf_id).]]></comment>
+				<comment><![CDATA[Inbox record identifier (FK to inbox.id).]]></comment>
 			</column>
 			<column name="action_id" prior="action" type="BIGINT" mandatory="y" >
 				<defo><![CDATA[0]]></defo>
@@ -131,9 +131,9 @@
 			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
 		</table>
 		<table name="inbox_status" prior="inbox" row_count="0" spec="" >
-			<comment><![CDATA[Durable inbound work queue for engine-raised workflow items received by a consumer.]]></comment>
+			<comment><![CDATA[Durable processing state for engine-raised inbox deliveries received by a consumer.]]></comment>
 			<column name="inbox_id" prior="wf_id" type="BIGINT" length="20" mandatory="y" unsigned="y" >
-				<comment><![CDATA[Workflow record identifier (FK to workflow.id).]]></comment>
+				<comment><![CDATA[Inbox record identifier (FK to inbox.id).]]></comment>
 			</column>
 			<column name="params_json" type="LONGTEXT" >
 				<comment><![CDATA[Incoming parameter payload captured from engine (JSON).]]></comment>
@@ -170,7 +170,7 @@
 			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
 		</table>
 		<table name="instance" prior="workflow" >
-			<comment><![CDATA[An entity can be part of different defintion.. for each definitoin it can generate a workflow id.. and we also capture and set the instance id. (coming from the engine)]]></comment>
+			<comment><![CDATA[Consumer-side mirror of engine workflow instances. One row per engine instance guid.]]></comment>
 			<column name="guid" prior="instance_guid" type="VARCHAR" length="42" mandatory="y" >
 				<comment><![CDATA[instance guid (not generated here.. coming from the engine).. stored here as a duplicate only for proper sql queries and also for generating reports and easy tracking.]]></comment>
 			</column>
@@ -183,7 +183,7 @@
 			</column>
 			<column name="entity_guid" type="VARCHAR" length="42" mandatory="y" />
 			<column name="created" type="DATETIME" mandatory="y" >
-				<comment><![CDATA[when this instance wsa created at the engine side.. not when this is created here in the consumer db.]]></comment>
+				<comment><![CDATA[When this instance was created at the engine side, mirrored into the consumer database.]]></comment>
 			</column>
 			<index name="pk_instance" unique="PRIMARY_KEY" >
 				<column name="id" />
@@ -204,7 +204,7 @@
 		<table name="outbox" row_count="0" spec="" >
 			<comment><![CDATA[Outbound acknowledgement queue from consumer to engine with retry scheduling.]]></comment>
 			<column name="inbox_id" prior="wf_id" type="BIGINT" length="20" mandatory="y" unsigned="y" >
-				<comment><![CDATA[Inbox record identifier (FK to workflow.id).]]></comment>
+				<comment><![CDATA[Inbox record identifier (FK to inbox.id).]]></comment>
 			</column>
 			<column name="current_outcome" type="TINYINT" length="3" unsigned="y" >
 				<comment><![CDATA[Current outcome: 1=Delivered, 2=Processed, 3=Retry, 4=Failed.]]></comment>
@@ -224,6 +224,7 @@
 				<column_options><![CDATA[ON UPDATE current_timestamp()]]></column_options>
 				<comment><![CDATA[UTC timestamp when the row was last updated.]]></comment>
 			</column>
+			<column name="next_event" type="INT" />
 			<index name="pk_outbox" unique="PRIMARY_KEY" >
 				<column name="inbox_id" />
 			</index>
@@ -243,7 +244,7 @@
 				<comment><![CDATA[Internal surrogate identifier.]]></comment>
 			</column>
 			<column name="inbox_id" prior="outbox_id" type="BIGINT" length="20" mandatory="y" unsigned="y" >
-				<comment><![CDATA[Outbox record identifier (FK to outbox.wf_id).]]></comment>
+				<comment><![CDATA[Inbox record identifier (FK to outbox.inbox_id).]]></comment>
 			</column>
 			<column name="outcome" type="TINYINT" length="3" mandatory="y" unsigned="y" >
 				<comment><![CDATA[Attempt outcome: 1=Delivered, 2=Processed, 3=Retry, 4=Failed.]]></comment>
@@ -281,7 +282,7 @@
 			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
 		</table>
 	</schema>
-	<diagram_group name="Default" id="93bffd78-8960-418b-8aff-6a58c280ff25" >
+	<diagram_group name="Default" id="6df0d6c8-3421-41bf-ac60-5622f4579343" >
 		<diagram name="Main Diagram" id="9443b33f-5de4-42b2-a6d5-e59d764d8dba" joined_routing="y" show_relation="no_text" >
 			<entity schema="lc_consumer" name="business_action" color="C1D8EE" x="570" y="418" />
 			<entity schema="lc_consumer" name="inbox" color="BED3F4" x="304" y="76" />

@@ -32,6 +32,7 @@ namespace Haley.Internal {
         public const string RESULT_JSON = "@RESULT_JSON";
         // outbox
         public const string OUTCOME = "@OUTCOME";
+        public const string NEXT_EVENT = "@NEXT_EVENT";
         public const string NEXT_RETRY_AT = "@NEXT_RETRY_AT";
         public const string RESPONSE_PAYLOAD = "@RESPONSE_PAYLOAD";
         public const string ERROR = "@ERROR";

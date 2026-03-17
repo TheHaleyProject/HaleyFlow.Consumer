@@ -178,8 +178,9 @@
 				<identity><![CDATA[AUTO_INCREMENT]]></identity>
 			</column>
 			<column name="def_name" type="VARCHAR" length="120" mandatory="y" />
-			<column name="def_version" type="SMALLINT" mandatory="y" >
+			<column name="def_version_value" prior="def_version" type="INT" mandatory="y" >
 				<defo><![CDATA[1]]></defo>
+				<comment><![CDATA[The actuval version value]]></comment>
 			</column>
 			<column name="entity_guid" type="VARCHAR" length="42" mandatory="y" />
 			<column name="created" type="DATETIME" mandatory="y" >
@@ -224,6 +225,7 @@
 				<column_options><![CDATA[ON UPDATE current_timestamp()]]></column_options>
 				<comment><![CDATA[UTC timestamp when the row was last updated.]]></comment>
 			</column>
+			<column name="next_event" type="INT" />
 			<index name="pk_outbox" unique="PRIMARY_KEY" >
 				<column name="inbox_id" />
 			</index>
@@ -281,7 +283,7 @@
 			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
 		</table>
 	</schema>
-	<diagram_group name="Default" id="93bffd78-8960-418b-8aff-6a58c280ff25" >
+	<diagram_group name="Default" id="6df0d6c8-3421-41bf-ac60-5622f4579343" >
 		<diagram name="Main Diagram" id="9443b33f-5de4-42b2-a6d5-e59d764d8dba" joined_routing="y" show_relation="no_text" >
 			<entity schema="lc_consumer" name="business_action" color="C1D8EE" x="570" y="418" />
 			<entity schema="lc_consumer" name="inbox" color="BED3F4" x="304" y="76" />
