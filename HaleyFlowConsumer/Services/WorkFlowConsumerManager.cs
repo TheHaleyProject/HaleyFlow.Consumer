@@ -192,21 +192,21 @@ namespace Haley.Services {
 
         private async Task ProcessItemAsync(ILifeCycleDispatchItem item, CancellationToken ct) {
             var evt = item.Event;
-            if (string.IsNullOrWhiteSpace(item.AckGuid)) {
-                FireNotice(LifeCycleNotice.Error("DISPATCH_INVALID_ACK", "DISPATCH_INVALID_ACK",
-                    $"Skipping event with missing ack_guid. kind={item.Kind} defId={evt.DefinitionId} entity={evt.EntityId} instance={evt.InstanceGuid}"));
-                return;
-            }
-
             if (item.ConsumerId != _consumerId) {
                 FireNotice(LifeCycleNotice.Warn("CONSUMER_ID_MISMATCH", "CONSUMER_ID_MISMATCH",
                     $"Rejecting event: item.ConsumerId={item.ConsumerId} != this consumer ({_consumerId}/{_opt.ConsumerGuid}). ackGuid={item.AckGuid}"));
                 return;
             }
 
+            if (string.IsNullOrWhiteSpace(item.AckGuid)) {
+                FireNotice(LifeCycleNotice.Error("DISPATCH_INVALID_ACK", "DISPATCH_INVALID_ACK",
+                    $"Rejecting event with missing ack_guid. The consumer cannot terminally fail or cancel it on the engine without an acknowledgement key. kind={item.Kind} defId={evt.DefinitionId} entity={evt.EntityId} instance={evt.InstanceGuid}"));
+                return;
+            }
+
             if (!_registry.TryGetRegistration(evt.DefinitionId, out var reg) || reg == null) {
-                FireNotice(LifeCycleNotice.Warn("REGISTRY_MISS", "REGISTRY_MISS",
-                    $"No wrapper registered for defId={evt.DefinitionId} kind={item.Kind} ackGuid={item.AckGuid}. Event ignored."));
+                var reason = $"No wrapper registered for defId={evt.DefinitionId} on consumer '{_opt.ConsumerGuid}'. Delivery rejected as terminal for this consumer.";
+                await RejectDeliveryAsync(item, reason, ct);
                 return;
             }
 
@@ -350,6 +350,18 @@ namespace Haley.Services {
                         $"OutboxLoop error (consumer={_opt.ConsumerGuid}): {ex.Message}", ex));
                     await Task.Delay(_opt.OutboxInterval, ct);
                 }
+            }
+        }
+
+        private async Task RejectDeliveryAsync(ILifeCycleDispatchItem item, string reason, CancellationToken ct) {
+            FireNotice(LifeCycleNotice.Warn("REGISTRY_MISS", "REGISTRY_MISS",
+                $"{reason} ackGuid={item.AckGuid}"));
+
+            try {
+                await _feed.AckAsync(_consumerId, item.AckGuid, AckOutcome.Failed, reason, ct: ct);
+            } catch (Exception ex) {
+                FireNotice(LifeCycleNotice.Error("DELIVERY_REJECT_ACK_FAILED", "DELIVERY_REJECT_ACK_FAILED",
+                    $"Failed to terminally reject delivery on engine. ackGuid={item.AckGuid} defId={item.Event?.DefinitionId}: {ex.Message}", ex));
             }
         }
 

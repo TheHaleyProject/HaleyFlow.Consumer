@@ -266,6 +266,7 @@
         <button class="nav-item" onclick="gotoSection('arch-runcount')">RunCount &amp; Reruns</button>
         <button class="nav-item" onclick="gotoSection('arch-registry')">WrapperRegistry</button>
         <button class="nav-item" onclick="gotoSection('arch-dispatch')">Dispatch Flow</button>
+        <button class="nav-item" onclick="gotoSection('arch-delivery-model')">Inbox / Outbox / Retry</button>
         <button class="nav-item" onclick="gotoSection('arch-business-actions')">Business Actions</button>
         <button class="nav-item" onclick="gotoSection('arch-versioning')">Handler Versioning</button>
         <button class="nav-item" onclick="gotoSection('arch-outbox')">Outbox &amp; Reliability</button>
@@ -871,7 +872,7 @@ WorkFlowConsumerManager
       <li><div class="step-num">1</div><div class="step-body"><strong>Assembly scan</strong> (<code>RegisterAssembly</code>) — finds all non-abstract types inheriting <code>LifeCycleWrapper</code> with <code>[LifeCycleDefinition]</code>. Stores them by definition name.</div></li>
       <li><div class="step-num">2</div><div class="step-body"><strong>Engine resolution</strong> (on <code>WorkFlowConsumerManager.StartAsync</code>) — for each discovered name, calls <code>engine.GetDefinitionIdAsync</code>. Binds the returned def_id to the handler type.</div></li>
     </ol>
-    <p>At dispatch time, <code>TryGetRegistration(defId)</code> looks up the handler type. If no registration exists for an incoming definition ID, the event is silently skipped.</p>
+    <p>At dispatch time, <code>TryGetRegistration(defId)</code> looks up the handler type. If no registration exists for an incoming definition ID <strong>for this consumer</strong>, the consumer rejects that delivery terminally with <code>AckOutcome.Failed</code> and sends the reason back to the engine.</p>
     <div class="callout tip">
       <div class="callout-title">Multiple assemblies</div>
       Call <code>RegisterAssembly</code> for each assembly that contains handler classes before <code>StartAsync</code>. <code>WorkFlowConsumerManager.StartAsync</code> also auto-scans all currently loaded assemblies as a fallback.
@@ -899,6 +900,99 @@ WorkFlowConsumerManager
       <div class="callout-title">Acknowledgement is mandatory</div>
       Every consumer delivery now carries an <code>ack_guid</code>. The consumer always records the inbox row, writes the outbox row, and confirms the ACK back to the engine. Deliveries with a missing <code>ack_guid</code> are treated as invalid and skipped with a notice.
     </div>
+  </section>
+
+  <!-- ──────────────── DELIVERY MODEL ──────────────── -->
+  <section class="doc-section" id="arch-delivery-model">
+    <h3 class="sub-title">Inbox, Outbox, and Retry Model</h3>
+    <p>The consumer runtime is <strong>proxy-driven</strong>, not engine-implementation-driven. The consumer manager only talks to <code>ILifeCycleEngineProxy</code>. That proxy may drain in-process channels, call HTTP endpoints, or use any other transport. The consumer manager does not care how items arrive.</p>
+
+    <div class="callout tip">
+      <div class="callout-title">Current in-process behaviour</div>
+      In the current in-process setup, the proxy does <strong>not</strong> query the engine DB for due items. The engine raises events through <code>EventRaised</code>, the proxy buffers them in memory channels, and the consumer poll loop drains those channels via <code>GetDueTransitionsAsync</code> / <code>GetDueHooksAsync</code>.
+    </div>
+
+    <h4 class="mini-title">What each consumer table means</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Table</th><th>Meaning</th><th>Created / updated when</th></tr></thead>
+        <tbody>
+          <tr><td><code>instance</code></td><td>Local mirror of the engine instance so all consumer joins use a local bigint key.</td><td>Created or reused before the inbox row is written.</td></tr>
+          <tr><td><code>inbox</code></td><td>Canonical record that this delivery was received by the consumer.</td><td>Created as soon as the consumer accepts a valid dispatched item. Keyed by <code>ack_guid</code>.</td></tr>
+          <tr><td><code>inbox_status</code></td><td>Processing state of that delivery.</td><td>Moves through <code>Received</code> → <code>Processing</code> → <code>Processed</code> or <code>Failed</code> while the wrapper runs.</td></tr>
+          <tr><td><code>outbox</code></td><td>Queue entry for the ACK outcome that must be delivered back to the engine.</td><td>Created only <strong>after</strong> the wrapper finishes and an <code>AckOutcome</code> is known.</td></tr>
+          <tr><td><code>outbox_history</code></td><td>Attempt ledger for ACK sends.</td><td>Written each time the consumer confirms or fails an ACK send attempt.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4 class="mini-title">When the outbox is created</h4>
+    <p>The outbox row is <strong>not</strong> created when the event first arrives. First the consumer records the delivery in <code>inbox</code>, runs the wrapper, and decides an <code>AckOutcome</code>. Only then does it write the <code>outbox</code> row. This is why the correct mental model is:</p>
+    <ul>
+      <li><code>inbox</code> = "I received this delivery"</li>
+      <li><code>outbox</code> = "I have decided what ACK outcome to send back"</li>
+    </ul>
+
+    <h4 class="mini-title">Failure paths</h4>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">Handler or processing failure</div>
+        <ul>
+          <li>The wrapper throws or business logic cannot complete</li>
+          <li><code>inbox_status</code> becomes <code>Failed</code></li>
+          <li>The consumer still writes an outbox row with <code>AckOutcome.Retry</code></li>
+          <li>If that ACK reaches the engine, the engine re-schedules the same delivery later</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">ACK transport failure</div>
+        <ul>
+          <li>The wrapper already finished and the ACK outcome is already decided</li>
+          <li>The consumer writes <code>outbox</code>, then <code>engine.AckAsync</code> fails</li>
+          <li><code>outbox.status</code> stays <code>Pending</code> and <code>next_retry_at</code> is scheduled</li>
+          <li>The wrapper is <strong>not</strong> run again by this retry path; only the ACK send is retried</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">Only one case is a true skip</div>
+      If the incoming item's <code>consumerId</code> does not match this running consumer instance, the consumer does nothing. That delivery is not addressed to this consumer, so it must not ACK, fail, or mutate engine state for it. All other same-consumer contract problems should be surfaced explicitly rather than ignored.
+    </div>
+
+    <div class="callout warn">
+      <div class="callout-title">If local DB persistence fails before ACK confirmation</div>
+      If the consumer cannot finish its local inbox or outbox persistence work, there is no confirmed ACK back to the engine. In that case the consumer has nothing durable to continue from locally, so the engine monitor eventually re-delivers the item through its normal ACK scheduling rules.
+    </div>
+
+    <h4 class="mini-title">There are two retry systems</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Retry system</th><th>What it retries</th><th>Who drives it</th><th>Does the wrapper run again?</th></tr></thead>
+        <tbody>
+          <tr><td>Consumer outbox retry</td><td>Delivery of the already-decided ACK back to the engine</td><td><code>OutboxLoopAsync</code> scanning <code>outbox.status = Pending</code></td><td>No. Only the ACK send is retried.</td></tr>
+          <tr><td>Engine redelivery retry</td><td>The original event delivery itself</td><td>Engine ACK scheduler / monitor using <code>ack_consumer.next_due</code></td><td>Yes. The consumer receives the same event again and the wrapper runs again.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4 class="mini-title">The full mental model</h4>
+    <div class="flow"><pre><code>engine dispatch
+   └──► consumer proxy
+          └──► consumer poll loop
+                 └──► <span class="flow-blue">inbox</span>      = delivery journal
+                 └──► <span class="flow-blue">inbox_status</span> = processing state
+                 └──► wrapper runs
+                 └──► <span class="flow-blue">outbox</span>     = ACK send queue
+
+if wrapper returns Retry / throws
+   └──► consumer ACKs engine with Retry
+          └──► engine schedules re-delivery later
+
+if ACK send fails after wrapper completed
+   └──► consumer keeps outbox Pending
+          └──► OutboxLoop retries the ACK send later
+</code></pre></div>
   </section>
 
   <!-- ──────────────── BUSINESS ACTIONS ──────────────── -->
@@ -1347,7 +1441,7 @@ services.<span class="fn">AddWorkFlowConsumerService</span>(configuration);</cod
           <tr>
             <td><code>DISPATCH_INVALID_ACK</code></td>
             <td><span class="badge error">Error</span></td>
-            <td>An event arrived with a missing or null <code>ack_guid</code> when one was expected. The event is skipped and will not be re-delivered.</td>
+            <td>An event arrived for this consumer with a missing or null <code>ack_guid</code>. This is a contract violation: the consumer cannot confirm, fail, or cancel anything on the engine without that key. The event is rejected locally with a notice only.</td>
           </tr>
           <tr>
             <td><code>WRAPPER_ERROR</code></td>
@@ -1357,7 +1451,12 @@ services.<span class="fn">AddWorkFlowConsumerService</span>(configuration);</cod
           <tr>
             <td><code>REGISTRY_MISS</code></td>
             <td><span class="badge warn">Warn</span></td>
-            <td>The consumer received an event for a definition ID that has no registered handler type. The event is silently ignored — check that the correct wrapper class is in scope and that <code>RegisterAssembly</code> was called.</td>
+            <td>The consumer received an event for this consumer, but there is no registered wrapper for the incoming definition ID. The consumer sends a terminal <code>AckOutcome.Failed</code> back to the engine with a reason message so the engine can mark that consumer row as failed instead of retrying blindly.</td>
+          </tr>
+          <tr>
+            <td><code>DELIVERY_REJECT_ACK_FAILED</code></td>
+            <td><span class="badge error">Error</span></td>
+            <td>The consumer tried to reject an unhandleable delivery terminally on the engine, but the ACK call itself failed. The engine will keep retrying until that failure can be reported successfully.</td>
           </tr>
           <tr>
             <td><code>REGISTRY_RESOLVE_FAILED</code></td>
