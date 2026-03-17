@@ -21,24 +21,23 @@
     <OpenApiGenerateDocuments>false</OpenApiGenerateDocuments>
     <Description>Workflow engine consumer to be used in the client side</Description>
   </PropertyGroup>
-  <ItemGroup>
-    <None Remove="Scripts\consumer.sql" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Scripts\consumer.sql" />
-  </ItemGroup>
 
   <ItemGroup>
     <None Include="..\..\HaleyLog\Haley.png" Link="Haley.png">
       <PackagePath></PackagePath>
       <Pack>True</Pack>
     </None>
+    <EmbeddedResource Include="..\__RESOURCES\consumer.sql" Link="Scripts\consumer.sql" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.3" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Scripts\" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
