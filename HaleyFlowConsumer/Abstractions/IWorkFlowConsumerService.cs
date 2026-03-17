@@ -27,6 +27,12 @@ namespace Haley.Abstractions {
         Task<LifeCycleTriggerResult> CreateWorkflowAsync(string entityGuid, string defName, CreateWorkflowRequest request, CancellationToken ct = default);
 
         /// <summary>
+        /// Fires an event on an existing workflow instance (e.g. human-actor transitions such as
+        /// CompanyApproved or ReviewRejected). Delegates directly to the engine proxy.
+        /// </summary>
+        Task<LifeCycleTriggerResult> TriggerAsync(LifeCycleTriggerRequest request, CancellationToken ct = default);
+
+        /// <summary>
         /// Returns all instances associated with the given entity GUID across all definitions.
         /// </summary>
         Task<DbRows> GetInstancesByEntityAsync(string entityGuid, CancellationToken ct = default);

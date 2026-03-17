@@ -157,6 +157,11 @@ namespace Haley.Services {
             return result;
         }
 
+        public Task<LifeCycleTriggerResult> TriggerAsync(LifeCycleTriggerRequest request, CancellationToken ct = default) {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            return _engineProxy.TriggerAsync(request, ct);
+        }
+
         public async Task<DbRows> GetInstancesByEntityAsync(string entityGuid, CancellationToken ct = default) {
             var consumer = await GetConsumerAsync(ct);
             return await consumer.GetInstancesByEntityAsync(entityGuid, ct);
