@@ -124,6 +124,24 @@ namespace Haley.Utils {
             return services;
         }
 
+        /// <summary>
+        /// Registers WorkflowRelayHost as IWorkflowRelayService and IHostedService.
+        ///
+        /// At startup, WorkflowRelayHost scans all loaded assemblies for concrete WorkflowRelayBase
+        /// subclasses decorated with [LifeCycleDefinition] and activates them from DI.
+        ///
+        /// Example:
+        ///   services.AddWorkflowRelayService();
+        ///   services.AddFlowBus(); // routes InitiateAsync → relay
+        /// </summary>
+        public static IServiceCollection AddWorkflowRelayService(this IServiceCollection services) {
+            ArgumentNullException.ThrowIfNull(services);
+            services.TryAddSingleton<WorkflowRelayHost>();
+            services.TryAddSingleton<IWorkflowRelayService>(sp => sp.GetRequiredService<WorkflowRelayHost>());
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService>(sp => sp.GetRequiredService<WorkflowRelayHost>()));
+            return services;
+        }
+
         public static IReadOnlyList<Dictionary<string, object?>> ToConsumerInstanceDictionaries(this DbRows rows)
             => rows.ToDictionaries();
 
