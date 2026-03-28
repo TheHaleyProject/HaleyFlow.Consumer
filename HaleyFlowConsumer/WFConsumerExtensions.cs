@@ -103,6 +103,27 @@ namespace Haley.Utils {
             return services;
         }
 
+        /// <summary>
+        /// Registers FlowBus as IFlowBus (singleton).
+        ///
+        /// FlowBus routes InitiateAsync to the engine (IWorkFlowConsumerService) or relay
+        /// (IWorkflowRelayService) based on FlowBusOptions.Mode.
+        /// When Mode is null: Engine takes priority over Relay.
+        ///
+        /// IWorkFlowConsumerService and IWorkflowRelayService are resolved optionally —
+        /// whichever is registered is used. If neither is registered, InitiateAsync returns failure.
+        /// </summary>
+        public static IServiceCollection AddFlowBus(this IServiceCollection services, Action<FlowBusOptions>? configure = null) {
+            ArgumentNullException.ThrowIfNull(services);
+            if (configure != null) services.Configure(configure);
+            services.TryAddSingleton(sp => sp.GetRequiredService<IOptions<FlowBusOptions>>().Value);
+            services.TryAddSingleton<IFlowBus>(sp => new FlowBus(
+                sp.GetRequiredService<FlowBusOptions>(),
+                sp.GetService<IWorkFlowConsumerService>(),
+                sp.GetService<IWorkflowRelayService>()));
+            return services;
+        }
+
         public static IReadOnlyList<Dictionary<string, object?>> ToConsumerInstanceDictionaries(this DbRows rows)
             => rows.ToDictionaries();
 
