@@ -483,9 +483,9 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
     <div class="callout warn">
       <div class="callout-title">ACK gate and DispatchMode</div>
       The engine's ACK gate checks whether the <em>most recent lifecycle (transition) ACK</em> for the instance has been resolved before accepting a new trigger. The gate query joins <code>lc_ack</code> - it does <strong>not</strong> look at <code>hook_ack</code>.<br><br>
-      <strong>[TransitionHandler]:</strong> calling <code>Engine.TriggerAsync</code> here is blocked while the current transition ACK is pending. In <code>NormalRun</code>, use <code>AutoTransitionAsync(ctx, success)</code> so the manager fires the next event after ACK. In <code>ValidationMode</code>, even if the handler records a next event, the manager suppresses it because hooks are still in progress.<br><br>
-      <strong>[TransitionMode]:</strong> the wrapper skips transition business logic entirely. The consumer only ACKs and then emits <code>ctx.OnSuccessEvent</code> after ACK confirmation because the engine already resolved the hook path.<br><br>
-      <strong>[HookHandler]:</strong> direct <code>Engine.TriggerAsync</code> is technically possible because hook ACKs are outside the lifecycle gate, but use it only when the workflow contract explicitly makes the hook or a notice such as <code>HOOK_GROUP_COMPLETE</code> responsible for advancement. Do not use it to bypass engine-managed <code>ValidationMode</code> / <code>TransitionMode</code> flows.
+      <strong>[TransitionHandler]:</strong> calling <code>Engine.TriggerAsync</code> here is blocked while the current transition ACK is pending. In <code>NormalRun</code>, use <code>AutoTransitionAsync(ctx, success)</code> so the manager fires the next event after ACK. In <code>ValidationMode</code>, the same business logic still runs, but any recorded next event is suppressed because hooks are still in progress.<br><br>
+      <strong>[Complete event]:</strong> after the engine finishes ordered hook processing, it dispatches a separate <code>Complete</code> event. The wrapper does <strong>not</strong> rerun transition business logic here. Instead, <code>OnTransitionCompleteAsync</code> receives the engine's resolved <code>evt.NextEvent</code>; default behaviour accepts that suggestion, and wrapper code may override it via <code>ResolveTransitionCompleteFallbackEvent</code> when the engine sends <code>0</code>.<br><br>
+      <strong>[HookHandler]:</strong> direct <code>Engine.TriggerAsync</code> is technically possible because hook ACKs are outside the lifecycle gate, but use it only when the workflow contract explicitly makes the hook or a notice such as <code>HOOK_GROUP_COMPLETE</code> responsible for advancement. Do not use it to bypass engine-managed <code>ValidationMode</code> / <code>Complete</code> handoff flows.
     </div>
 
     <h3 class="sub-title">AutoTransitionAsync — Built-in State Chaining</h3>
@@ -537,7 +537,7 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
       <div class="card">
         <div class="card-title">PollLoop</div>
         <ul>
-          <li>Calls <code>engine.GetDueTransitionsAsync</code> + <code>GetDueHooksAsync</code></li>
+          <li>Calls <code>engine.GetDueTransitionsAsync</code> (transition + complete deliveries) + <code>GetDueHooksAsync</code></li>
           <li>Dispatches each item via a semaphore-bounded concurrency pool</li>
           <li>If no events: sleeps for <code>PollInterval</code> (default 5s)</li>
           <li>If events found: polls again immediately</li>
@@ -623,7 +623,11 @@ WorkFlowConsumerManager
     <span class="ty">ILifeCycleTransitionEvent</span> evt, <span class="ty">ConsumerContext</span> ctx);
 
 <span class="kw">protected abstract</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnUnhandledHookAsync(
-    <span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx);</code><span class="lang-label">C#</span></pre>
+    <span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx);
+
+<span class="kw">protected abstract</span> <span class="ty">int</span>? ResolveTransitionCompleteFallbackEvent(
+    <span class="ty">ILifeCycleCompleteEvent</span> evt, <span class="ty">ConsumerContext</span> ctx);</code><span class="lang-label">C#</span></pre>
+    <p><code>ResolveTransitionCompleteFallbackEvent</code> is called only when the engine dispatches a <code>Complete</code> event with <code>NextEvent = 0</code>. Return an event code to continue locally, or <code>null</code> to ACK the completion without auto-triggering a next transition.</p>
     <div class="callout warn">
       <div class="callout-title">Do not return Processed by default blindly</div>
       If you return <code>Processed</code> for all unhandled events, silently-ignored events will never re-deliver. Consider logging an alert and returning <code>Failed</code> for truly unexpected events, or <code>Processed</code> only if your handler deliberately handles all events.
@@ -689,6 +693,18 @@ WorkFlowConsumerManager
       </table>
     </div>
 
+    <h4 class="mini-title">ILifeCycleCompleteEvent — completion handoff fields</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>LifeCycleId</code></td><td>The lifecycle row the engine has just finished resolving</td></tr>
+          <tr><td><code>HooksSucceeded</code></td><td><code>true</code> when hook processing completed successfully for that lifecycle. The current engine path uses this as a completion stamp rather than a new business decision point.</td></tr>
+          <tr><td><code>NextEvent</code></td><td>The engine's resolved suggested next event code. <code>0</code> means the engine has no suggestion and wrapper code must decide via <code>ResolveTransitionCompleteFallbackEvent</code>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
     <h4 class="mini-title">ConsumerContext — per-dispatch context</h4>
     <div class="table-wrap">
       <table>
@@ -702,9 +718,9 @@ WorkFlowConsumerManager
           <tr><td><code>HandlerVersion</code></td><td>Handler version pinned for this workflow instance. Used by the MinVersion picker.</td></tr>
           <tr><td><code>HandlerUpgrade</code></td><td><code>Pinned</code> or <code>AllowUpgrade</code> - whether newer handler methods can be used</td></tr>
           <tr><td><code>RunCount</code></td><td>How many times this hook has been dispatched including this delivery. Always <code>1</code> for transition events. Use <code>ctx.RunCount &gt; 1</code> to detect reruns without casting the event object.</td></tr>
-          <tr><td><code>OnSuccessEvent</code></td><td>Policy-defined next event for success. Used by <code>AutoTransitionAsync</code> in <code>NormalRun</code> or by the manager in <code>TransitionMode</code>.</td></tr>
+          <tr><td><code>OnSuccessEvent</code></td><td>Policy-defined next event for success. Used by <code>AutoTransitionAsync</code> in transition handlers. In <code>ValidationMode</code> the wrapper may still record it, but the manager suppresses firing until the engine later emits a separate <code>Complete</code> handoff.</td></tr>
           <tr><td><code>OnFailureEvent</code></td><td>Policy-defined next event for failure. Available when the workflow wants a failure branch.</td></tr>
-          <tr><td><code>DispatchMode</code></td><td><code>NormalRun</code>, <code>ValidationMode</code>, or <code>TransitionMode</code>. This tells the wrapper whether to run business logic normally, suppress auto-transition because hooks are active, or skip business logic because the engine already resolved the hook path.</td></tr>
+          <tr><td><code>DispatchMode</code></td><td><code>NormalRun</code> or <code>ValidationMode</code>. This tells the wrapper whether post-ACK auto-transition is allowed immediately, or whether the engine hook pipeline owns progression and will later send a separate <code>Complete</code> event.</td></tr>
           <tr><td><code>CancellationToken</code></td><td>Honour this in async operations - cancelled when consumer stops</td></tr>
         </tbody>
       </table>
