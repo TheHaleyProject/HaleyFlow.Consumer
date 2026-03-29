@@ -389,10 +389,14 @@ namespace Haley.Services {
         private async Task FireNextEventAsync(string instanceGuid, int? nextEvent, CancellationToken ct) {
             if (nextEvent == null) return;
             try {
-                await _feed.TriggerAsync(new LifeCycleTriggerRequest {
+                var result = await _feed.TriggerAsync(new LifeCycleTriggerRequest {
                     InstanceGuid = instanceGuid,
                     Event        = nextEvent.Value.ToString()
                 }, ct);
+                if (!result.Applied) {
+                    FireNotice(LifeCycleNotice.Warn("NEXT_EVENT_BLOCKED", "NEXT_EVENT_BLOCKED",
+                        $"Post-ACK trigger was not applied - instance={instanceGuid} nextEvent={nextEvent} reason={result.Reason}"));
+                }
             } catch (Exception ex) {
                 FireNotice(LifeCycleNotice.Error("NEXT_EVENT_FAILED", "NEXT_EVENT_FAILED",
                     $"AutoTransition trigger failed after ACK - instance={instanceGuid} nextEvent={nextEvent}: {ex.Message}. " +
