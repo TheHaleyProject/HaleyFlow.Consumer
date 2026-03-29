@@ -174,7 +174,7 @@ namespace Haley.Services {
                     try {
                         await ProcessItemAsync(item, ct);
                     } catch (OperationCanceledException) when (ct.IsCancellationRequested) {
-                        // Shutdown path — do not surface a dispatch error notice.
+                        // Shutdown path - do not surface a dispatch error notice.
                     } catch (Exception ex) {
                         FireNotice(LifeCycleNotice.Error("DISPATCH_ERROR", "DISPATCH_ERROR",
                             $"Unhandled exception in ProcessItemAsync kind={item.Kind} defId={item.Event?.DefinitionId} ackGuid={item.AckGuid}: {ex.Message}", ex));
@@ -260,7 +260,7 @@ namespace Haley.Services {
             // 5. Build context and dispatch wrapper.
             // DispatchMode: read from stored inbox row (authoritative on retry path).
             // On first delivery, inbox.DispatchMode == NormalRun (default); the actual mode was stored
-            // at INSERT time via BuildInboxRecord from the engine event — so it is always correct.
+            // at INSERT time via BuildInboxRecord from the engine event - so it is always correct.
             var dispatchMode = inbox.DispatchMode;
             var ctx = new ConsumerContext {
                 InboxId        = inboxId,
@@ -291,7 +291,7 @@ namespace Haley.Services {
                     ? await wrapper.DispatchTransitionAsync((ILifeCycleTransitionEvent)evt, ctx)
                     : await wrapper.DispatchHookAsync((ILifeCycleHookEvent)evt, ctx);
 
-                // Capture before wrapper goes out of scope — safe because each dispatch
+                // Capture before wrapper goes out of scope - safe because each dispatch
                 // activates a fresh wrapper instance, so _nextEvent belongs to this call only.
                 nextEvent = wrapper._nextEvent;
                 await _dal.InboxStatus.SetStatusAsync(inboxId, InboxStatus.Processed, load: load);
@@ -304,22 +304,16 @@ namespace Haley.Services {
 
             // 6. Write outbox (persists next_event for retry path) and try immediate ACK.
             await _dal.Outbox.UpsertAsync(inboxId, outcome, nextEvent, load);
-            if (string.IsNullOrWhiteSpace(item.AckGuid)) {
+            try {
+                await _feed.AckAsync(_consumerId, item.AckGuid, outcome, ct: ct);
                 await _dal.Outbox.SetStatusAsync(inboxId, OutboxStatus.Confirmed, load: load);
                 await _dal.Outbox.AddHistoryAsync(inboxId, outcome, OutboxStatus.Confirmed, null, null, load);
                 await FireNextEventAsync(ctx.InstanceGuid, nextEvent, ct);
-            } else {
-                try {
-                    await _feed.AckAsync(_consumerId, item.AckGuid, outcome, ct: ct);
-                    await _dal.Outbox.SetStatusAsync(inboxId, OutboxStatus.Confirmed, load: load);
-                    await _dal.Outbox.AddHistoryAsync(inboxId, outcome, OutboxStatus.Confirmed, null, null, load);
-                    await FireNextEventAsync(ctx.InstanceGuid, nextEvent, ct);
-                } catch (Exception ex) {
-                    await _dal.Outbox.SetStatusAsync(inboxId, OutboxStatus.Pending,
-                        error: ex.Message,
-                        nextRetryAt: DateTimeOffset.UtcNow + _opt.OutboxRetryDelay,
-                        load: load);
-                }
+            } catch (Exception ex) {
+                await _dal.Outbox.SetStatusAsync(inboxId, OutboxStatus.Pending,
+                    error: ex.Message,
+                    nextRetryAt: DateTimeOffset.UtcNow + _opt.OutboxRetryDelay,
+                    load: load);
             }
         }
 
@@ -338,24 +332,27 @@ namespace Haley.Services {
                         var instanceGuid = r.GetString(KEY_INSTANCE_GUID) ?? string.Empty;
 
                         if (string.IsNullOrWhiteSpace(ackGuid)) {
+                            const string error = "Outbox row has missing ack_guid. ACK delivery cannot proceed.";
+                            await _dal.Outbox.SetStatusAsync(inboxId, OutboxStatus.Failed, error: error, load: load);
+                            await _dal.Outbox.AddHistoryAsync(inboxId, outcome, OutboxStatus.Failed, null, error, load);
+                            FireNotice(LifeCycleNotice.Error("OUTBOX_INVALID_ACK", "OUTBOX_INVALID_ACK",
+                                $"Outbox row has missing ack_guid. inboxId={inboxId} outcome={outcome}. Manual cleanup may be required."));
+                            continue;
+                        }
+
+                        try {
+                            await _feed.AckAsync(_consumerId, ackGuid, outcome, ct: ct);
                             await _dal.Outbox.SetStatusAsync(inboxId, OutboxStatus.Confirmed, load: load);
                             await _dal.Outbox.AddHistoryAsync(inboxId, outcome, OutboxStatus.Confirmed, null, null, load);
                             await FireNextEventAsync(instanceGuid, nextEvent, ct);
-                        } else {
-                            try {
-                                await _feed.AckAsync(_consumerId, ackGuid, outcome, ct: ct);
-                                await _dal.Outbox.SetStatusAsync(inboxId, OutboxStatus.Confirmed, load: load);
-                                await _dal.Outbox.AddHistoryAsync(inboxId, outcome, OutboxStatus.Confirmed, null, null, load);
-                                await FireNextEventAsync(instanceGuid, nextEvent, ct);
-                            } catch (Exception ex) {
-                                await _dal.Outbox.SetStatusAsync(inboxId, OutboxStatus.Pending,
-                                    error: ex.Message,
-                                    nextRetryAt: DateTimeOffset.UtcNow + _opt.OutboxRetryDelay,
-                                    load: load);
-                                await _dal.Outbox.AddHistoryAsync(inboxId, outcome, OutboxStatus.Failed, null, ex.Message, load);
-                                FireNotice(LifeCycleNotice.Error("OUTBOX_ACK_FAILED", "OUTBOX_ACK_FAILED",
-                                    $"Outbox ACK retry failed inboxId={inboxId} ackGuid={ackGuid} outcome={outcome}: {ex.Message}", ex));
-                            }
+                        } catch (Exception ex) {
+                            await _dal.Outbox.SetStatusAsync(inboxId, OutboxStatus.Pending,
+                                error: ex.Message,
+                                nextRetryAt: DateTimeOffset.UtcNow + _opt.OutboxRetryDelay,
+                                load: load);
+                            await _dal.Outbox.AddHistoryAsync(inboxId, outcome, OutboxStatus.Failed, null, ex.Message, load);
+                            FireNotice(LifeCycleNotice.Error("OUTBOX_ACK_FAILED", "OUTBOX_ACK_FAILED",
+                                $"Outbox ACK retry failed inboxId={inboxId} ackGuid={ackGuid} outcome={outcome}: {ex.Message}", ex));
                         }
                     }
                     if (rows.Count == 0)
@@ -393,7 +390,7 @@ namespace Haley.Services {
                 }, ct);
             } catch (Exception ex) {
                 FireNotice(LifeCycleNotice.Error("NEXT_EVENT_FAILED", "NEXT_EVENT_FAILED",
-                    $"AutoTransition trigger failed after ACK — instance={instanceGuid} nextEvent={nextEvent}: {ex.Message}. " +
+                    $"AutoTransition trigger failed after ACK - instance={instanceGuid} nextEvent={nextEvent}: {ex.Message}. " +
                     $"ACK is already confirmed. Engine monitor will detect stale state.", ex));
             }
         }
