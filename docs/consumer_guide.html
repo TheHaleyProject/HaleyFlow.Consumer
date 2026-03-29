@@ -309,13 +309,13 @@
     <div class="hero-logo">h.</div>
     <div>
       <h1>HaleyFlow Consumer</h1>
-      <p>An attribute-driven handler framework for processing engine events. Write a class, decorate methods — the consumer library handles polling, dispatch, business action tracking, ACK retry, and the transactional outbox automatically.</p>
+      <p>A protocol-driven consumer runtime for HaleyFlow deliveries. You implement wrapper handlers, and the library handles proxy polling, inbox/outbox persistence, ACK delivery, retry, business-action idempotency, and admin visibility.</p>
       <div class="hero-meta">
         <span class="hero-tag">MariaDB</span>
         <span class="hero-tag">C# / .NET</span>
-        <span class="hero-tag">Attribute-Driven</span>
+        <span class="hero-tag">Protocol-Driven</span>
         <span class="hero-tag">At-Least-Once</span>
-        <span class="hero-tag">Business Actions</span>
+        <span class="hero-tag">Inbox / Outbox</span>
       </div>
     </div>
   </div>
@@ -324,12 +324,16 @@
   <section class="doc-section" id="overview-detail">
     <div class="section-label">Overview</div>
     <h2 class="section-title">What is HaleyFlow Consumer?</h2>
+    <div class="callout tip">
+      <div class="callout-title">Authoritative contract</div>
+      The JSON contract is defined in <code>HaleyFlowProtocol_v1.html</code>. This guide explains how the consumer interprets that protocol operationally: how items arrive through <code>ILifeCycleEngineProxy</code>, how wrappers are resolved, and how inbox/outbox persistence and retries work.
+    </div>
     <div class="card-grid">
       <div class="card">
         <div class="card-title"><span class="card-icon">✅</span> What the consumer does</div>
         <ul>
-          <li>Polls the engine for due transition and hook events</li>
-          <li>Dispatches events to the correct handler method by attribute</li>
+          <li>Pulls due transition and hook deliveries from <code>ILifeCycleEngineProxy</code></li>
+          <li>Dispatches deliveries to the correct wrapper method by event code or hook route</li>
           <li>Records idempotent business actions in <code>business_action</code> (per instance, per action code)</li>
           <li>ACKs the engine via a transactional outbox (survives crashes)</li>
           <li>Pins a handler version per workflow instance on first event</li>
@@ -348,7 +352,7 @@
     </div>
     <div class="callout tip">
       <div class="callout-title">Key difference from the raw engine API</div>
-      When using the engine directly, you subscribe to <code>engine.EventRaised</code> and call <code>engine.AckAsync(…)</code> yourself. With the consumer library, you write a <code>LifeCycleWrapper</code> subclass, return <code>AckOutcome</code> from your handler, and the library handles everything else — polling, delivery tracking, outbox retry, and ACK.
+      When using the engine directly, you manage transport, delivery tracking, and ACK calls yourself. With the consumer library, you write a <code>LifeCycleWrapper</code> subclass, return <code>AckOutcome</code>, and the runtime handles proxy polling, inbox persistence, outbox retry, and ACK delivery for you.
     </div>
   </section>
 
@@ -437,7 +441,7 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
 
     <div class="flow">
       <pre><code><span class="flow-blue">Step 1 — External caller</span>
-  engine.TriggerAsync({ Event: "100", EntityGuid: "loan-xyz" })
+  engine.TriggerAsync({ Event: "100", EntityId: "loan-xyz" })
         │
         ▼ <span class="flow-hl">Engine validates &amp; records the state transition</span>
         │  • Checks policy: is event 100 legal from current state?
@@ -477,10 +481,11 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
     <p>This is intentional. The event code is the shared vocabulary between the engine's state machine and your business logic. The engine uses it to look up which transitions are legal; the consumer uses it to route to the right handler. The same concept, two operations separated in time.</p>
 
     <div class="callout warn">
-      <div class="callout-title">ACK gate — applies to [TransitionHandler] only</div>
-      The engine's ACK gate checks whether the <em>most recent lifecycle (transition) ACK</em> for the instance has been resolved before accepting a new trigger. The gate query joins <code>lc_ack</code> — it does <strong>not</strong> look at <code>hook_ack</code>.<br><br>
-      <strong>[TransitionHandler]:</strong> calling <code>Engine.TriggerAsync</code> here is blocked — the current transition's <code>lc_ack</code> row is still pending. Use <code>AutoTransitionAsync(ctx, success)</code> instead — it defers the trigger until after ACK is confirmed.<br><br>
-      <strong>[HookHandler]:</strong> calling <code>Engine.TriggerAsync</code> directly is safe — hook ACKs live in <code>hook_ack</code> which the gate never checks. The existing interactive hook wrappers exploit this intentionally.
+      <div class="callout-title">ACK gate and DispatchMode</div>
+      The engine's ACK gate checks whether the <em>most recent lifecycle (transition) ACK</em> for the instance has been resolved before accepting a new trigger. The gate query joins <code>lc_ack</code> - it does <strong>not</strong> look at <code>hook_ack</code>.<br><br>
+      <strong>[TransitionHandler]:</strong> calling <code>Engine.TriggerAsync</code> here is blocked while the current transition ACK is pending. In <code>NormalRun</code>, use <code>AutoTransitionAsync(ctx, success)</code> so the manager fires the next event after ACK. In <code>ValidationMode</code>, even if the handler records a next event, the manager suppresses it because hooks are still in progress.<br><br>
+      <strong>[TransitionMode]:</strong> the wrapper skips transition business logic entirely. The consumer only ACKs and then emits <code>ctx.OnSuccessEvent</code> after ACK confirmation because the engine already resolved the hook path.<br><br>
+      <strong>[HookHandler]:</strong> direct <code>Engine.TriggerAsync</code> is technically possible because hook ACKs are outside the lifecycle gate, but use it only when the workflow contract explicitly makes the hook or a notice such as <code>HOOK_GROUP_COMPLETE</code> responsible for advancement. Do not use it to bypass engine-managed <code>ValidationMode</code> / <code>TransitionMode</code> flows.
     </div>
 
     <h3 class="sub-title">AutoTransitionAsync — Built-in State Chaining</h3>
@@ -648,7 +653,7 @@ WorkFlowConsumerManager
     </div>
 
     <h4 class="mini-title">[HookHandler("route", minVersion?)] — Method-level</h4>
-    <p>Marks a method as the handler for a hook with the given route name. The route must match the <code>"event"</code> field in the policy emit entry.</p>
+    <p>Marks a method as the handler for a hook with the given route name. The route must match the <code>"route"</code> field in the policy <code>emit</code> entry.</p>
     <pre><code>[<span class="at">HookHandler</span>(<span class="st">"app.loan.notify_reviewer"</span>)]
 <span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnNotifyReviewerAsync(<span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx)
     { ... }</code><span class="lang-label">C#</span></pre>
@@ -659,14 +664,14 @@ WorkFlowConsumerManager
         <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
         <tbody>
           <tr><td><code>EventCode</code></td><td>int</td><td>The event code that fired the transition</td></tr>
-          <tr><td><code>EntityId</code></td><td>string</td><td>The <code>external_ref</code> — stable business key for the workflow instance</td></tr>
+          <tr><td><code>EntityId</code></td><td>string</td><td>The application business key stored in engine <code>instance.entity_id</code> and forwarded on every delivery</td></tr>
           <tr><td><code>DefinitionId</code></td><td>long</td><td>Engine definition ID</td></tr>
           <tr><td><code>DefinitionVersionId</code></td><td>long</td><td>Engine def_version ID</td></tr>
           <tr><td><code>InstanceGuid</code></td><td>string?</td><td>Stable engine-assigned GUID for this instance. Use this in <code>LifeCycleInstanceKey.InstanceGuid</code> for fastest lookups.</td></tr>
           <tr><td><code>Metadata</code></td><td>string?</td><td><span class="badge-new" style="background:#2563eb;color:#fff;font-size:9px;border-radius:3px;padding:1px 4px;margin-right:4px;font-weight:700;">NEW</span>Immutable instance metadata set at creation. Forwarded on every event. Opaque to the engine — consumer-defined structure.</td></tr>
           <tr><td><code>Params</code></td><td>object?</td><td>Params from matched policy rule</td></tr>
-          <tr><td><code>OnSuccessEvent</code></td><td>string?</td><td>Event code to trigger on success (from policy <code>complete.success</code>)</td></tr>
-          <tr><td><code>OnFailureEvent</code></td><td>string?</td><td>Event code to trigger on failure (from policy <code>complete.failure</code>)</td></tr>
+          <tr><td><code>OnSuccessEvent</code></td><td>int?</td><td>Event code to trigger on success (from policy <code>complete.success</code>)</td></tr>
+          <tr><td><code>OnFailureEvent</code></td><td>int?</td><td>Event code to trigger on failure (from policy <code>complete.failure</code>)</td></tr>
           <tr><td><code>OccurredAt</code></td><td>DateTimeOffset</td><td>Real-world event time (set by trigger caller; may be backdated)</td></tr>
         </tbody>
       </table>
@@ -692,12 +697,15 @@ WorkFlowConsumerManager
           <tr><td><code>InboxId</code></td><td>Consumer-local <code>inbox.id</code> for this event delivery — used internally by business action and inbox action DALs</td></tr>
           <tr><td><code>InstanceId</code></td><td>Consumer-local <code>instance.id</code> surrogate key — FK used in <code>business_action</code> table (see Instance &amp; Entity Model)</td></tr>
           <tr><td><code>InstanceGuid</code></td><td>Engine-assigned stable GUID for this workflow instance — use for <code>Engine.*Async</code> calls that take a <code>LifeCycleInstanceKey</code></td></tr>
-          <tr><td><code>EntityGuid</code></td><td>The application's business key (e.g. order ID, customer ID) — supplied by the caller at trigger time as <code>external_ref</code></td></tr>
+          <tr><td><code>EntityGuid</code></td><td>The application's business key (e.g. order ID, customer ID) — supplied by the caller at trigger time as engine <code>entity_id</code></td></tr>
           <tr><td><code>AckGuid</code></td><td>Engine-issued ACK GUID for this event — passed back to the engine when ACKing</td></tr>
           <tr><td><code>HandlerVersion</code></td><td>Handler version pinned for this workflow instance. Used by the MinVersion picker.</td></tr>
-          <tr><td><code>HandlerUpgrade</code></td><td><code>Pinned</code> or <code>AllowUpgrade</code> — whether newer handler methods can be used</td></tr>
+          <tr><td><code>HandlerUpgrade</code></td><td><code>Pinned</code> or <code>AllowUpgrade</code> - whether newer handler methods can be used</td></tr>
           <tr><td><code>RunCount</code></td><td>How many times this hook has been dispatched including this delivery. Always <code>1</code> for transition events. Use <code>ctx.RunCount &gt; 1</code> to detect reruns without casting the event object.</td></tr>
-          <tr><td><code>CancellationToken</code></td><td>Honour this in async operations — cancelled when consumer stops</td></tr>
+          <tr><td><code>OnSuccessEvent</code></td><td>Policy-defined next event for success. Used by <code>AutoTransitionAsync</code> in <code>NormalRun</code> or by the manager in <code>TransitionMode</code>.</td></tr>
+          <tr><td><code>OnFailureEvent</code></td><td>Policy-defined next event for failure. Available when the workflow wants a failure branch.</td></tr>
+          <tr><td><code>DispatchMode</code></td><td><code>NormalRun</code>, <code>ValidationMode</code>, or <code>TransitionMode</code>. This tells the wrapper whether to run business logic normally, suppress auto-transition because hooks are active, or skip business logic because the engine already resolved the hook path.</td></tr>
+          <tr><td><code>CancellationToken</code></td><td>Honour this in async operations - cancelled when consumer stops</td></tr>
         </tbody>
       </table>
     </div>
@@ -719,7 +727,7 @@ WorkFlowConsumerManager
           <tr>
             <td><code>entity_guid</code> (<code>ctx.EntityGuid</code>)</td>
             <td>Application-supplied</td>
-            <td>The application's business key — e.g. <code>"order-12345"</code>, <code>"user-abc"</code>. Passed to the engine at trigger time as <code>external_ref</code>. Forwarded on every event. Multiple workflow instances can share the same <code>entity_guid</code>.</td>
+            <td>The application's business key — e.g. <code>"order-12345"</code>, <code>"user-abc"</code>. Passed to the engine at trigger time as <code>entity_id</code>. Forwarded on every event. Multiple workflow instances can share the same <code>entity_guid</code>.</td>
           </tr>
         </tbody>
       </table>
@@ -744,7 +752,7 @@ WorkFlowConsumerManager
 
     <h4 class="mini-title">How entity_guid flows through the system</h4>
     <ol class="step-list">
-      <li><div class="step-num">1</div><div class="step-body"><strong>Application triggers a workflow</strong> — calls <code>engine.TriggerAsync(new LifeCycleTriggerRequest { EntityGuid = "order-12345", DefName = "loan-approval", ... })</code>. The engine records this as <code>instance.external_ref</code>.</div></li>
+      <li><div class="step-num">1</div><div class="step-body"><strong>Application triggers a workflow</strong> — calls <code>engine.TriggerAsync(new LifeCycleTriggerRequest { EntityId = "order-12345", DefName = "loan-approval", ... })</code>. The engine records this as <code>instance.entity_id</code>.</div></li>
       <li><div class="step-num">2</div><div class="step-body"><strong>Engine fires events</strong> — every dispatched transition or hook event carries both <code>InstanceGuid</code> (the engine's stable UUID) and <code>EntityGuid</code> (the application key) in its payload.</div></li>
       <li><div class="step-num">3</div><div class="step-body"><strong>Consumer upserts the instance row</strong> — on first event, inserts <code>instance(guid, entity_guid, def_name, ...)</code>. Returns the local <code>instanceId</code> bigint, which becomes the FK for the <code>inbox</code> row and any <code>business_action</code> rows.</div></li>
       <li><div class="step-num">4</div><div class="step-body"><strong>Handler accesses both keys</strong> — use <code>ctx.EntityGuid</code> to look up application records, <code>ctx.InstanceGuid</code> for engine calls (e.g. <code>Engine.GetTimelineAsync</code>), and <code>ctx.InstanceId</code> if you need the local surrogate for direct consumer DB queries.</div></li>
@@ -887,6 +895,10 @@ WorkFlowConsumerManager
   <section class="doc-section" id="arch-dispatch">
     <h3 class="sub-title">Dispatch Flow (ProcessItemAsync)</h3>
     <p>When an event item is dequeued from the engine, <code>ProcessItemAsync</code> runs the following steps:</p>
+    <div class="callout tip">
+      <div class="callout-title">Validation happens before persistence</div>
+      The consumer first checks whether the delivery belongs to this consumer, whether <code>ack_guid</code> is present, and whether a wrapper is registered for the incoming definition. If the delivery is for another consumer, it is ignored. If the wrapper is missing for this consumer, the consumer terminally rejects it and sends the reason back to the engine. If <code>ack_guid</code> is missing, the delivery is invalid and only a notice can be raised because there is no acknowledgement key to answer with.
+    </div>
     <ol class="step-list">
       <li><div class="step-num">1</div><div class="step-body"><strong>Upsert instance row</strong> — finds or creates a row in the <code>instance</code> table keyed by the engine's <code>instance_guid</code>. Returns a local bigint <code>instanceId</code> surrogate key used as FK for all subsequent rows.</div></li>
       <li><div class="step-num">2</div><div class="step-body"><strong>Upsert inbox row</strong> — inserts a row in the <code>inbox</code> table keyed by <code>ack_guid</code> (unique). Stores kind, route, event code, <code>run_count</code>, etc. Returns <code>inboxId</code>.</div></li>
@@ -898,7 +910,7 @@ WorkFlowConsumerManager
     </ol>
     <div class="callout new">
       <div class="callout-title">Acknowledgement is mandatory</div>
-      Every consumer delivery now carries an <code>ack_guid</code>. The consumer always records the inbox row, writes the outbox row, and confirms the ACK back to the engine. Deliveries with a missing <code>ack_guid</code> are treated as invalid and skipped with a notice.
+      Every valid consumer delivery carries an <code>ack_guid</code>. The consumer records the inbox row, writes the outbox row, and confirms the ACK back to the engine. A missing <code>ack_guid</code> is a protocol error: the consumer cannot acknowledge, fail, or cancel that delivery on the engine side, so it raises a notice and leaves the item unresolved.
     </div>
   </section>
 
@@ -1347,7 +1359,7 @@ services.<span class="fn">AddWorkFlowConsumerService</span>(configuration);</cod
     </div>
     <div class="callout warn">
       <div class="callout-title">Retry count matters</div>
-      If your handler returns <code>Retry</code> too many times, the engine's monitor will exceed <code>MaxRetryCount</code> and either suspend the instance (blocking hook) or fire <code>ACK_FAIL</code> (non-blocking hook). Investigate the root cause of transient failures rather than retrying indefinitely.
+      If your handler returns <code>Retry</code> too many times, the engine's monitor will exceed <code>MaxRetryCount</code> and either suspend the instance (gate hook) or fire <code>ACK_FAIL</code> (effect hook). Investigate the root cause of transient failures rather than retrying indefinitely.
     </div>
   </section>
 
@@ -1708,7 +1720,7 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
 
   <section class="doc-section" id="ex-hook">
     <h3 class="sub-title">Example 4 — Hook Handler</h3>
-    <p>Handle hook events emitted by the engine's policy. The route name in <code>[HookHandler]</code> must match the <code>"event"</code> field in the policy emit entry exactly.</p>
+    <p>Handle hook events emitted by the engine's policy. The route name in <code>[HookHandler]</code> must match the policy emit entry's <code>"route"</code> field exactly.</p>
     <pre><code>[<span class="at">LifeCycleDefinition</span>(<span class="st">"loan-approval"</span>)]
 <span class="kw">public class</span> <span class="ty">LoanHookHandler</span> : <span class="ty">LifeCycleWrapper</span> {
     <span class="kw">private readonly</span> <span class="ty">IEmailService</span>  _email;
@@ -1718,7 +1730,7 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
         _email = email; _credit = credit;
     }
 
-    <span class="cm">// Handles: "emit": [{ "event": "app.loan.notify_reviewer", ... }]</span>
+    <span class="cm">// Handles: "emit": [{ "route": "app.loan.notify_reviewer", ... }]</span>
     [<span class="at">HookHandler</span>(<span class="st">"app.loan.notify_reviewer"</span>)]
     <span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnNotifyReviewerAsync(
         <span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
@@ -1730,21 +1742,21 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
         <span class="kw">return</span> <span class="ty">AckOutcome</span>.Processed;
     }
 
-    <span class="cm">// Handles: "emit": [{ "event": "app.loan.run_credit_check", "blocking": true }]</span>
+    <span class="cm">// Handles: "emit": [{ "route": "app.loan.run_credit_check", "type": "gate" }]</span>
     [<span class="at">HookHandler</span>(<span class="st">"app.loan.run_credit_check"</span>)]
     <span class="kw">public async</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnCreditCheckAsync(
         <span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
         <span class="kw">try</span> {
             <span class="kw">var</span> passed = <span class="kw">await</span> _credit.CheckAsync(evt.EntityId, ctx.CancellationToken);
             <span class="cm">// Return Retry if transient; Processed/Failed for permanent outcomes.
-            // If Failed on a blocking hook, engine may suspend the instance.</span>
+            // If Failed on a gate hook, the engine may suspend the instance.</span>
             <span class="kw">return</span> passed ? <span class="ty">AckOutcome</span>.Processed : <span class="ty">AckOutcome</span>.Failed;
         } <span class="kw">catch</span> {
             <span class="kw">return</span> <span class="ty">AckOutcome</span>.Retry;
         }
     }
 
-    <span class="cm">// Non-blocking audit log hook — failure is safe</span>
+    <span class="cm">// Effect audit log hook — failure is safe</span>
     [<span class="at">HookHandler</span>(<span class="st">"app.loan.audit_log"</span>)]
     <span class="kw">public</span> Task&lt;<span class="ty">AckOutcome</span>&gt; OnAuditLogAsync(
         <span class="ty">ILifeCycleHookEvent</span> evt, <span class="ty">ConsumerContext</span> ctx) {
@@ -1952,3 +1964,5 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
 </script>
 </body>
 </html>
+
+
