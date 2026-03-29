@@ -229,6 +229,10 @@
 				<comment><![CDATA[UTC timestamp when the row was last updated.]]></comment>
 			</column>
 			<column name="next_event" type="INT" />
+			<column name="next_event_source" type="TINYINT" mandatory="y" >
+				<defo><![CDATA[0]]></defo>
+				<comment><![CDATA[0=None, 1=Policy, 2=EngineResolved, 3=ConsumerOverride.]]></comment>
+			</column>
 			<index name="pk_outbox" unique="PRIMARY_KEY" >
 				<column name="inbox_id" />
 			</index>

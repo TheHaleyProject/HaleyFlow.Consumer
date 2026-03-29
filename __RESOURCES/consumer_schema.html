@@ -450,15 +450,6 @@ on delete cascade</title>
 <path transform='translate(10,0)' marker-start='url(#One)'     d='M 551,95L 504,95Q 494,95 494,105L 494,105Q 494,114 485,114L 475,114' ><title>&#x1F517;  Foreign Key fk_inbox_status_inbox
 inbox_status &#10132; inbox ( inbox_id -&gt; id )
 on delete cascade</title></path>
-<!-- == Fk 'outbox_fk_outbox_inbox' == -->
-<path id='outbox_fk_outbox_inbox'  onmouseover="hghl(['outbox_fk_outbox_inbox','lc_consumer.outbox.inbox_id','lc_consumer.inbox.id'])" onmouseout="uhghl(['outbox_fk_outbox_inbox','lc_consumer.outbox.inbox_id','lc_consumer.inbox.id'])" transform='translate(10,0)' class='unhighlight' d='M 228,114L 285,114' >
-	<title>&#x1F517;  Foreign Key fk_outbox_inbox
-outbox &#10132; inbox ( inbox_id -&gt; id )
-on delete cascade</title>
-</path>
-<path transform='translate(10,0)' marker-start='url(#One)' marker-end='url(#One)'    d='M 228,114L 285,114' ><title>&#x1F517;  Foreign Key fk_outbox_inbox
-outbox &#10132; inbox ( inbox_id -&gt; id )
-on delete cascade</title></path>
 <!-- == Fk 'outbox_history_fk_outbox_history_inbox' == -->
 <path id='outbox_history_fk_outbox_history_inbox'  onmouseover="hghl(['outbox_history_fk_outbox_history_inbox','lc_consumer.outbox_history.inbox_id','lc_consumer.inbox.id'])" onmouseout="uhghl(['outbox_history_fk_outbox_history_inbox','lc_consumer.outbox_history.inbox_id','lc_consumer.inbox.id'])" transform='translate(10,0)' class='unhighlight' d='M 228,342L 238,342Q 247,342 247,333L 247,124Q 247,114 257,114L 266,114' >
 	<title>&#x1F517;  Foreign Key fk_outbox_history_inbox
@@ -476,6 +467,15 @@ on delete cascade</title>
 </path>
 <path transform='translate(10,0)' marker-start='url(#OneMore)'     d='M 475,342L 504,342Q 513,342 513,352L 513,494' ><title>&#x1F517;  Foreign Key fk_inbox_instance
 inbox &#10132; instance ( instance_id -&gt; id )
+on delete cascade</title></path>
+<!-- == Fk 'outbox_fk_outbox_inbox' == -->
+<path id='outbox_fk_outbox_inbox'  onmouseover="hghl(['outbox_fk_outbox_inbox','lc_consumer.outbox.inbox_id','lc_consumer.inbox.id'])" onmouseout="uhghl(['outbox_fk_outbox_inbox','lc_consumer.outbox.inbox_id','lc_consumer.inbox.id'])" transform='translate(10,0)' class='unhighlight' d='M 228,114L 285,114' >
+	<title>&#x1F517;  Foreign Key fk_outbox_inbox
+outbox &#10132; inbox ( inbox_id -&gt; id )
+on delete cascade</title>
+</path>
+<path transform='translate(10,0)' marker-start='url(#One)' marker-end='url(#One)'    d='M 228,114L 285,114' ><title>&#x1F517;  Foreign Key fk_outbox_inbox
+outbox &#10132; inbox ( inbox_id -&gt; id )
 on delete cascade</title></path>
 <!-- == Table 'business_action' == -->
 <rect id='depict_lc&#95;consumer&#46;business&#95;action' class='entity' style='stroke:#F9FAFC' x='570' y='409' width='133' height='209' rx='4' ry='4' />
@@ -613,42 +613,6 @@ Referred by inbox ( instance_id -&gt; id ) </title><use x='480' y='489' href='#r
  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
       When this instance was created at the engine side, mirrored into the consumer database.</title><text id='lc&#95;consumer&#46;instance&#46;created' x='346' y='579'>created</text></g></a>
 <text x='490' y='575' text-anchor='end' class='colType'>t</text>
-<!-- == Table 'outbox' == -->
-<rect id='depict_lc&#95;consumer&#46;outbox' class='entity' style='stroke:#F9FAFC' x='57' y='67' width='171' height='190' rx='4' ry='4' />
-<rect x='57' y='67' width='171' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_BED3F4);'/>
-<rect x='57' y='71' width='171' height='29' style='stroke-width:0;fill:url(#tbg_BED3F4);'/>
-<a href='#lc_consumer.outbox'><g><title>Table lc_consumer.outbox
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Outbound acknowledgement queue from consumer to engine with retry scheduling.</title><text id='depict&#45;lc&#95;consumer&#46;outbox' x='117' y='89' class='tableHeader' style='fill:#414348;'>outbox</text></g></a>
-  <use x='58' y='110' href='#nn'/><g><title>&#x1F511;  Pk pk_outbox ( inbox_id ) </title><use x='59' y='109' href='#pk'/></g><a href='#lc_consumer.outbox.inbox_id'><g><title>&#10697;  inbox_id
-     * bigint
- &#8599; inbox( id )
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Inbox record identifier (FK to inbox.id).</title><text id='lc&#95;consumer&#46;outbox&#46;inbox&#95;id' x='80' y='123' onmouseover="hghl(['outbox_fk_outbox_inbox','lc_consumer.inbox.id'])" onmouseout="uhghl(['outbox_fk_outbox_inbox','lc_consumer.inbox.id'])" class='colPk'>inbox&#95;id</text></g></a>
-<a href='#lc_consumer.outbox.inbox_id'><g><title>&#x1F517;  References inbox ( inbox_id -&gt; id ) </title><use x='214' y='109' href='#fk'/></g></a>
-  <a href='#lc_consumer.outbox.current_outcome'><g><title>&#10697;  current_outcome
-     tinyint
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Current outcome: 1=Delivered, 2=Processed, 3=Retry, 4=Failed.</title><text id='lc&#95;consumer&#46;outbox&#46;current&#95;outcome' x='80' y='142'>current&#95;outcome</text></g></a>
-<text x='224' y='138' text-anchor='end' class='colType'>&#35;</text>  <use x='58' y='148' href='#nn'/><g><title>&#x1F50D;  idx_outbox_send_status ( status, next_retry_at ) </title><use x='59' y='147' href='#idx'/></g><a href='#lc_consumer.outbox.status'><g><title>&#10697;  status
-     * tinyint default 1
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Outbox send state: 1=Pending, 2=Sent, 3=Confirmed, 4=Failed.</title><text id='lc&#95;consumer&#46;outbox&#46;status' x='80' y='161'>status</text></g></a>
-<text x='224' y='157' text-anchor='end' class='colType'>&#35;</text>  <g><title>&#x1F50D;  idx_outbox_send_status ( status, next_retry_at ) </title><use x='59' y='166' href='#idx'/></g><a href='#lc_consumer.outbox.next_retry_at'><g><title>&#10697;  next_retry_at
-     datetime(6)
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Scheduled timestamp for next retry attempt.</title><text id='lc&#95;consumer&#46;outbox&#46;next&#95;retry&#95;at' x='80' y='180'>next&#95;retry&#95;at</text></g></a>
-<text x='224' y='176' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.outbox.last_error'><g><title>&#10697;  last_error
-     text
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Last captured error message for troubleshooting.</title><text id='lc&#95;consumer&#46;outbox&#46;last&#95;error' x='80' y='199'>last&#95;error</text></g></a>
-<text x='224' y='195' text-anchor='end' class='colType'>t</text>  <use x='58' y='205' href='#nn'/><a href='#lc_consumer.outbox.modified'><g><title>&#10697;  modified
-     * datetime default current_timestamp()
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      UTC timestamp when the row was last updated.</title><text id='lc&#95;consumer&#46;outbox&#46;modified' x='80' y='218'>modified</text></g></a>
-<text x='224' y='214' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.outbox.next_event'><g><title>&#10697;  next_event
-     int</title><text id='lc&#95;consumer&#46;outbox&#46;next&#95;event' x='80' y='237'>next&#95;event</text></g></a>
-<text x='224' y='233' text-anchor='end' class='colType'>&#35;</text>
 <!-- == Table 'outbox_history' == -->
 <rect id='depict_lc&#95;consumer&#46;outbox&#95;history' class='entity' style='stroke:#F9FAFC' x='95' y='276' width='133' height='209' rx='4' ry='4' />
 <rect x='95' y='276' width='133' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_BED3F4);'/>
@@ -763,6 +727,46 @@ Referred by outbox_history ( inbox_id -&gt; id ) </title><use x='461' y='109' hr
  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
       1=Gate, 0=Effect. NULL for Transition rows.</title><text id='lc&#95;consumer&#46;inbox&#46;hook&#95;type' x='327' y='370'>hook&#95;type</text></g></a>
 <text x='471' y='366' text-anchor='end' class='colType'>&#35;</text>
+<!-- == Table 'outbox' == -->
+<rect id='depict_lc&#95;consumer&#46;outbox' class='entity' style='stroke:#F9FAFC' x='57' y='67' width='171' height='209' rx='4' ry='4' />
+<rect x='57' y='67' width='171' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_BED3F4);'/>
+<rect x='57' y='71' width='171' height='29' style='stroke-width:0;fill:url(#tbg_BED3F4);'/>
+<a href='#lc_consumer.outbox'><g><title>Table lc_consumer.outbox
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Outbound acknowledgement queue from consumer to engine with retry scheduling.</title><text id='depict&#45;lc&#95;consumer&#46;outbox' x='117' y='89' class='tableHeader' style='fill:#414348;'>outbox</text></g></a>
+  <use x='58' y='110' href='#nn'/><g><title>&#x1F511;  Pk pk_outbox ( inbox_id ) </title><use x='59' y='109' href='#pk'/></g><a href='#lc_consumer.outbox.inbox_id'><g><title>&#10697;  inbox_id
+     * bigint
+ &#8599; inbox( id )
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Inbox record identifier (FK to inbox.id).</title><text id='lc&#95;consumer&#46;outbox&#46;inbox&#95;id' x='80' y='123' onmouseover="hghl(['outbox_fk_outbox_inbox','lc_consumer.inbox.id'])" onmouseout="uhghl(['outbox_fk_outbox_inbox','lc_consumer.inbox.id'])" class='colPk'>inbox&#95;id</text></g></a>
+<a href='#lc_consumer.outbox.inbox_id'><g><title>&#x1F517;  References inbox ( inbox_id -&gt; id ) </title><use x='214' y='109' href='#fk'/></g></a>
+  <a href='#lc_consumer.outbox.current_outcome'><g><title>&#10697;  current_outcome
+     tinyint
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Current outcome: 1=Delivered, 2=Processed, 3=Retry, 4=Failed.</title><text id='lc&#95;consumer&#46;outbox&#46;current&#95;outcome' x='80' y='142'>current&#95;outcome</text></g></a>
+<text x='224' y='138' text-anchor='end' class='colType'>&#35;</text>  <use x='58' y='148' href='#nn'/><g><title>&#x1F50D;  idx_outbox_send_status ( status, next_retry_at ) </title><use x='59' y='147' href='#idx'/></g><a href='#lc_consumer.outbox.status'><g><title>&#10697;  status
+     * tinyint default 1
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Outbox send state: 1=Pending, 2=Sent, 3=Confirmed, 4=Failed.</title><text id='lc&#95;consumer&#46;outbox&#46;status' x='80' y='161'>status</text></g></a>
+<text x='224' y='157' text-anchor='end' class='colType'>&#35;</text>  <g><title>&#x1F50D;  idx_outbox_send_status ( status, next_retry_at ) </title><use x='59' y='166' href='#idx'/></g><a href='#lc_consumer.outbox.next_retry_at'><g><title>&#10697;  next_retry_at
+     datetime(6)
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Scheduled timestamp for next retry attempt.</title><text id='lc&#95;consumer&#46;outbox&#46;next&#95;retry&#95;at' x='80' y='180'>next&#95;retry&#95;at</text></g></a>
+<text x='224' y='176' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.outbox.last_error'><g><title>&#10697;  last_error
+     text
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Last captured error message for troubleshooting.</title><text id='lc&#95;consumer&#46;outbox&#46;last&#95;error' x='80' y='199'>last&#95;error</text></g></a>
+<text x='224' y='195' text-anchor='end' class='colType'>t</text>  <use x='58' y='205' href='#nn'/><a href='#lc_consumer.outbox.modified'><g><title>&#10697;  modified
+     * datetime default current_timestamp()
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      UTC timestamp when the row was last updated.</title><text id='lc&#95;consumer&#46;outbox&#46;modified' x='80' y='218'>modified</text></g></a>
+<text x='224' y='214' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.outbox.next_event'><g><title>&#10697;  next_event
+     int</title><text id='lc&#95;consumer&#46;outbox&#46;next&#95;event' x='80' y='237'>next&#95;event</text></g></a>
+<text x='224' y='233' text-anchor='end' class='colType'>&#35;</text>  <use x='58' y='243' href='#nn'/><a href='#lc_consumer.outbox.next_event_source'><g><title>&#10697;  next_event_source
+     * tinyint default 0
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      0=None, 1=Policy, 2=EngineResolved, 3=ConsumerOverride.</title><text id='lc&#95;consumer&#46;outbox&#46;next&#95;event&#95;source' x='80' y='256'>next&#95;event&#95;source</text></g></a>
+<text x='224' y='252' text-anchor='end' class='colType'>&#35;</text>
 </g></svg></div>
 <script type='text/javascript'>
 var svgContainers = document.getElementsByClassName("svgContainer");
@@ -1341,6 +1345,12 @@ function searchSVG( searchValue) {
 		<td><a name='lc_consumer.outbox.next_event'>next&#95;event</a></td>
 		<td class='dataType'> INT  </td>
 		<td>  </td>
+	</tr>
+	<tr>
+		<td><span class='text-danger'>*</span></td>
+		<td><a name='lc_consumer.outbox.next_event_source'>next&#95;event&#95;source</a></td>
+		<td class='dataType'> TINYINT  DEFAULT 0 </td>
+		<td> 0&#61;None&#44; 1&#61;Policy&#44; 2&#61;EngineResolved&#44; 3&#61;ConsumerOverride&#46; </td>
 	</tr>
 <tr><th colspan='4'>Indexes</th></tr>
 	<tr>		<td><svg xmlns="http://www.w3.org/2000/svg" width='14' height='14'><use href='#pk'/></svg></td><td>pk&#95;outbox</td>

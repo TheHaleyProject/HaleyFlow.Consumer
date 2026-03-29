@@ -79,6 +79,9 @@
 				<comment><![CDATA[Number of times this workload has been executed/retried.]]></comment>
 			</column>
 			<column name="instance_id" prior="entity_id" type="BIGINT" mandatory="y" />
+			<column name="hook_type" type="TINYINT" >
+				<comment><![CDATA[1=Gate, 0=Effect. NULL for Transition rows.]]></comment>
+			</column>
 			<index name="pk_inbox" unique="PRIMARY_KEY" >
 				<column name="id" />
 			</index>
@@ -283,7 +286,7 @@
 			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]]></options>
 		</table>
 	</schema>
-	<diagram_group name="Default" id="6df0d6c8-3421-41bf-ac60-5622f4579343" >
+	<diagram_group name="Default" id="5f2feadd-38a5-4b44-9763-61a812757409" >
 		<diagram name="Main Diagram" id="9443b33f-5de4-42b2-a6d5-e59d764d8dba" joined_routing="y" show_relation="no_text" >
 			<entity schema="lc_consumer" name="business_action" color="C1D8EE" x="570" y="418" />
 			<entity schema="lc_consumer" name="inbox" color="BED3F4" x="304" y="76" />
