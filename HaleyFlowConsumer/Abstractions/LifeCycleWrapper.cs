@@ -46,6 +46,7 @@ namespace Haley.Abstractions {
         // Set by AutoTransitionAsync — read by the manager after dispatch to write to outbox.next_event.
         // Safe because each event always gets a fresh wrapper instance (DI transient / Activator.CreateInstance).
         internal int? _nextEvent;
+        internal NextEventSource _nextEventSource;
 
         // ── Business action helpers ────────────────────────────────────────────
 
@@ -150,9 +151,23 @@ namespace Haley.Abstractions {
                     $"AutoTransitionAsync: no {label} event defined in policy for instance {ctx.InstanceGuid}. " +
                     $"Add a complete.{label} event code to the matching policy rule.");
             }
-            _nextEvent = eventCode.Value;
+            RecordNextEvent(eventCode.Value, NextEventSource.Policy);
             return Task.CompletedTask;
         }
+
+        /// <summary>
+        /// Use the engine's resolved next event from a Complete handoff.
+        /// This records provenance so the timeline can show that the consumer accepted the engine's suggestion.
+        /// </summary>
+        protected void UseEngineResolvedNextEvent(int eventCode)
+            => RecordNextEvent(eventCode, NextEventSource.EngineResolved);
+
+        /// <summary>
+        /// Use a local consumer override for the next event after a Complete handoff.
+        /// This records provenance so the timeline can show that the wrapper chose the next step.
+        /// </summary>
+        protected void UseConsumerOverrideNextEvent(int eventCode)
+            => RecordNextEvent(eventCode, NextEventSource.ConsumerOverride);
 
         protected static string PickEvent(string? preferred, string fallback)
             => !string.IsNullOrWhiteSpace(preferred) ? preferred : fallback;
@@ -166,9 +181,15 @@ namespace Haley.Abstractions {
         // ACK the Complete event, but do not auto-trigger any next transition.
         protected abstract int? ResolveTransitionCompleteFallbackEvent(ILifeCycleCompleteEvent evt, ConsumerContext ctx);
         protected virtual Task<AckOutcome> OnTransitionCompleteAsync(ILifeCycleCompleteEvent evt, ConsumerContext ctx) {
-            _nextEvent = evt.NextEvent > 0
-                ? evt.NextEvent
-                : ResolveTransitionCompleteFallbackEvent(evt, ctx);
+            ClearNextEvent();
+            if (evt.NextEvent > 0) {
+                UseEngineResolvedNextEvent(evt.NextEvent);
+            } else {
+                var fallback = ResolveTransitionCompleteFallbackEvent(evt, ctx);
+                if (fallback.HasValue) {
+                    UseConsumerOverrideNextEvent(fallback.Value);
+                }
+            }
             return Task.FromResult(AckOutcome.Processed);
         }
 
@@ -190,7 +211,7 @@ namespace Haley.Abstractions {
             // Suppress auto-transition so the consumer does not fire the next event directly.
             // The ACK gate will also block any premature trigger from outside.
             if (ctx.DispatchMode == TransitionDispatchMode.ValidationMode) {
-                _nextEvent = null;
+                ClearNextEvent();
             }
 
             return outcome;
@@ -223,6 +244,16 @@ namespace Haley.Abstractions {
         /// </summary>
         protected ILifeCycleExecution Engine =>
             _engine ?? throw new InvalidOperationException("Engine was not injected by the consumer manager.");
+
+        private void RecordNextEvent(int eventCode, NextEventSource source) {
+            _nextEvent = eventCode;
+            _nextEventSource = source;
+        }
+
+        private void ClearNextEvent() {
+            _nextEvent = null;
+            _nextEventSource = NextEventSource.None;
+        }
 
         private static string? ToResultJson(object? value) {
             if (value == null) return null;

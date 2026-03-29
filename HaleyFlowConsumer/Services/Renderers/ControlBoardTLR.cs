@@ -159,7 +159,7 @@ internal static class ControlBoardTLR {
     .event-body-wrap { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .28s ease; }
     .event-card.collapsed .event-body-wrap { grid-template-rows: 0fr; }
     .event-body { overflow: hidden; min-height: 0; }
-    .meta-grid { grid-template-columns: repeat(4, minmax(0,1fr)); margin-bottom: 18px; }
+    .meta-grid { grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); margin-bottom: 18px; }
     .meta-item { padding: 14px 16px; }
     .meta-value { margin-top: 6px; line-height: 1.55; }
     .duo-grid { grid-template-columns: repeat(2, minmax(0,1fr)); margin-bottom: 18px; }
@@ -391,6 +391,7 @@ internal static class ControlBoardTLR {
             : isHook
                 ? (item.HookType?.ToString() ?? "\u2014")
                 : (item.DispatchMode?.ToString() ?? "\u2014");
+        var nextSourceLabel = item.NextEventSource ?? "\u2014";
 
         var inboxTone   = Tone(item.InboxStatus?.Status);
         var outboxBadge = $"{item.Outbox?.Outcome ?? "\u2014"} / {item.Outbox?.Status ?? "\u2014"}";
@@ -432,6 +433,10 @@ internal static class ControlBoardTLR {
             <div class="meta-item">
               <div class="meta-label">{E(detailLabel)}</div>
               <div class="meta-value">{E(detailValue)}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">next_event_source</div>
+              <div class="meta-value">{E(nextSourceLabel)}</div>
             </div>
           </div>
 """);

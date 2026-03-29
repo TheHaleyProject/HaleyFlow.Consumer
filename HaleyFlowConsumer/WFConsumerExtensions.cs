@@ -209,6 +209,7 @@ namespace Haley.Utils {
                 item.MapEnumField<WorkflowKind>("kind");
                 item.MapEnumField<OutboxStatus>("status");
                 item.MapEnumField<AckOutcome>("current_outcome");
+                item.MapEnumField<NextEventSource>("next_event_source");
             }
 
             return items;

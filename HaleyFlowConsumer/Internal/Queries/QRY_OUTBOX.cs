@@ -8,11 +8,12 @@ namespace Haley.Internal {
         /// (e.g. if a prior attempt failed and we want to retry with a new outcome decision).
         /// </summary>
         public const string UPSERT =
-            $@"INSERT INTO outbox (inbox_id, current_outcome, next_event, status)
-               VALUES ({INBOX_ID}, {OUTCOME}, {NEXT_EVENT}, 1)
+            $@"INSERT INTO outbox (inbox_id, current_outcome, next_event, next_event_source, status)
+               VALUES ({INBOX_ID}, {OUTCOME}, {NEXT_EVENT}, {NEXT_EVENT_SOURCE}, 1)
                ON DUPLICATE KEY UPDATE
                    current_outcome = VALUES(current_outcome),
                    next_event      = VALUES(next_event),
+                   next_event_source = VALUES(next_event_source),
                    status          = 1,
                    next_retry_at   = NULL,
                    last_error      = NULL,
@@ -27,7 +28,7 @@ namespace Haley.Internal {
         /// Also calculates the next attempt number inline.
         /// </summary>
         public const string LIST_DUE_PENDING =
-            $@"SELECT o.inbox_id, o.current_outcome, o.status, o.next_retry_at, o.next_event,
+            $@"SELECT o.inbox_id, o.current_outcome, o.status, o.next_retry_at, o.next_event, o.next_event_source,
                       i.ack_guid,
                       inst.guid AS instance_guid,
                       COALESCE((SELECT MAX(oh.attempt_no) FROM outbox_history oh WHERE oh.inbox_id = o.inbox_id), 0) AS last_attempt_no
@@ -46,7 +47,7 @@ namespace Haley.Internal {
                        {RESPONSE_PAYLOAD}, {ERROR});";
 
         public const string LIST_PAGED =
-            $@"SELECT o.inbox_id, o.current_outcome, o.status, o.next_retry_at, o.last_error, o.modified,
+            $@"SELECT o.inbox_id, o.current_outcome, o.status, o.next_retry_at, o.next_event, o.next_event_source, o.last_error, o.modified,
                       i.ack_guid, i.kind, i.route, i.event_code, i.occurred, i.created,
                       inst.guid AS instance_guid, inst.entity_guid, inst.def_name
                FROM outbox o

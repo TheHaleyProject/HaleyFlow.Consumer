@@ -68,6 +68,7 @@ namespace Haley.Internal {
                         : null,
                     HookType       = rawHookType.HasValue ? (HookType?)rawHookType.Value : null,
                     NextEvent      = r.GetNullableInt(KEY_NEXT_EVENT),
+                    NextEventSource = FormatNextEventSource(r.GetNullableByte(KEY_NEXT_EVENT_SOURCE)),
                     RunCount       = r.GetNullableInt(KEY_RUN_COUNT) ?? 1,
                     Occurred       = r.GetDateTime(KEY_OCCURRED) ?? r.GetDateTime(KEY_CREATED) ?? default,
                     Created        = r.GetDateTime(KEY_CREATED) ?? r.GetDateTime(KEY_OCCURRED) ?? default,
@@ -137,5 +138,13 @@ namespace Haley.Internal {
             }
             return lookup.ToDictionary(kv => kv.Key, kv => (IReadOnlyList<ConsumerTimelineOutboxHistory>)kv.Value);
         }
+
+        private static string? FormatNextEventSource(byte? raw)
+            => raw switch {
+                (byte)NextEventSource.Policy => "Policy",
+                (byte)NextEventSource.EngineResolved => "EngineResolved",
+                (byte)NextEventSource.ConsumerOverride => "ConsumerOverride",
+                _ => null
+            };
     }
 }

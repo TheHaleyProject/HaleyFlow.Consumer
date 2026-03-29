@@ -484,7 +484,7 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
       <div class="callout-title">ACK gate and DispatchMode</div>
       The engine's ACK gate checks whether the <em>most recent lifecycle (transition) ACK</em> for the instance has been resolved before accepting a new trigger. The gate query joins <code>lc_ack</code> - it does <strong>not</strong> look at <code>hook_ack</code>.<br><br>
       <strong>[TransitionHandler]:</strong> calling <code>Engine.TriggerAsync</code> here is blocked while the current transition ACK is pending. In <code>NormalRun</code>, use <code>AutoTransitionAsync(ctx, success)</code> so the manager fires the next event after ACK. In <code>ValidationMode</code>, the same business logic still runs, but any recorded next event is suppressed because hooks are still in progress.<br><br>
-      <strong>[Complete event]:</strong> after the engine finishes ordered hook processing, it dispatches a separate <code>Complete</code> event. The wrapper does <strong>not</strong> rerun transition business logic here. Instead, <code>OnTransitionCompleteAsync</code> receives the engine's resolved <code>evt.NextEvent</code>; default behaviour accepts that suggestion, and wrapper code may override it via <code>ResolveTransitionCompleteFallbackEvent</code> when the engine sends <code>0</code>.<br><br>
+      <strong>[Complete event]:</strong> after the engine finishes ordered hook processing, it dispatches a separate <code>Complete</code> event. The wrapper does <strong>not</strong> rerun transition business logic here. Instead, <code>OnTransitionCompleteAsync</code> receives the engine's resolved <code>evt.NextEvent</code>; default behaviour accepts that suggestion, and wrapper code may override it via <code>ResolveTransitionCompleteFallbackEvent</code> when the engine sends <code>0</code>. The consumer persists both <code>outbox.next_event</code> and <code>outbox.next_event_source</code> so the admin timeline can show whether the follow-up trigger came from the engine or from wrapper code.<br><br>
       <strong>[HookHandler]:</strong> direct <code>Engine.TriggerAsync</code> is technically possible because hook ACKs are outside the lifecycle gate, but use it only when the workflow contract explicitly makes the hook or a notice such as <code>HOOK_GROUP_COMPLETE</code> responsible for advancement. Do not use it to bypass engine-managed <code>ValidationMode</code> / <code>Complete</code> handoff flows.
     </div>
 
@@ -506,8 +506,8 @@ consumer.RegisterAssembly(Assembly.GetExecutingAssembly());
 
     <p>Under the hood:</p>
     <ol>
-      <li><code>AutoTransitionAsync</code> sets <code>_nextEvent</code> on the wrapper instance to the resolved event code.</li>
-      <li>After dispatch, the manager captures <code>wrapper._nextEvent</code> and persists it to <code>outbox.next_event</code>.</li>
+      <li><code>AutoTransitionAsync</code> sets <code>_nextEvent</code> on the wrapper instance to the resolved event code and marks the source as <code>Policy</code>.</li>
+      <li>After dispatch, the manager captures <code>wrapper._nextEvent</code> and persists it to <code>outbox.next_event</code> together with <code>outbox.next_event_source</code>.</li>
       <li>After <code>engine.AckAsync</code> succeeds (inline or via the OutboxLoop), the manager calls <code>engine.TriggerAsync({ Event: nextEvent.ToString() })</code>.</li>
       <li>If that trigger fails, a <code>NEXT_EVENT_FAILED</code> notice is raised — the ACK is already confirmed and cannot be undone, but the engine's monitor will detect the stale state independently.</li>
     </ol>
@@ -627,7 +627,7 @@ WorkFlowConsumerManager
 
 <span class="kw">protected abstract</span> <span class="ty">int</span>? ResolveTransitionCompleteFallbackEvent(
     <span class="ty">ILifeCycleCompleteEvent</span> evt, <span class="ty">ConsumerContext</span> ctx);</code><span class="lang-label">C#</span></pre>
-    <p><code>ResolveTransitionCompleteFallbackEvent</code> is called only when the engine dispatches a <code>Complete</code> event with <code>NextEvent = 0</code>. Return an event code to continue locally, or <code>null</code> to ACK the completion without auto-triggering a next transition.</p>
+    <p><code>ResolveTransitionCompleteFallbackEvent</code> is called only when the engine dispatches a <code>Complete</code> event with <code>NextEvent = 0</code>. Return an event code to continue locally, or <code>null</code> to ACK the completion without auto-triggering a next transition. When you return a code here, the consumer stores <code>next_event_source = ConsumerOverride</code>; when it accepts the engine suggestion directly, it stores <code>next_event_source = EngineResolved</code>.</p>
     <div class="callout warn">
       <div class="callout-title">Do not return Processed by default blindly</div>
       If you return <code>Processed</code> for all unhandled events, silently-ignored events will never re-deliver. Consider logging an alert and returning <code>Failed</code> for truly unexpected events, or <code>Processed</code> only if your handler deliberately handles all events.
@@ -922,7 +922,7 @@ WorkFlowConsumerManager
       <li><div class="step-num">4</div><div class="step-body"><strong>Build context</strong> — creates <code>ConsumerContext</code> with <code>InboxId</code>, <code>InstanceId</code>, <code>InstanceGuid</code>, <code>EntityGuid</code>, <code>AckGuid</code>, <code>HandlerVersion</code>, <code>RunCount</code>, <code>CancellationToken</code>, etc.</div></li>
       <li><div class="step-num">5</div><div class="step-body"><strong>Resolve handler from DI</strong> — resolves the wrapper type from <code>IServiceProvider</code>. Startup validation now fails fast if a wrapper needs constructor injection but is not registered. A parameterless-constructor fallback is still allowed for simple wrappers. Injects business action DAL and inbox action DAL.</div></li>
       <li><div class="step-num">6</div><div class="step-body"><strong>Dispatch</strong> — calls <code>wrapper.DispatchTransitionAsync</code> or <code>wrapper.DispatchHookAsync</code>. The dispatcher selects the best-matching handler method by MinVersion. Returns <code>AckOutcome</code>.</div></li>
-      <li><div class="step-num">7</div><div class="step-body"><strong>Write outbox + attempt ACK</strong> — captures <code>wrapper._nextEvent</code> (set by <code>AutoTransitionAsync</code> if called). Writes outcome + <code>next_event</code> to <code>outbox</code> table. Attempts to call <code>engine.AckAsync</code> immediately. On success: fires the next trigger if <code>next_event</code> is set. If ACK fails: sets <code>next_retry_at</code> and the OutboxLoop retries later — it too fires the next trigger after ACK is confirmed.</div></li>
+      <li><div class="step-num">7</div><div class="step-body"><strong>Write outbox + attempt ACK</strong> — captures <code>wrapper._nextEvent</code> plus its provenance. Writes outcome + <code>next_event</code> + <code>next_event_source</code> to <code>outbox</code> table. Attempts to call <code>engine.AckAsync</code> immediately. On success: fires the next trigger if <code>next_event</code> is set. If ACK fails: sets <code>next_retry_at</code> and the OutboxLoop retries later — it too fires the next trigger after ACK is confirmed.</div></li>
     </ol>
     <div class="callout new">
       <div class="callout-title">Acknowledgement is mandatory</div>

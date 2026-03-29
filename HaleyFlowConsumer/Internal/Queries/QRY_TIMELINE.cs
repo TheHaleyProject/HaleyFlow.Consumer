@@ -51,6 +51,7 @@ namespace Haley.Internal {
                   o.status         AS outbox_status,
                   o.next_retry_at,
                   o.next_event,
+                  o.next_event_source,
                   o.last_error     AS outbox_error,
                   o.modified       AS outbox_modified
                FROM inbox i

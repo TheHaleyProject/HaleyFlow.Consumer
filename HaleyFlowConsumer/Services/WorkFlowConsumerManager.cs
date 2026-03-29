@@ -279,6 +279,7 @@ namespace Haley.Services {
 
             AckOutcome outcome;
             int? nextEvent = null;
+            var nextEventSource = NextEventSource.None;
             try {
                 var wrapper = (_sp.GetService(reg.WrapperType) ?? Activator.CreateInstance(reg.WrapperType))
                     as LifeCycleWrapper
@@ -297,6 +298,7 @@ namespace Haley.Services {
                 // Capture before wrapper goes out of scope - safe because each dispatch
                 // activates a fresh wrapper instance, so _nextEvent belongs to this call only.
                 nextEvent = wrapper._nextEvent;
+                nextEventSource = wrapper._nextEventSource;
                 await _dal.InboxStatus.SetStatusAsync(inboxId, InboxStatus.Processed, load: load);
             } catch (Exception ex) {
                 outcome = AckOutcome.Retry;
@@ -306,7 +308,7 @@ namespace Haley.Services {
             }
 
             // 6. Write outbox (persists next_event for retry path) and try immediate ACK.
-            await _dal.Outbox.UpsertAsync(inboxId, outcome, nextEvent, load);
+            await _dal.Outbox.UpsertAsync(inboxId, outcome, nextEvent, nextEventSource, load);
             try {
                 await _feed.AckAsync(_consumerId, item.AckGuid, outcome, ct: ct);
                 await _dal.Outbox.SetStatusAsync(inboxId, OutboxStatus.Confirmed, load: load);

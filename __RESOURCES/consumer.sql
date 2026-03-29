@@ -118,6 +118,7 @@ CREATE TABLE IF NOT EXISTS `outbox` (
   `last_error` text DEFAULT NULL COMMENT 'Last captured error message for troubleshooting.',
   `modified` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'UTC timestamp when the row was last updated.',
   `next_event` int(11) DEFAULT NULL,
+  `next_event_source` tinyint(3) unsigned NOT NULL DEFAULT 0 COMMENT '0=None, 1=Policy, 2=EngineResolved, 3=ConsumerOverride.',
   PRIMARY KEY (`inbox_id`),
   KEY `idx_outbox_send_status` (`status`,`next_retry_at`),
   CONSTRAINT `fk_outbox_inbox` FOREIGN KEY (`inbox_id`) REFERENCES `inbox` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION

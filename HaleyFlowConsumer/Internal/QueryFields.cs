@@ -33,6 +33,7 @@ namespace Haley.Internal {
         // outbox
         public const string OUTCOME = "@OUTCOME";
         public const string NEXT_EVENT = "@NEXT_EVENT";
+        public const string NEXT_EVENT_SOURCE = "@NEXT_EVENT_SOURCE";
         public const string NEXT_RETRY_AT = "@NEXT_RETRY_AT";
         public const string RESPONSE_PAYLOAD = "@RESPONSE_PAYLOAD";
         public const string ERROR = "@ERROR";
