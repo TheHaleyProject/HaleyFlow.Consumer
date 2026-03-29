@@ -60,7 +60,6 @@ namespace Haley.Services {
                     maker.Options = _options;
                     _consumer = await maker.Build(_agw);
 
-                    RegisterConfiguredAssemblies(_consumer);
                     RegisterRuntimeAssemblies(_consumer);
                 }
 
@@ -170,15 +169,6 @@ namespace Haley.Services {
         public async ValueTask DisposeAsync() {
             try { await StopAsync(CancellationToken.None); } catch { }
             _initLock.Dispose();
-        }
-
-        private void RegisterConfiguredAssemblies(IWorkFlowConsumerManager consumer) {
-            if (_options.WrapperAssemblies == null || _options.WrapperAssemblies.Count == 0) return;
-            for (var i = 0; i < _options.WrapperAssemblies.Count; i++) {
-                var asmName = _options.WrapperAssemblies[i];
-                if (string.IsNullOrWhiteSpace(asmName)) continue;
-                consumer.RegisterAssembly(asmName.Trim());
-            }
         }
 
         private void RegisterRuntimeAssemblies(IWorkFlowConsumerManager consumer) {

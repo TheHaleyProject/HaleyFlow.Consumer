@@ -58,20 +58,16 @@ namespace Haley.Utils {
             return new WorkFlowConsumerService(options, agw, input.EngineProxy, provider);
         }
 
-        public static IServiceCollection AddWorkFlowConsumerService(this IServiceCollection services, IConfiguration configuration, string sectionName = "WorkFlowConsumer", bool autoStart = true) {
+        public static IServiceCollection AddWorkFlowConsumerService(this IServiceCollection services, Action<ConsumerServiceOptions>? configure = null, string? configSectionName = "WorkFlowConsumer", bool autoStart = true) {
             ArgumentNullException.ThrowIfNull(services);
-            ArgumentNullException.ThrowIfNull(configuration);
-            if (string.IsNullOrWhiteSpace(sectionName)) throw new ArgumentException("Section name is required.", nameof(sectionName));
 
-            services.Configure<ConsumerServiceOptions>(configuration.GetSection(sectionName));
-            return AddWorkFlowConsumerServiceCore(services, autoStart);
-        }
+            services.AddOptions<ConsumerServiceOptions>()
+                .Configure<IConfiguration>((opts, config) => {
+                    if (!string.IsNullOrWhiteSpace(configSectionName))
+                        config.GetSection(configSectionName).Bind(opts);
+                });
 
-        public static IServiceCollection AddWorkFlowConsumerService(this IServiceCollection services, Action<ConsumerServiceOptions> configureOptions, bool autoStart = true) {
-            ArgumentNullException.ThrowIfNull(services);
-            ArgumentNullException.ThrowIfNull(configureOptions);
-
-            services.Configure(configureOptions);
+            if (configure != null) services.Configure(configure);
             return AddWorkFlowConsumerServiceCore(services, autoStart);
         }
 
@@ -113,8 +109,18 @@ namespace Haley.Utils {
         /// IWorkFlowConsumerService and IWorkflowRelayService are resolved optionally —
         /// whichever is registered is used. If neither is registered, InitiateAsync returns failure.
         /// </summary>
-        public static IServiceCollection AddFlowBus(this IServiceCollection services, Action<FlowBusOptions>? configure = null) {
+        public static IServiceCollection AddFlowBus(this IServiceCollection services, Action<FlowBusOptions>? configure = null, string? configSectionName = "WorkFlowBus") {
             ArgumentNullException.ThrowIfNull(services);
+
+            //We say, when IOptions<FlowBusOptions> is requested, go to the configuration and bind the section named "WorkFlowBus" to FlowBusOptions and return that. This allows us to configure FlowBusOptions from appsettings.json or other configuration sources without having to manually create and register a FlowBusOptions instance.
+            //this is lazy resolve so IConfiguration is already registered by the host and available when we try to resolve IOptions<FlowBusOptions>.
+            services.AddOptions<FlowBusOptions>()
+                .Configure<IConfiguration>((opts, config) => {
+                    if (!string.IsNullOrWhiteSpace(configSectionName))
+                        config.GetSection(configSectionName).Bind(opts);
+                });
+
+            //Here, we directly apply any code-based configuration on top of the appsettings values. This allows for programmatic overrides of the configuration if needed.
             if (configure != null) services.Configure(configure);
             services.TryAddSingleton(sp => sp.GetRequiredService<IOptions<FlowBusOptions>>().Value);
             services.TryAddSingleton<IFlowBus>(sp => new FlowBus(
@@ -134,11 +140,27 @@ namespace Haley.Utils {
         ///   services.AddWorkflowRelayService();
         ///   services.AddFlowBus(); // routes InitiateAsync → relay
         /// </summary>
-        public static IServiceCollection AddWorkflowRelayService(this IServiceCollection services) {
+        public static IServiceCollection AddWorkflowRelayService(this IServiceCollection services, Action<RelayServiceOptions>? configure = null, string? configSectionName = "WorkFlowRelay") {
             ArgumentNullException.ThrowIfNull(services);
+
+            // Bind from appsettings if section exists — resolved lazily so IConfiguration is already registered by the host.
+            services.AddOptions<RelayServiceOptions>()
+                .Configure<IConfiguration>((opts, config) => {
+                    if (!string.IsNullOrWhiteSpace(configSectionName))
+                        config.GetSection(configSectionName).Bind(opts);
+                });
+
+            // Code override applied on top of appsettings values.
+            if (configure != null) services.Configure(configure);
+
+            return AddWorkflowRelayServiceCore(services);
+        }
+
+        private static IServiceCollection AddWorkflowRelayServiceCore(IServiceCollection services) {
+            services.TryAddSingleton(sp => sp.GetRequiredService<IOptions<RelayServiceOptions>>().Value);
             services.TryAddSingleton<WorkflowRelayHost>();
             services.TryAddSingleton<IWorkflowRelayService>(sp => sp.GetRequiredService<WorkflowRelayHost>());
-            services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService>(sp => sp.GetRequiredService<WorkflowRelayHost>()));
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WorkflowRelayHost>(sp => sp.GetRequiredService<WorkflowRelayHost>()));
             return services;
         }
 

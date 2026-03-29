@@ -42,15 +42,15 @@ namespace Haley.Services {
             var errors   = new List<string>();
             var warnings = new List<string>();
 
-            if (string.IsNullOrWhiteSpace(obj.WorkflowName)) { errors.Add("WorkflowName is required."); }
-            if (string.IsNullOrWhiteSpace(obj.EntityRef))    { errors.Add("EntityRef is required."); }
-            if (obj.Transitions == null || obj.Transitions.Count == 0) { errors.Add("At least one transition is required."); }
+            if (string.IsNullOrWhiteSpace(obj.WorkflowName)) { errors.Add($"{HaleyFlowErrorCodes.BackfillMissingWorkflowName}: WorkflowName is required."); }
+            if (string.IsNullOrWhiteSpace(obj.EntityRef))    { errors.Add($"{HaleyFlowErrorCodes.BackfillMissingEntityRef}: EntityRef is required."); }
+            if (obj.Transitions == null || obj.Transitions.Count == 0) { errors.Add($"{HaleyFlowErrorCodes.BackfillNoTransitions}: At least one transition is required."); }
 
             if (errors.Count > 0) return BackfillValidationResult.Fail(errors, warnings);
 
             var snapshot = await GetSnapshotAsync(obj.EnvCode, obj.WorkflowName!, ct);
             if (snapshot == null) {
-                errors.Add($"Definition not found: envCode={obj.EnvCode} name={obj.WorkflowName}");
+                errors.Add($"{HaleyFlowErrorCodes.BackfillDefinitionNotFound}: Definition not found: envCode={obj.EnvCode} name={obj.WorkflowName}");
                 return BackfillValidationResult.Fail(errors, warnings);
             }
 
@@ -74,7 +74,7 @@ namespace Haley.Services {
                 var key = (tr.FromState ?? string.Empty, tr.ToState ?? string.Empty, tr.EventCode);
 
                 if (!validTransitions.Contains(key)) {
-                    errors.Add($"Transition #{idx}: ({tr.FromState} → {tr.ToState} via event code {tr.EventCode}) is not a valid transition in definition '{obj.WorkflowName}'.");
+                    errors.Add($"{HaleyFlowErrorCodes.BackfillInvalidTransition}: Transition #{idx}: ({tr.FromState} → {tr.ToState} via event code {tr.EventCode}) is not a valid transition in definition '{obj.WorkflowName}'.");
                     continue;
                 }
 
@@ -82,11 +82,11 @@ namespace Haley.Services {
                 if (tr.Hooks != null && validRoutes.TryGetValue(key, out var knownRoutes)) {
                     foreach (var bh in tr.Hooks) {
                         if (string.IsNullOrWhiteSpace(bh.Route)) {
-                            warnings.Add($"Transition #{idx}: a hook entry has an empty Route — skipped.");
+                            warnings.Add($"{HaleyFlowErrorCodes.BackfillEmptyHookRoute}: Transition #{idx}: a hook entry has an empty Route — skipped.");
                             continue;
                         }
                         if (!knownRoutes.Contains(bh.Route)) {
-                            warnings.Add($"Transition #{idx}: hook route '{bh.Route}' is not defined in the policy for this transition — will be recorded as-is.");
+                            warnings.Add($"{HaleyFlowErrorCodes.BackfillUnknownHookRoute}: Transition #{idx}: hook route '{bh.Route}' is not defined in the policy for this transition — will be recorded as-is.");
                         }
                     }
                 }

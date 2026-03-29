@@ -75,8 +75,20 @@ namespace Haley.Services {
         // ── Lifecycle ────────────────────────────────────────────────────────
 
         public async Task StartAsync(CancellationToken ct = default) {
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            var wrapperNames = _opt.WrapperAssemblies?.Where(n => !string.IsNullOrWhiteSpace(n)).ToList() ?? new List<string>();
+            var hasNames = wrapperNames.Count > 0;
+            var entryName = Assembly.GetEntryAssembly()?.GetName().Name;
+
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies()) {
+                var asmName = asm.GetName().Name;
+                var isEntry = !string.IsNullOrWhiteSpace(entryName) && string.Equals(asmName, entryName, StringComparison.OrdinalIgnoreCase);
+                var matchesNames = hasNames
+                    ? wrapperNames.Any(n => string.Equals(asmName, n, StringComparison.OrdinalIgnoreCase))
+                    : true;
+
+                if (!isEntry && !matchesNames) continue;
                 _registry.RegisterAssembly(asm);
+            }
 
             foreach (var name in _registry.GetPendingNames()) {
                 var defId = await _feed.GetDefinitionIdAsync(_opt.EnvCode, name, ct);

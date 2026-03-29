@@ -11,7 +11,5 @@ namespace Haley.Models {
         [ConfigurationKeyName("adapter_key")]
         public string ConsumerAdapterKey { get; set; } = string.Empty;
 
-        [ConfigurationKeyName("wrapper_assemblies")]
-        public List<string> WrapperAssemblies { get; set; } = new();
     }
 }
