@@ -287,9 +287,13 @@ namespace Haley.Services {
                 wrapper._businessActionDal = _dal.BusinessAction;
                 wrapper._inboxActionDal    = _dal.InboxAction;
 
-                outcome = item.Kind == LifeCycleEventKind.Transition
-                    ? await wrapper.DispatchTransitionAsync((ILifeCycleTransitionEvent)evt, ctx)
-                    : await wrapper.DispatchHookAsync((ILifeCycleHookEvent)evt, ctx);
+                outcome = item.Kind switch {
+                    LifeCycleEventKind.Transition => await wrapper.DispatchTransitionAsync((ILifeCycleTransitionEvent)evt, ctx),
+                    LifeCycleEventKind.Hook => await wrapper.DispatchHookAsync((ILifeCycleHookEvent)evt, ctx),
+                    LifeCycleEventKind.Complete => throw new NotSupportedException(
+                        "Complete events are not yet enabled in the consumer runtime. Apply the later execution-order phases before dispatching them."),
+                    _ => throw new NotSupportedException($"Unsupported lifecycle event kind '{item.Kind}'.")
+                };
 
                 // Capture before wrapper goes out of scope - safe because each dispatch
                 // activates a fresh wrapper instance, so _nextEvent belongs to this call only.
@@ -415,7 +419,12 @@ namespace Haley.Services {
             var evt = item.Event;
             var record = new InboxRecord {
                 AckGuid    = item.AckGuid,
-                Kind       = item.Kind == LifeCycleEventKind.Hook ? WorkflowKind.Hook : WorkflowKind.Transition,
+                Kind       = item.Kind switch {
+                    LifeCycleEventKind.Transition => WorkflowKind.Transition,
+                    LifeCycleEventKind.Hook => WorkflowKind.Hook,
+                    LifeCycleEventKind.Complete => WorkflowKind.Complete,
+                    _ => throw new NotSupportedException($"Unsupported lifecycle event kind '{item.Kind}'.")
+                },
                 InstanceId = instanceId,
                 OnSuccess  = TryParseCode(evt.OnSuccessEvent),
                 OnFailure  = TryParseCode(evt.OnFailureEvent),

@@ -13,17 +13,17 @@ namespace Haley.Models {
         public int? OnSuccess { get; set; }
         public int? OnFailure { get; set; }
         public DateTime Occurred { get; set; }
-        /// <summary>Null for hook events.</summary>
+        /// <summary>Null for hook and complete events.</summary>
         public int? EventCode { get; set; }
-        /// <summary>Null for transition events.</summary>
+        /// <summary>Null for transition and complete events.</summary>
         public string? Route { get; set; }
-        /// <summary>How many times this hook has been dispatched (including this delivery). Always 1 for transition events.</summary>
+        /// <summary>How many times this hook has been dispatched (including this delivery). Always 1 for transition and complete events.</summary>
         public int RunCount { get; set; } = 1;
         public DateTime Created { get; set; }
         public HandlerUpgrade HandlerUpgrade { get; set; } = HandlerUpgrade.Pinned;
-        /// <summary>Dispatch mode for transition events: NormalRun, ValidationMode, or TransitionMode.</summary>
+        /// <summary>Dispatch mode for transition events. Ignored for hook and complete rows.</summary>
         public TransitionDispatchMode DispatchMode { get; set; } = TransitionDispatchMode.NormalRun;
-        /// <summary>Gate or Effect. Null for Transition rows.</summary>
+        /// <summary>Gate or Effect. Null for transition and complete rows.</summary>
         public HookType? HookType { get; set; }
     }
 }
