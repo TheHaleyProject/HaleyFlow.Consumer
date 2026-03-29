@@ -161,18 +161,20 @@ namespace Haley.Abstractions {
 
         protected abstract Task<AckOutcome> OnUnhandledTransitionAsync(ILifeCycleTransitionEvent evt, ConsumerContext ctx);
         protected abstract Task<AckOutcome> OnUnhandledHookAsync(ILifeCycleHookEvent evt, ConsumerContext ctx);
+        // Complete events carry the engine's suggested next event. When the engine has no suggestion
+        // (NextEvent = 0), wrappers must decide the local fallback explicitly. Returning null means:
+        // ACK the Complete event, but do not auto-trigger any next transition.
+        protected abstract int? ResolveTransitionCompleteFallbackEvent(ILifeCycleCompleteEvent evt, ConsumerContext ctx);
+        protected virtual Task<AckOutcome> OnTransitionCompleteAsync(ILifeCycleCompleteEvent evt, ConsumerContext ctx) {
+            _nextEvent = evt.NextEvent > 0
+                ? evt.NextEvent
+                : ResolveTransitionCompleteFallbackEvent(evt, ctx);
+            return Task.FromResult(AckOutcome.Processed);
+        }
 
         // ── Internal dispatch entry points ─────────────────────────────────────
 
         internal async Task<AckOutcome> DispatchTransitionAsync(ILifeCycleTransitionEvent evt, ConsumerContext ctx) {
-            // TransitionMode: engine-driven state advance — skip business logic entirely.
-            // The engine has already run all gate/effect hooks; this call just fires the next event code.
-            // ctx.DispatchMode is authoritative (stored in inbox, survives monitor re-dispatch).
-            if (ctx.DispatchMode == TransitionDispatchMode.TransitionMode) {
-                _nextEvent = ctx.OnSuccessEvent;
-                return AckOutcome.Processed;
-            }
-
             var cache = DispatchCacheStore.GetOrBuild(GetType());
             AckOutcome outcome;
             if (cache.Transitions.TryGetValue(evt.EventCode, out var candidates)) {
@@ -203,6 +205,9 @@ namespace Haley.Abstractions {
             }
             return OnUnhandledHookAsync(evt, ctx);
         }
+
+        internal Task<AckOutcome> DispatchCompleteAsync(ILifeCycleCompleteEvent evt, ConsumerContext ctx)
+            => OnTransitionCompleteAsync(evt, ctx);
 
         // ── Internal helpers ───────────────────────────────────────────────────
 

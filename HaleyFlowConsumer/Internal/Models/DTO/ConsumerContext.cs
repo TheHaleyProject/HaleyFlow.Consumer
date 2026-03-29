@@ -42,7 +42,7 @@ namespace Haley.Models {
         /// How the engine expects this transition to be processed.
         /// NormalRun: run handler + auto-transition as normal.
         /// ValidationMode: run handler + ACK result, but do NOT auto-transition (hooks are in progress; engine drives).
-        /// TransitionMode: skip handler entirely; engine has already run all hooks, just fire the next event code.
+        /// Complete events do not use this field.
         /// </summary>
         public TransitionDispatchMode DispatchMode { get; init; } = TransitionDispatchMode.NormalRun;
         public CancellationToken CancellationToken { get; init; }

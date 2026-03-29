@@ -290,8 +290,7 @@ namespace Haley.Services {
                 outcome = item.Kind switch {
                     LifeCycleEventKind.Transition => await wrapper.DispatchTransitionAsync((ILifeCycleTransitionEvent)evt, ctx),
                     LifeCycleEventKind.Hook => await wrapper.DispatchHookAsync((ILifeCycleHookEvent)evt, ctx),
-                    LifeCycleEventKind.Complete => throw new NotSupportedException(
-                        "Complete events are not yet enabled in the consumer runtime. Apply the later execution-order phases before dispatching them."),
+                    LifeCycleEventKind.Complete => await wrapper.DispatchCompleteAsync((ILifeCycleCompleteEvent)evt, ctx),
                     _ => throw new NotSupportedException($"Unsupported lifecycle event kind '{item.Kind}'.")
                 };
 

@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS `business_action` (
 CREATE TABLE IF NOT EXISTS `inbox` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT 'Internal surrogate identifier.',
   `ack_guid` varchar(64) NOT NULL COMMENT 'External acknowledgement GUID used for idempotency and correlation.',
-  `kind` tinyint(3) unsigned NOT NULL COMMENT 'Workload kind: 1=Transition, 2=Hook.',
+  `kind` tinyint(3) unsigned NOT NULL COMMENT 'Workload kind: 1=Transition, 2=Hook, 3=Complete.',
   `handler_version` int(11) DEFAULT NULL COMMENT 'Pinned consumer handler version used for this workload.',
   `on_success` int(11) DEFAULT NULL COMMENT 'Optional consumer action code to execute after successful processing.',
   `on_failure` int(11) DEFAULT NULL COMMENT 'Optional consumer action code to execute after failed processing.',
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS `inbox` (
   `created` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'UTC timestamp when the row was created.',
   `handler_upgrade` tinyint(4) NOT NULL DEFAULT 1 COMMENT 'Handler strategy: 1=PinnedVersion, 2=AllowUpgradeToLatest.',
   `run_count` int(11) NOT NULL DEFAULT 1 COMMENT 'Number of times this workload has been executed/retried.',
-  `dispatch_mode` tinyint unsigned NOT NULL DEFAULT 0 COMMENT '0=NormalRun, 1=ValidationMode, 2=TransitionMode',
+  `dispatch_mode` tinyint unsigned NOT NULL DEFAULT 0 COMMENT '0=NormalRun, 1=ValidationMode',
   `hook_type` tinyint unsigned DEFAULT NULL COMMENT '1=Gate, 0=Effect. NULL for Transition rows.',
   `instance_id` bigint(20) NOT NULL,
   PRIMARY KEY (`id`),
