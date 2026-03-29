@@ -258,6 +258,10 @@ namespace Haley.Services {
             await _dal.InboxStatus.IncrementAttemptAsync(inboxId, load);
 
             // 5. Build context and dispatch wrapper.
+            // DispatchMode: read from stored inbox row (authoritative on retry path).
+            // On first delivery, inbox.DispatchMode == NormalRun (default); the actual mode was stored
+            // at INSERT time via BuildInboxRecord from the engine event — so it is always correct.
+            var dispatchMode = inbox.DispatchMode;
             var ctx = new ConsumerContext {
                 InboxId        = inboxId,
                 InstanceId     = instanceId,
@@ -269,6 +273,7 @@ namespace Haley.Services {
                 RunCount       = inboxRecord.RunCount,
                 OnSuccessEvent = inboxRecord.OnSuccess,
                 OnFailureEvent = inboxRecord.OnFailure,
+                DispatchMode   = dispatchMode,
                 CancellationToken = ct
             };
 
@@ -420,7 +425,7 @@ namespace Haley.Services {
                 Occurred   = evt.OccurredAt.UtcDateTime
             };
 
-            if (evt is ILifeCycleTransitionEvent te) record.EventCode = te.EventCode;
+            if (evt is ILifeCycleTransitionEvent te) { record.EventCode = te.EventCode; record.DispatchMode = te.DispatchMode; }
             if (evt is ILifeCycleHookEvent he) { record.Route = he.Route; record.RunCount = he.RunCount; }
 
             return record;

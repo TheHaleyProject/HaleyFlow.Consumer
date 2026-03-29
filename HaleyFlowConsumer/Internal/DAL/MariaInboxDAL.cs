@@ -25,7 +25,8 @@ namespace Haley.Internal {
                 (OCCURRED, r.Occurred),
                 (EVENT_CODE, (object?)r.EventCode ?? DBNull.Value),
                 (ROUTE, (object?)r.Route ?? DBNull.Value),
-                (RUN_COUNT, r.RunCount));
+                (RUN_COUNT, r.RunCount),
+                (DISPATCH_MODE, (byte)r.DispatchMode));
 
             var id = await Db.ScalarAsync<long?>(QRY_INBOX.SELECT_ID_BY_ACK_GUID, load, (ACK_GUID, r.AckGuid));
             if (id == null || id.Value <= 0) throw new InvalidOperationException("inbox upsert failed.");
@@ -74,7 +75,8 @@ namespace Haley.Internal {
             Route          = r.GetString(KEY_ROUTE),
             RunCount       = r.GetNullableInt(KEY_RUN_COUNT) ?? 1,
             Created        = r.GetDateTime(KEY_CREATED) ?? r.GetDateTime(KEY_OCCURRED) ?? default,
-            HandlerUpgrade = (HandlerUpgrade)(r.GetNullableByte(KEY_HANDLER_UPGRADE) ?? (byte)HandlerUpgrade.Pinned)
+            HandlerUpgrade = (HandlerUpgrade)(r.GetNullableByte(KEY_HANDLER_UPGRADE) ?? (byte)HandlerUpgrade.Pinned),
+            DispatchMode   = (TransitionDispatchMode)(r.GetNullableByte(KEY_DISPATCH_MODE) ?? 0)
         };
     }
 }

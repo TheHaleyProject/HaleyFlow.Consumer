@@ -3,8 +3,8 @@ using static Haley.Internal.QueryFields;
 namespace Haley.Internal {
     internal static class QRY_INBOX {
         public const string INSERT_IGNORE =
-            $@"INSERT IGNORE INTO inbox (ack_guid, kind, instance_id, on_success, on_failure, occurred, event_code, route, run_count)
-               VALUES ({ACK_GUID}, {KIND}, {INSTANCE_ID}, {ON_SUCCESS}, {ON_FAILURE}, {OCCURRED}, {EVENT_CODE}, {ROUTE}, {RUN_COUNT});";
+            $@"INSERT IGNORE INTO inbox (ack_guid, kind, instance_id, on_success, on_failure, occurred, event_code, route, run_count, dispatch_mode)
+               VALUES ({ACK_GUID}, {KIND}, {INSTANCE_ID}, {ON_SUCCESS}, {ON_FAILURE}, {OCCURRED}, {EVENT_CODE}, {ROUTE}, {RUN_COUNT}, {DISPATCH_MODE});";
 
         public const string SELECT_ID_BY_ACK_GUID =
             $@"SELECT id FROM inbox WHERE ack_guid = {ACK_GUID} LIMIT 1;";

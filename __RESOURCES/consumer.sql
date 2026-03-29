@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS `inbox` (
   `created` datetime NOT NULL DEFAULT current_timestamp() COMMENT 'UTC timestamp when the row was created.',
   `handler_upgrade` tinyint(4) NOT NULL DEFAULT 1 COMMENT 'Handler strategy: 1=PinnedVersion, 2=AllowUpgradeToLatest.',
   `run_count` int(11) NOT NULL DEFAULT 1 COMMENT 'Number of times this workload has been executed/retried.',
+  `dispatch_mode` tinyint unsigned NOT NULL DEFAULT 0 COMMENT '0=NormalRun, 1=ValidationMode, 2=TransitionMode',
   `instance_id` bigint(20) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_inbox_ack_guid` (`ack_guid`),

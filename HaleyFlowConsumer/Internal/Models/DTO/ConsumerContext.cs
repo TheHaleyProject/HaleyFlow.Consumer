@@ -38,6 +38,13 @@ namespace Haley.Models {
         /// Use AutoTransitionAsync to fire this without boilerplate.
         /// </summary>
         public int? OnFailureEvent { get; init; }
+        /// <summary>
+        /// How the engine expects this transition to be processed.
+        /// NormalRun: run handler + auto-transition as normal.
+        /// ValidationMode: run handler + ACK result, but do NOT auto-transition (hooks are in progress; engine drives).
+        /// TransitionMode: skip handler entirely; engine has already run all hooks, just fire the next event code.
+        /// </summary>
+        public TransitionDispatchMode DispatchMode { get; init; } = TransitionDispatchMode.NormalRun;
         public CancellationToken CancellationToken { get; init; }
     }
 }

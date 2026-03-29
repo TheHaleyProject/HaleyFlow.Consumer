@@ -164,13 +164,34 @@ namespace Haley.Abstractions {
 
         // ── Internal dispatch entry points ─────────────────────────────────────
 
-        internal Task<AckOutcome> DispatchTransitionAsync(ILifeCycleTransitionEvent evt, ConsumerContext ctx) {
+        internal async Task<AckOutcome> DispatchTransitionAsync(ILifeCycleTransitionEvent evt, ConsumerContext ctx) {
+            // TransitionMode: engine-driven state advance — skip business logic entirely.
+            // The engine has already run all gate/effect hooks; this call just fires the next event code.
+            // ctx.DispatchMode is authoritative (stored in inbox, survives monitor re-dispatch).
+            if (ctx.DispatchMode == TransitionDispatchMode.TransitionMode) {
+                _nextEvent = ctx.OnSuccessEvent;
+                return AckOutcome.Processed;
+            }
+
             var cache = DispatchCacheStore.GetOrBuild(GetType());
+            AckOutcome outcome;
             if (cache.Transitions.TryGetValue(evt.EventCode, out var candidates)) {
                 var handler = PickBestHandler(candidates, ctx.HandlerVersion);
-                if (handler != null) return handler(this, evt, ctx);
+                outcome = handler != null
+                    ? await handler(this, evt, ctx)
+                    : await OnUnhandledTransitionAsync(evt, ctx);
+            } else {
+                outcome = await OnUnhandledTransitionAsync(evt, ctx);
             }
-            return OnUnhandledTransitionAsync(evt, ctx);
+
+            // ValidationMode: hooks are in progress — engine drives the next transition via ACK pipeline.
+            // Suppress auto-transition so the consumer does not fire the next event directly.
+            // The ACK gate will also block any premature trigger from outside.
+            if (ctx.DispatchMode == TransitionDispatchMode.ValidationMode) {
+                _nextEvent = null;
+            }
+
+            return outcome;
         }
 
         internal Task<AckOutcome> DispatchHookAsync(ILifeCycleHookEvent evt, ConsumerContext ctx) {

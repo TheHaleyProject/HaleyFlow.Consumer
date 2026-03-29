@@ -21,5 +21,7 @@ namespace Haley.Models {
         public int RunCount { get; set; } = 1;
         public DateTime Created { get; set; }
         public HandlerUpgrade HandlerUpgrade { get; set; } = HandlerUpgrade.Pinned;
+        /// <summary>Dispatch mode for transition events: NormalRun, ValidationMode, or TransitionMode.</summary>
+        public TransitionDispatchMode DispatchMode { get; set; } = TransitionDispatchMode.NormalRun;
     }
 }

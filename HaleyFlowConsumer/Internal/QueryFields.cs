@@ -37,6 +37,8 @@ namespace Haley.Internal {
         public const string RESPONSE_PAYLOAD = "@RESPONSE_PAYLOAD";
         public const string ERROR = "@ERROR";
         public const string ATTEMPT_NO = "@ATTEMPT_NO";
+        // dispatch mode
+        public const string DISPATCH_MODE = "@DISPATCH_MODE";
         // paging
         public const string TAKE = "@TAKE";
         public const string SKIP = "@SKIP";
