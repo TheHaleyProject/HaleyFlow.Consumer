@@ -59,8 +59,8 @@ namespace Haley.Services {
 
             var result = await _consumerService.CreateWorkflowAsync(request.EntityId, request.WorkflowName, createRequest, ct);
             return result.Applied
-                ? Feedback.Ok(new { result.InstanceId })
-                : Feedback.Fail(result.Reason ?? $"{HaleyFlowErrorCodes.FlowBusEngineRejected}: Engine rejected the initiation.", new { result.InstanceId });
+                ? Feedback.Ok(new { result.InstanceGuid })
+                : Feedback.Fail(result.Reason ?? $"{HaleyFlowErrorCodes.FlowBusEngineRejected}: Engine rejected the initiation.", new { result.InstanceGuid });
         }
 
         private Task<IFeedback> InitiateRelayAsync(FlowInitiateRequest request, CancellationToken ct) {
