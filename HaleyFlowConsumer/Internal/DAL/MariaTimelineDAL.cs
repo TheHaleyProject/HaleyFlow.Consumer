@@ -30,6 +30,7 @@ namespace Haley.Internal {
             var items = new List<ConsumerTimelineItem>(eventRows.Count);
             foreach (var r in eventRows) {
                 var inboxId = r.GetLong(KEY_INBOX_ID);
+                var kind = (WorkflowKind)r.GetByte(KEY_KIND);
 
                 ConsumerTimelineStatus? status = null;
                 if (r.GetNullableByte("inbox_status") is byte rawStatus) {
@@ -58,11 +59,15 @@ namespace Haley.Internal {
                 items.Add(new ConsumerTimelineItem {
                     InboxId        = inboxId,
                     AckGuid        = r.GetString(KEY_ACK_GUID) ?? string.Empty,
-                    Kind           = ((WorkflowKind)r.GetByte(KEY_KIND)).ToString(),
+                    Kind           = kind.ToString(),
                     HandlerVersion = r.GetNullableInt(KEY_HANDLER_VERSION),
                     EventCode      = r.GetNullableInt(KEY_EVENT_CODE),
                     Route          = r.GetString(KEY_ROUTE),
+                    DispatchMode   = kind == WorkflowKind.Transition
+                        ? (TransitionDispatchMode?)(r.GetNullableByte(KEY_DISPATCH_MODE) ?? 0)
+                        : null,
                     HookType       = rawHookType.HasValue ? (HookType?)rawHookType.Value : null,
+                    NextEvent      = r.GetNullableInt(KEY_NEXT_EVENT),
                     RunCount       = r.GetNullableInt(KEY_RUN_COUNT) ?? 1,
                     Occurred       = r.GetDateTime(KEY_OCCURRED) ?? r.GetDateTime(KEY_CREATED) ?? default,
                     Created        = r.GetDateTime(KEY_CREATED) ?? r.GetDateTime(KEY_OCCURRED) ?? default,

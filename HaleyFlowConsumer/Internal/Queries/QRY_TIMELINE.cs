@@ -37,6 +37,7 @@ namespace Haley.Internal {
                   i.handler_version,
                   i.event_code,
                   i.route,
+                  i.dispatch_mode,
                   i.hook_type,
                   i.run_count,
                   i.occurred,
@@ -49,6 +50,7 @@ namespace Haley.Internal {
                   o.current_outcome,
                   o.status         AS outbox_status,
                   o.next_retry_at,
+                  o.next_event,
                   o.last_error     AS outbox_error,
                   o.modified       AS outbox_modified
                FROM inbox i

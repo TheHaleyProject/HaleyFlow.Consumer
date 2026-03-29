@@ -159,7 +159,7 @@ internal static class ControlBoardTLR {
     .event-body-wrap { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .28s ease; }
     .event-card.collapsed .event-body-wrap { grid-template-rows: 0fr; }
     .event-body { overflow: hidden; min-height: 0; }
-    .meta-grid { grid-template-columns: repeat(3, minmax(0,1fr)); margin-bottom: 18px; }
+    .meta-grid { grid-template-columns: repeat(4, minmax(0,1fr)); margin-bottom: 18px; }
     .meta-item { padding: 14px 16px; }
     .meta-value { margin-top: 6px; line-height: 1.55; }
     .duo-grid { grid-template-columns: repeat(2, minmax(0,1fr)); margin-bottom: 18px; }
@@ -251,6 +251,7 @@ internal static class ControlBoardTLR {
         var failedCount   = CountWhere(items, i => i.InboxStatus?.Status == "Failed");
         var hookCount     = CountWhere(items, i => i.Kind == "Hook");
         var transCount    = CountWhere(items, i => i.Kind == "Transition");
+        var completeCount = CountWhere(items, i => i.Kind == "Complete");
         var totalAttempts = SumInt(items, i => i.InboxStatus?.AttemptCount ?? 0);
         var totalHistory  = SumInt(items, i => i.Outbox?.History?.Count ?? 0);
         var maxAttempts   = MaxInt(items, i => i.InboxStatus?.AttemptCount ?? 0);
@@ -291,6 +292,7 @@ internal static class ControlBoardTLR {
           {Stat(totalHistory.ToString(),    "history")}
           {Stat(hookCount.ToString(),       "hooks")}
           {Stat(transCount.ToString(),      "transitions")}
+          {Stat(completeCount.ToString(),   "complete")}
         </div>
       </section>
       <section class="card">
@@ -303,9 +305,11 @@ internal static class ControlBoardTLR {
             var attempts = item.InboxStatus?.AttemptCount ?? 0;
             var width    = maxAttempts > 0 ? Math.Max(12, (int)Math.Round((double)attempts / maxAttempts * 100)) : 12;
             var hookTag  = item.HookType == HookType.Effect ? "[E] " : (item.Kind == "Hook" ? "[G] " : string.Empty);
-            var label    = item.Kind == "Hook"
-                ? hookTag + (item.Route ?? "hook")
-                : $"event_code: {item.EventCode?.ToString() ?? "\u2014"}";
+            var label    = item.Kind switch {
+                "Hook" => hookTag + (item.Route ?? "hook"),
+                "Complete" => $"complete.next_event: {item.NextEvent?.ToString() ?? "\u2014"}",
+                _ => $"event_code: {item.EventCode?.ToString() ?? "\u2014"}"
+            };
             sb.Append($"""
         <div class="heat-row">
           <div class="heat-head">
@@ -371,13 +375,22 @@ internal static class ControlBoardTLR {
     // ── Event card ───────────────────────────────────────────────────────────
 
     private static void WriteItem(StringBuilder sb, ConsumerTimelineItem item) {
-        var isHook     = item.Kind == "Hook";
-        var isGate     = isHook && item.HookType != HookType.Effect;  // Gate=1 (default when null), Effect=0
-        var accent     = isHook ? (isGate ? "#9d6b17" : "#2f714e") : "#0f6a70";
-        var mark       = isHook ? (isGate ? "G" : "E") : "T";
-        var eventTitle = isHook
-            ? (item.Route ?? "hook")
-            : $"event_code: {item.EventCode?.ToString() ?? "\u2014"}";
+        var isHook      = item.Kind == "Hook";
+        var isComplete  = item.Kind == "Complete";
+        var isGate      = isHook && item.HookType != HookType.Effect;  // Gate=1 (default when null), Effect=0
+        var accent      = isComplete ? "#355c9a" : isHook ? (isGate ? "#9d6b17" : "#2f714e") : "#0f6a70";
+        var mark        = isComplete ? "C" : isHook ? (isGate ? "G" : "E") : "T";
+        var eventTitle  = isComplete
+            ? $"complete.next_event: {item.NextEvent?.ToString() ?? "\u2014"}"
+            : isHook
+                ? (item.Route ?? "hook")
+                : $"event_code: {item.EventCode?.ToString() ?? "\u2014"}";
+        var detailLabel = isComplete ? "next_event" : isHook ? "hook_type" : "dispatch_mode";
+        var detailValue = isComplete
+            ? (item.NextEvent?.ToString() ?? "\u2014")
+            : isHook
+                ? (item.HookType?.ToString() ?? "\u2014")
+                : (item.DispatchMode?.ToString() ?? "\u2014");
 
         var inboxTone   = Tone(item.InboxStatus?.Status);
         var outboxBadge = $"{item.Outbox?.Outcome ?? "\u2014"} / {item.Outbox?.Status ?? "\u2014"}";
@@ -416,7 +429,19 @@ internal static class ControlBoardTLR {
               <div class="meta-label">run_count</div>
               <div class="meta-value">{E(item.RunCount.ToString())}</div>
             </div>
+            <div class="meta-item">
+              <div class="meta-label">{E(detailLabel)}</div>
+              <div class="meta-value">{E(detailValue)}</div>
+            </div>
           </div>
+""");
+
+        if (isComplete && item.NextEvent == null)
+            sb.Append("""
+          <div class="neutral-box" style="margin-bottom:18px">Engine completed this lifecycle without a resolved next event. Consumer override may decide what to trigger next.</div>
+""");
+
+        sb.Append("""
           <div class="duo-grid">
 """);
 
