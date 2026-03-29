@@ -37,6 +37,7 @@ namespace Haley.Internal {
                   i.handler_version,
                   i.event_code,
                   i.route,
+                  i.hook_type,
                   i.run_count,
                   i.occurred,
                   i.created,

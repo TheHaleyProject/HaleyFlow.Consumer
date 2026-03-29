@@ -42,7 +42,8 @@ namespace Haley.Internal {
         public const string KEY_RESPONSE_PAYLOAD = "response";
         public const string KEY_ERROR = "error";
         public const string KEY_CREATED_AT = "created_at";
-        // inbox dispatch mode
+        // inbox dispatch mode / hook type
         public const string KEY_DISPATCH_MODE = "dispatch_mode";
+        public const string KEY_HOOK_TYPE = "hook_type";
     }
 }

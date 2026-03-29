@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS `inbox` (
   `handler_upgrade` tinyint(4) NOT NULL DEFAULT 1 COMMENT 'Handler strategy: 1=PinnedVersion, 2=AllowUpgradeToLatest.',
   `run_count` int(11) NOT NULL DEFAULT 1 COMMENT 'Number of times this workload has been executed/retried.',
   `dispatch_mode` tinyint unsigned NOT NULL DEFAULT 0 COMMENT '0=NormalRun, 1=ValidationMode, 2=TransitionMode',
+  `hook_type` tinyint unsigned DEFAULT NULL COMMENT '1=Gate, 0=Effect. NULL for Transition rows.',
   `instance_id` bigint(20) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_inbox_ack_guid` (`ack_guid`),

@@ -1,6 +1,8 @@
 using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Text;
+using Haley.Enums;
 using Haley.Models;
 
 namespace Haley.Services;
@@ -300,8 +302,9 @@ internal static class ControlBoardTLR {
             var item     = items[i];
             var attempts = item.InboxStatus?.AttemptCount ?? 0;
             var width    = maxAttempts > 0 ? Math.Max(12, (int)Math.Round((double)attempts / maxAttempts * 100)) : 12;
+            var hookTag  = item.HookType == HookType.Effect ? "[E] " : (item.Kind == "Hook" ? "[G] " : string.Empty);
             var label    = item.Kind == "Hook"
-                ? (item.Route ?? "hook")
+                ? hookTag + (item.Route ?? "hook")
                 : $"event_code: {item.EventCode?.ToString() ?? "\u2014"}";
             sb.Append($"""
         <div class="heat-row">
@@ -354,8 +357,10 @@ internal static class ControlBoardTLR {
     <section class="timeline">
 """);
 
-        for (var i = 0; i < items.Count; i++)
-            WriteItem(sb, items[i]);
+        // InboxId is DB auto-increment — insertion order reflects actual arrival sequence (transition first, then hooks).
+        var sorted = items.OrderBy(x => x.InboxId).ToList();
+        for (var i = 0; i < sorted.Count; i++)
+            WriteItem(sb, sorted[i]);
 
         sb.Append("""
     </section>
@@ -367,8 +372,9 @@ internal static class ControlBoardTLR {
 
     private static void WriteItem(StringBuilder sb, ConsumerTimelineItem item) {
         var isHook     = item.Kind == "Hook";
-        var accent     = isHook ? "#9d6b17" : "#0f6a70";
-        var mark       = isHook ? "H" : "T";
+        var isGate     = isHook && item.HookType != HookType.Effect;  // Gate=1 (default when null), Effect=0
+        var accent     = isHook ? (isGate ? "#9d6b17" : "#2f714e") : "#0f6a70";
+        var mark       = isHook ? (isGate ? "G" : "E") : "T";
         var eventTitle = isHook
             ? (item.Route ?? "hook")
             : $"event_code: {item.EventCode?.ToString() ?? "\u2014"}";
@@ -582,7 +588,7 @@ internal static class ControlBoardTLR {
     private static string FmtFull(DateTime dt) {
         if (dt == default) return "\u2014";
         var local = dt.Kind == DateTimeKind.Utc ? dt.ToLocalTime() : dt;
-        return local.ToString("MMM d, yyyy h:mm tt", CultureInfo.InvariantCulture);
+        return local.ToString("MMM d, yyyy h:mm:ss tt", CultureInfo.InvariantCulture);
     }
 
     private static string E(string s) => WebUtility.HtmlEncode(s);

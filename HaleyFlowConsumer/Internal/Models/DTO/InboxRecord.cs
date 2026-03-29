@@ -23,5 +23,7 @@ namespace Haley.Models {
         public HandlerUpgrade HandlerUpgrade { get; set; } = HandlerUpgrade.Pinned;
         /// <summary>Dispatch mode for transition events: NormalRun, ValidationMode, or TransitionMode.</summary>
         public TransitionDispatchMode DispatchMode { get; set; } = TransitionDispatchMode.NormalRun;
+        /// <summary>Gate or Effect. Null for Transition rows.</summary>
+        public HookType? HookType { get; set; }
     }
 }

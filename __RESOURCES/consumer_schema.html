@@ -381,20 +381,20 @@
   <marker id='Arrow' viewBox='0 0 9.50 9.50' refX='4.75' refY='4.75' markerWidth='9.50' markerHeight='9.50' orient='auto-start-reverse'>
     <path d='M 4.750,2.375 L 9.500,4.750 L 4.750,7.125 z' style='stroke-width:1;' class='filled'/>
   </marker>
-  <linearGradient id='ttl_BED3F4' x1='0%' y1='0%' x2='100%' y2='0%' >
-     <stop offset='0%' stop-color='#6C98DE' /> 
-     <stop offset='100%' stop-color='#A0B7DD' /> 
-  </linearGradient>
-  <linearGradient id='tbg_BED3F4' x1='0%' y1='0%' x2='100%' y2='0%' >
-     <stop offset='0%' stop-color='#E3E3E5' /> 
-     <stop offset='100%' stop-color='#F4F5F7' /> 
-  </linearGradient>
   <linearGradient id='ttl_C1D8EE' x1='0%' y1='0%' x2='100%' y2='0%' >
      <stop offset='0%' stop-color='#6CA6DE' /> 
      <stop offset='100%' stop-color='#A0BFDD' /> 
   </linearGradient>
   <linearGradient id='tbg_C1D8EE' x1='0%' y1='0%' x2='100%' y2='0%' >
      <stop offset='0%' stop-color='#E3E4E5' /> 
+     <stop offset='100%' stop-color='#F4F5F7' /> 
+  </linearGradient>
+  <linearGradient id='ttl_BED3F4' x1='0%' y1='0%' x2='100%' y2='0%' >
+     <stop offset='0%' stop-color='#6C98DE' /> 
+     <stop offset='100%' stop-color='#A0B7DD' /> 
+  </linearGradient>
+  <linearGradient id='tbg_BED3F4' x1='0%' y1='0%' x2='100%' y2='0%' >
+     <stop offset='0%' stop-color='#E3E3E5' /> 
      <stop offset='100%' stop-color='#F4F5F7' /> 
   </linearGradient>
 </defs>
@@ -410,18 +410,18 @@
 Zoom with CTRL+whell mouse button, pan by dragging the diagram with the right-mouse button</title><use x='349' y='28' href='#bulb' width='24' height='24'/></g>
   <g><title>DbSchema Database Designer</title><use x='20' y='40' href='#logo'/></g>  <text x='20' y='30' class='legendTitle' >Main Diagram</text> 
   <text x='57' y='47' class='legendSubTitle'><tspan>Read schema comments as mouse-over tooltips</tspan></text>
-  <a href='https://dbschema.com'><text x='57' y='61' class='legendSubTitle'><tspan>DbSchema.com © 2026-03-16 Wise Coders<title>DbSchema.com © 2026-03-16 Wise Coders</title></tspan></text></a> 
+  <a href='https://dbschema.com'><text x='57' y='61' class='legendSubTitle'><tspan>DbSchema.com © 2026-03-29 Wise Coders<title>DbSchema.com © 2026-03-29 Wise Coders</title></tspan></text></a> 
 </g>
 
 <g transform='translate(0,110)'>
-<!-- == Fk 'inbox_status_fk_inbox_status_inbox' == -->
-<path id='inbox_status_fk_inbox_status_inbox'  onmouseover="hghl(['inbox_status_fk_inbox_status_inbox','lc_consumer.inbox_status.inbox_id','lc_consumer.inbox.id'])" onmouseout="uhghl(['inbox_status_fk_inbox_status_inbox','lc_consumer.inbox_status.inbox_id','lc_consumer.inbox.id'])" transform='translate(10,0)' class='unhighlight' d='M 551,95L 504,95Q 494,95 494,105L 494,105Q 494,114 485,114L 475,114' >
-	<title>&#x1F517;  Foreign Key fk_inbox_status_inbox
-inbox_status &#10132; inbox ( inbox_id -&gt; id )
+<!-- == Fk 'business_action_fk_business_action_instance' == -->
+<path id='business_action_fk_business_action_instance'  onmouseover="hghl(['business_action_fk_business_action_instance','lc_consumer.business_action.instance_id','lc_consumer.instance.id'])" onmouseout="uhghl(['business_action_fk_business_action_instance','lc_consumer.business_action.instance_id','lc_consumer.instance.id'])" transform='translate(10,0)' class='unhighlight' d='M 551,475L 523,475Q 513,475 513,485L 513,485Q 513,494 504,494L 494,494' >
+	<title>&#x1F517;  Foreign Key fk_business_action_instance
+business_action &#10132; instance ( instance_id -&gt; id )
 on delete cascade</title>
 </path>
-<path transform='translate(10,0)' marker-start='url(#One)'     d='M 551,95L 504,95Q 494,95 494,105L 494,105Q 494,114 485,114L 475,114' ><title>&#x1F517;  Foreign Key fk_inbox_status_inbox
-inbox_status &#10132; inbox ( inbox_id -&gt; id )
+<path transform='translate(10,0)' marker-start='url(#OneMore)' marker-end='url(#One)'    d='M 551,475L 523,475Q 513,475 513,485L 513,485Q 513,494 504,494L 494,494' ><title>&#x1F517;  Foreign Key fk_business_action_instance
+business_action &#10132; instance ( instance_id -&gt; id )
 on delete cascade</title></path>
 <!-- == Fk 'inbox_action_fk_inbox_step_inbox' == -->
 <path id='inbox_action_fk_inbox_step_inbox'  onmouseover="hghl(['inbox_action_fk_inbox_step_inbox','lc_consumer.inbox_action.inbox_id','lc_consumer.inbox.id'])" onmouseout="uhghl(['inbox_action_fk_inbox_step_inbox','lc_consumer.inbox_action.inbox_id','lc_consumer.inbox.id'])" transform='translate(10,0)' class='unhighlight' d='M 570,304L 504,304Q 494,304 494,295L 494,124Q 494,114 485,114L 475,114' >
@@ -441,23 +441,14 @@ on delete cascade</title>
 <path transform='translate(10,0)' marker-start='url(#OneMore)' marker-end='url(#One)'    d='M 703,323L 713,323Q 722,323 722,333L 722,447Q 722,456 713,456L 703,456' ><title>&#x1F517;  Foreign Key fk_inbox_action_business_action
 inbox_action &#10132; business_action ( action_id -&gt; id )
 on delete cascade</title></path>
-<!-- == Fk 'inbox_fk_inbox_instance' == -->
-<path id='inbox_fk_inbox_instance'  onmouseover="hghl(['inbox_fk_inbox_instance','lc_consumer.inbox.instance_id','lc_consumer.instance.id'])" onmouseout="uhghl(['inbox_fk_inbox_instance','lc_consumer.inbox.instance_id','lc_consumer.instance.id'])" transform='translate(10,0)' class='unhighlight' d='M 475,342L 485,342Q 494,342 494,352L 494,466Q 494,475 485,475L 475,475' >
-	<title>&#x1F517;  Foreign Key fk_inbox_instance
-inbox &#10132; instance ( instance_id -&gt; id )
+<!-- == Fk 'inbox_status_fk_inbox_status_inbox' == -->
+<path id='inbox_status_fk_inbox_status_inbox'  onmouseover="hghl(['inbox_status_fk_inbox_status_inbox','lc_consumer.inbox_status.inbox_id','lc_consumer.inbox.id'])" onmouseout="uhghl(['inbox_status_fk_inbox_status_inbox','lc_consumer.inbox_status.inbox_id','lc_consumer.inbox.id'])" transform='translate(10,0)' class='unhighlight' d='M 551,95L 504,95Q 494,95 494,105L 494,105Q 494,114 485,114L 475,114' >
+	<title>&#x1F517;  Foreign Key fk_inbox_status_inbox
+inbox_status &#10132; inbox ( inbox_id -&gt; id )
 on delete cascade</title>
 </path>
-<path transform='translate(10,0)' marker-start='url(#OneMore)'     d='M 475,342L 485,342Q 494,342 494,352L 494,466Q 494,475 485,475L 475,475' ><title>&#x1F517;  Foreign Key fk_inbox_instance
-inbox &#10132; instance ( instance_id -&gt; id )
-on delete cascade</title></path>
-<!-- == Fk 'outbox_history_fk_outbox_history_inbox' == -->
-<path id='outbox_history_fk_outbox_history_inbox'  onmouseover="hghl(['outbox_history_fk_outbox_history_inbox','lc_consumer.outbox_history.inbox_id','lc_consumer.inbox.id'])" onmouseout="uhghl(['outbox_history_fk_outbox_history_inbox','lc_consumer.outbox_history.inbox_id','lc_consumer.inbox.id'])" transform='translate(10,0)' class='unhighlight' d='M 228,342L 238,342Q 247,342 247,333L 247,124Q 247,114 257,114L 266,114' >
-	<title>&#x1F517;  Foreign Key fk_outbox_history_inbox
-outbox_history &#10132; inbox ( inbox_id -&gt; id )
-on delete cascade</title>
-</path>
-<path transform='translate(10,0)' marker-start='url(#OneMore)'     d='M 228,342L 238,342Q 247,342 247,333L 247,124Q 247,114 257,114L 266,114' ><title>&#x1F517;  Foreign Key fk_outbox_history_inbox
-outbox_history &#10132; inbox ( inbox_id -&gt; id )
+<path transform='translate(10,0)' marker-start='url(#One)'     d='M 551,95L 504,95Q 494,95 494,105L 494,105Q 494,114 485,114L 475,114' ><title>&#x1F517;  Foreign Key fk_inbox_status_inbox
+inbox_status &#10132; inbox ( inbox_id -&gt; id )
 on delete cascade</title></path>
 <!-- == Fk 'outbox_fk_outbox_inbox' == -->
 <path id='outbox_fk_outbox_inbox'  onmouseover="hghl(['outbox_fk_outbox_inbox','lc_consumer.outbox.inbox_id','lc_consumer.inbox.id'])" onmouseout="uhghl(['outbox_fk_outbox_inbox','lc_consumer.outbox.inbox_id','lc_consumer.inbox.id'])" transform='translate(10,0)' class='unhighlight' d='M 228,114L 285,114' >
@@ -468,15 +459,92 @@ on delete cascade</title>
 <path transform='translate(10,0)' marker-start='url(#One)' marker-end='url(#One)'    d='M 228,114L 285,114' ><title>&#x1F517;  Foreign Key fk_outbox_inbox
 outbox &#10132; inbox ( inbox_id -&gt; id )
 on delete cascade</title></path>
-<!-- == Fk 'business_action_fk_business_action_instance' == -->
-<path id='business_action_fk_business_action_instance'  onmouseover="hghl(['business_action_fk_business_action_instance','lc_consumer.business_action.instance_id','lc_consumer.instance.id'])" onmouseout="uhghl(['business_action_fk_business_action_instance','lc_consumer.business_action.instance_id','lc_consumer.instance.id'])" transform='translate(10,0)' class='unhighlight' d='M 551,475L 485,475Q 475,475 475,485L 475,485Q 475,494 466,494L 456,494' >
-	<title>&#x1F517;  Foreign Key fk_business_action_instance
-business_action &#10132; instance ( instance_id -&gt; id )
+<!-- == Fk 'outbox_history_fk_outbox_history_inbox' == -->
+<path id='outbox_history_fk_outbox_history_inbox'  onmouseover="hghl(['outbox_history_fk_outbox_history_inbox','lc_consumer.outbox_history.inbox_id','lc_consumer.inbox.id'])" onmouseout="uhghl(['outbox_history_fk_outbox_history_inbox','lc_consumer.outbox_history.inbox_id','lc_consumer.inbox.id'])" transform='translate(10,0)' class='unhighlight' d='M 228,342L 238,342Q 247,342 247,333L 247,124Q 247,114 257,114L 266,114' >
+	<title>&#x1F517;  Foreign Key fk_outbox_history_inbox
+outbox_history &#10132; inbox ( inbox_id -&gt; id )
 on delete cascade</title>
 </path>
-<path transform='translate(10,0)' marker-start='url(#OneMore)' marker-end='url(#One)'    d='M 551,475L 485,475Q 475,475 475,485L 475,485Q 475,494 466,494L 456,494' ><title>&#x1F517;  Foreign Key fk_business_action_instance
-business_action &#10132; instance ( instance_id -&gt; id )
+<path transform='translate(10,0)' marker-start='url(#OneMore)'     d='M 228,342L 238,342Q 247,342 247,333L 247,124Q 247,114 257,114L 266,114' ><title>&#x1F517;  Foreign Key fk_outbox_history_inbox
+outbox_history &#10132; inbox ( inbox_id -&gt; id )
 on delete cascade</title></path>
+<!-- == Fk 'inbox_fk_inbox_instance' == -->
+<path id='inbox_fk_inbox_instance'  onmouseover="hghl(['inbox_fk_inbox_instance','lc_consumer.inbox.instance_id','lc_consumer.instance.id'])" onmouseout="uhghl(['inbox_fk_inbox_instance','lc_consumer.inbox.instance_id','lc_consumer.instance.id'])" transform='translate(10,0)' class='unhighlight' d='M 475,342L 504,342Q 513,342 513,352L 513,494' >
+	<title>&#x1F517;  Foreign Key fk_inbox_instance
+inbox &#10132; instance ( instance_id -&gt; id )
+on delete cascade</title>
+</path>
+<path transform='translate(10,0)' marker-start='url(#OneMore)'     d='M 475,342L 504,342Q 513,342 513,352L 513,494' ><title>&#x1F517;  Foreign Key fk_inbox_instance
+inbox &#10132; instance ( instance_id -&gt; id )
+on delete cascade</title></path>
+<!-- == Table 'business_action' == -->
+<rect id='depict_lc&#95;consumer&#46;business&#95;action' class='entity' style='stroke:#F9FAFC' x='570' y='409' width='133' height='209' rx='4' ry='4' />
+<rect x='570' y='409' width='133' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_C1D8EE);'/>
+<rect x='570' y='413' width='133' height='29' style='stroke-width:0;fill:url(#tbg_C1D8EE);'/>
+<a href='#lc_consumer.business_action'><g><title>Table lc_consumer.business_action
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Idempotent record of business side-effects executed by a consumer for a workflow instance.</title><text id='depict&#45;lc&#95;consumer&#46;business&#95;action' x='585' y='431' class='tableHeader' style='fill:#414448;'>business&#95;action</text></g></a>
+  <use x='571' y='452' href='#nn'/><g><title>&#x1F511;  Pk pk_business_action ( id ) </title><use x='572' y='451' href='#pk'/></g><a href='#lc_consumer.business_action.id'><g><title>&#10697;  id
+     * bigint
+ &#8601; inbox_action( action_id )
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Internal surrogate identifier.</title><text id='lc&#95;consumer&#46;business&#95;action&#46;id' x='593' y='465' onmouseover="hghl(['inbox_action_fk_inbox_action_business_action','lc_consumer.inbox_action.action_id'])" onmouseout="uhghl(['inbox_action_fk_inbox_action_business_action','lc_consumer.inbox_action.action_id'])" class='colPk'>id</text></g></a>
+<a href='#lc_consumer.business_action.id'><g><title>&#x1F517;  Referred by inbox_action ( action_id -&gt; id ) </title><use x='689' y='451' href='#ref'/></g></a>
+  <use x='571' y='471' href='#nn'/><g><title>&#x1F50D;  Unq unq_business_action ( instance_id, action_code ) </title><use x='572' y='470' href='#unq'/></g><a href='#lc_consumer.business_action.instance_id'><g><title>&#10697;  instance_id
+     * bigint
+ &#8599; instance( id )</title><text id='lc&#95;consumer&#46;business&#95;action&#46;instance&#95;id' x='593' y='484' onmouseover="hghl(['business_action_fk_business_action_instance','lc_consumer.instance.id'])" onmouseout="uhghl(['business_action_fk_business_action_instance','lc_consumer.instance.id'])">instance&#95;id</text></g></a>
+<a href='#lc_consumer.business_action.instance_id'><g><title>&#x1F517;  References instance ( instance_id -&gt; id ) </title><use x='689' y='470' href='#fk'/></g></a>
+  <use x='571' y='490' href='#nn'/><g><title>&#x1F50D;  Unq unq_business_action ( instance_id, action_code ) </title><use x='572' y='489' href='#unq'/></g><a href='#lc_consumer.business_action.action_code'><g><title>&#10697;  action_code
+     * int
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Business action code (example: 100=SendLoginCredentials, 200=SendWarningEmail).</title><text id='lc&#95;consumer&#46;business&#95;action&#46;action&#95;code' x='593' y='503'>action&#95;code</text></g></a>
+<text x='699' y='499' text-anchor='end' class='colType'>&#35;</text>  <use x='571' y='509' href='#nn'/><a href='#lc_consumer.business_action.status'><g><title>&#10697;  status
+     * int
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Action execution state: 1=Pending, 2=Running, 3=Completed, 4=Failed.</title><text id='lc&#95;consumer&#46;business&#95;action&#46;status' x='593' y='522'>status</text></g></a>
+<text x='699' y='518' text-anchor='end' class='colType'>&#35;</text>  <use x='571' y='528' href='#nn'/><a href='#lc_consumer.business_action.started_at'><g><title>&#10697;  started_at
+     * datetime
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Execution start timestamp.</title><text id='lc&#95;consumer&#46;business&#95;action&#46;started&#95;at' x='593' y='541'>started&#95;at</text></g></a>
+<text x='699' y='537' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.business_action.completed_at'><g><title>&#10697;  completed_at
+     datetime(6)
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Execution completion timestamp.</title><text id='lc&#95;consumer&#46;business&#95;action&#46;completed&#95;at' x='593' y='560'>completed&#95;at</text></g></a>
+<text x='699' y='556' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.business_action.result_json'><g><title>&#10697;  result_json
+     longtext
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Structured execution result payload (JSON).</title><text id='lc&#95;consumer&#46;business&#95;action&#46;result&#95;json' x='593' y='579'>result&#95;json</text></g></a>
+<text x='699' y='575' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.business_action.last_error'><g><title>&#10697;  last_error
+     text</title><text id='lc&#95;consumer&#46;business&#95;action&#46;last&#95;error' x='593' y='598'>last&#95;error</text></g></a>
+<text x='699' y='594' text-anchor='end' class='colType'>t</text>
+<!-- == Table 'inbox_action' == -->
+<rect id='depict_lc&#95;consumer&#46;inbox&#95;action' class='entity' style='stroke:#F9FAFC' x='589' y='257' width='114' height='133' rx='4' ry='4' />
+<rect x='589' y='257' width='114' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_BED3F4);'/>
+<rect x='589' y='261' width='114' height='29' style='stroke-width:0;fill:url(#tbg_BED3F4);'/>
+<a href='#lc_consumer.inbox_action'><g><title>Table lc_consumer.inbox_action
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Step-level execution tracking for inbox items to support deterministic, idempotent processing.</title><text id='depict&#45;lc&#95;consumer&#46;inbox&#95;action' x='604' y='279' class='tableHeader' style='fill:#414348;'>inbox&#95;action</text></g></a>
+  <use x='590' y='300' href='#nn'/><g><title>&#x1F511;  Pk pk_inbox_action ( inbox_id, action_id ) </title><use x='591' y='299' href='#pk'/></g><a href='#lc_consumer.inbox_action.inbox_id'><g><title>&#10697;  inbox_id
+     * bigint
+ &#8599; inbox( id )
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Inbox record identifier (FK to inbox.id).</title><text id='lc&#95;consumer&#46;inbox&#95;action&#46;inbox&#95;id' x='612' y='313' onmouseover="hghl(['inbox_action_fk_inbox_step_inbox','lc_consumer.inbox.id'])" onmouseout="uhghl(['inbox_action_fk_inbox_step_inbox','lc_consumer.inbox.id'])" class='colPk'>inbox&#95;id</text></g></a>
+<a href='#lc_consumer.inbox_action.inbox_id'><g><title>&#x1F517;  References inbox ( inbox_id -&gt; id ) </title><use x='689' y='299' href='#fk'/></g></a>
+  <use x='590' y='319' href='#nn'/><g><title>&#x1F511;  Pk pk_inbox_action ( inbox_id, action_id ) &#x1F50D;  fk_inbox_action_business_action ( action_id ) </title><use x='591' y='318' href='#pk'/></g><a href='#lc_consumer.inbox_action.action_id'><g><title>&#10697;  action_id
+     * bigint default 0
+ &#8599; business_action( id )
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Consumer business action</title><text id='lc&#95;consumer&#46;inbox&#95;action&#46;action&#95;id' x='612' y='332' onmouseover="hghl(['inbox_action_fk_inbox_action_business_action','lc_consumer.business_action.id'])" onmouseout="uhghl(['inbox_action_fk_inbox_action_business_action','lc_consumer.business_action.id'])" class='colPk'>action&#95;id</text></g></a>
+<a href='#lc_consumer.inbox_action.action_id'><g><title>&#x1F517;  References business_action ( action_id -&gt; id ) </title><use x='689' y='318' href='#fk'/></g></a>
+  <a href='#lc_consumer.inbox_action.last_error'><g><title>&#10697;  last_error
+     text
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Last captured error message for troubleshooting.</title><text id='lc&#95;consumer&#46;inbox&#95;action&#46;last&#95;error' x='612' y='351'>last&#95;error</text></g></a>
+<text x='699' y='347' text-anchor='end' class='colType'>t</text>  <use x='590' y='357' href='#nn'/><a href='#lc_consumer.inbox_action.status'><g><title>&#10697;  status
+     * tinyint default 1
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      1 - Attempted, 2 - Completed, 3 - Failed</title><text id='lc&#95;consumer&#46;inbox&#95;action&#46;status' x='612' y='370'>status</text></g></a>
+<text x='699' y='366' text-anchor='end' class='colType'>&#35;</text>
 <!-- == Table 'inbox_status' == -->
 <rect id='depict_lc&#95;consumer&#46;inbox&#95;status' class='entity' style='stroke:#F9FAFC' x='570' y='48' width='152' height='190' rx='4' ry='4' />
 <rect x='570' y='48' width='152' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_BED3F4);'/>
@@ -515,36 +583,116 @@ on delete cascade</title></path>
  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
       Last captured error message for troubleshooting.</title><text id='lc&#95;consumer&#46;inbox&#95;status&#46;last&#95;error' x='593' y='218'>last&#95;error</text></g></a>
 <text x='718' y='214' text-anchor='end' class='colType'>t</text>
-<!-- == Table 'inbox_action' == -->
-<rect id='depict_lc&#95;consumer&#46;inbox&#95;action' class='entity' style='stroke:#F9FAFC' x='589' y='257' width='114' height='133' rx='4' ry='4' />
-<rect x='589' y='257' width='114' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_BED3F4);'/>
-<rect x='589' y='261' width='114' height='29' style='stroke-width:0;fill:url(#tbg_BED3F4);'/>
-<a href='#lc_consumer.inbox_action'><g><title>Table lc_consumer.inbox_action
+<!-- == Table 'instance' == -->
+<rect id='depict_lc&#95;consumer&#46;instance' class='entity' style='stroke:#F9FAFC' x='323' y='428' width='171' height='171' rx='4' ry='4' />
+<rect x='323' y='428' width='171' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_C1D8EE);'/>
+<rect x='323' y='432' width='171' height='29' style='stroke-width:0;fill:url(#tbg_C1D8EE);'/>
+<a href='#lc_consumer.instance'><g><title>Table lc_consumer.instance
  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Step-level execution tracking for inbox items to support deterministic, idempotent processing.</title><text id='depict&#45;lc&#95;consumer&#46;inbox&#95;action' x='604' y='279' class='tableHeader' style='fill:#414348;'>inbox&#95;action</text></g></a>
-  <use x='590' y='300' href='#nn'/><g><title>&#x1F511;  Pk pk_inbox_action ( inbox_id, action_id ) </title><use x='591' y='299' href='#pk'/></g><a href='#lc_consumer.inbox_action.inbox_id'><g><title>&#10697;  inbox_id
+      Consumer-side mirror of engine workflow instances. One row per engine instance guid.</title><text id='depict&#45;lc&#95;consumer&#46;instance' x='379' y='450' class='tableHeader' style='fill:#414448;'>instance</text></g></a>
+  <use x='324' y='471' href='#nn'/><g><title>&#x1F50D;  Unq unq_instance_guid ( guid ) </title><use x='325' y='470' href='#unq'/></g><a href='#lc_consumer.instance.guid'><g><title>&#10697;  guid
+     * varchar(42)
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      instance guid (not generated here.. coming from the engine).. stored here as a duplicate only for proper sql queries and also for generating reports and easy tracking.</title><text id='lc&#95;consumer&#46;instance&#46;guid' x='346' y='484'>guid</text></g></a>
+<text x='490' y='480' text-anchor='end' class='colType'>t</text>  <use x='324' y='490' href='#nn'/><g><title>&#x1F511;  Pk pk_instance ( id ) </title><use x='325' y='489' href='#pk'/></g><a href='#lc_consumer.instance.id'><g><title>&#10697;  id
+     * bigint
+ &#8601; business_action( instance_id )
+ &#8601; inbox( instance_id )</title><text id='lc&#95;consumer&#46;instance&#46;id' x='346' y='503' onmouseover="hghl(['business_action_fk_business_action_instance','lc_consumer.business_action.instance_id','inbox_fk_inbox_instance','lc_consumer.inbox.instance_id'])" onmouseout="uhghl(['business_action_fk_business_action_instance','lc_consumer.business_action.instance_id','inbox_fk_inbox_instance','lc_consumer.inbox.instance_id'])" class='colPk'>id</text></g></a>
+<a href='#lc_consumer.instance.id'><g><title>&#x1F517;  Referred by business_action ( instance_id -&gt; id ) 
+Referred by inbox ( instance_id -&gt; id ) </title><use x='480' y='489' href='#ref'/></g></a>
+  <use x='324' y='509' href='#nn'/><g><title>&#x1F50D;  idx_instance ( def_name, entity_guid ) &#x1F50D;  idx_instance_0 ( entity_guid, def_name ) </title><use x='325' y='508' href='#idx'/></g><a href='#lc_consumer.instance.def_name'><g><title>&#10697;  def_name
+     * varchar(120)</title><text id='lc&#95;consumer&#46;instance&#46;def&#95;name' x='346' y='522'>def&#95;name</text></g></a>
+<text x='490' y='518' text-anchor='end' class='colType'>t</text>  <use x='324' y='528' href='#nn'/><a href='#lc_consumer.instance.def_version_value'><g><title>&#10697;  def_version_value
+     * int default 1
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      The actuval version value</title><text id='lc&#95;consumer&#46;instance&#46;def&#95;version&#95;value' x='346' y='541'>def&#95;version&#95;value</text></g></a>
+<text x='490' y='537' text-anchor='end' class='colType'>&#35;</text>  <use x='324' y='547' href='#nn'/><g><title>&#x1F50D;  idx_instance ( def_name, entity_guid ) &#x1F50D;  idx_instance_0 ( entity_guid, def_name ) </title><use x='325' y='546' href='#idx'/></g><a href='#lc_consumer.instance.entity_guid'><g><title>&#10697;  entity_guid
+     * varchar(42)</title><text id='lc&#95;consumer&#46;instance&#46;entity&#95;guid' x='346' y='560'>entity&#95;guid</text></g></a>
+<text x='490' y='556' text-anchor='end' class='colType'>t</text>  <use x='324' y='566' href='#nn'/><a href='#lc_consumer.instance.created'><g><title>&#10697;  created
+     * datetime
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      When this instance was created at the engine side, mirrored into the consumer database.</title><text id='lc&#95;consumer&#46;instance&#46;created' x='346' y='579'>created</text></g></a>
+<text x='490' y='575' text-anchor='end' class='colType'>t</text>
+<!-- == Table 'outbox' == -->
+<rect id='depict_lc&#95;consumer&#46;outbox' class='entity' style='stroke:#F9FAFC' x='57' y='67' width='171' height='190' rx='4' ry='4' />
+<rect x='57' y='67' width='171' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_BED3F4);'/>
+<rect x='57' y='71' width='171' height='29' style='stroke-width:0;fill:url(#tbg_BED3F4);'/>
+<a href='#lc_consumer.outbox'><g><title>Table lc_consumer.outbox
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Outbound acknowledgement queue from consumer to engine with retry scheduling.</title><text id='depict&#45;lc&#95;consumer&#46;outbox' x='117' y='89' class='tableHeader' style='fill:#414348;'>outbox</text></g></a>
+  <use x='58' y='110' href='#nn'/><g><title>&#x1F511;  Pk pk_outbox ( inbox_id ) </title><use x='59' y='109' href='#pk'/></g><a href='#lc_consumer.outbox.inbox_id'><g><title>&#10697;  inbox_id
      * bigint
  &#8599; inbox( id )
  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Inbox record identifier (FK to inbox.id).</title><text id='lc&#95;consumer&#46;inbox&#95;action&#46;inbox&#95;id' x='612' y='313' onmouseover="hghl(['inbox_action_fk_inbox_step_inbox','lc_consumer.inbox.id'])" onmouseout="uhghl(['inbox_action_fk_inbox_step_inbox','lc_consumer.inbox.id'])" class='colPk'>inbox&#95;id</text></g></a>
-<a href='#lc_consumer.inbox_action.inbox_id'><g><title>&#x1F517;  References inbox ( inbox_id -&gt; id ) </title><use x='689' y='299' href='#fk'/></g></a>
-  <use x='590' y='319' href='#nn'/><g><title>&#x1F511;  Pk pk_inbox_action ( inbox_id, action_id ) &#x1F50D;  fk_inbox_action_business_action ( action_id ) </title><use x='591' y='318' href='#pk'/></g><a href='#lc_consumer.inbox_action.action_id'><g><title>&#10697;  action_id
-     * bigint default 0
- &#8599; business_action( id )
+      Inbox record identifier (FK to inbox.id).</title><text id='lc&#95;consumer&#46;outbox&#46;inbox&#95;id' x='80' y='123' onmouseover="hghl(['outbox_fk_outbox_inbox','lc_consumer.inbox.id'])" onmouseout="uhghl(['outbox_fk_outbox_inbox','lc_consumer.inbox.id'])" class='colPk'>inbox&#95;id</text></g></a>
+<a href='#lc_consumer.outbox.inbox_id'><g><title>&#x1F517;  References inbox ( inbox_id -&gt; id ) </title><use x='214' y='109' href='#fk'/></g></a>
+  <a href='#lc_consumer.outbox.current_outcome'><g><title>&#10697;  current_outcome
+     tinyint
  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Consumer business action</title><text id='lc&#95;consumer&#46;inbox&#95;action&#46;action&#95;id' x='612' y='332' onmouseover="hghl(['inbox_action_fk_inbox_action_business_action','lc_consumer.business_action.id'])" onmouseout="uhghl(['inbox_action_fk_inbox_action_business_action','lc_consumer.business_action.id'])" class='colPk'>action&#95;id</text></g></a>
-<a href='#lc_consumer.inbox_action.action_id'><g><title>&#x1F517;  References business_action ( action_id -&gt; id ) </title><use x='689' y='318' href='#fk'/></g></a>
-  <a href='#lc_consumer.inbox_action.last_error'><g><title>&#10697;  last_error
-     text
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Last captured error message for troubleshooting.</title><text id='lc&#95;consumer&#46;inbox&#95;action&#46;last&#95;error' x='612' y='351'>last&#95;error</text></g></a>
-<text x='699' y='347' text-anchor='end' class='colType'>t</text>  <use x='590' y='357' href='#nn'/><a href='#lc_consumer.inbox_action.status'><g><title>&#10697;  status
+      Current outcome: 1=Delivered, 2=Processed, 3=Retry, 4=Failed.</title><text id='lc&#95;consumer&#46;outbox&#46;current&#95;outcome' x='80' y='142'>current&#95;outcome</text></g></a>
+<text x='224' y='138' text-anchor='end' class='colType'>&#35;</text>  <use x='58' y='148' href='#nn'/><g><title>&#x1F50D;  idx_outbox_send_status ( status, next_retry_at ) </title><use x='59' y='147' href='#idx'/></g><a href='#lc_consumer.outbox.status'><g><title>&#10697;  status
      * tinyint default 1
  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      1 - Attempted, 2 - Completed, 3 - Failed</title><text id='lc&#95;consumer&#46;inbox&#95;action&#46;status' x='612' y='370'>status</text></g></a>
-<text x='699' y='366' text-anchor='end' class='colType'>&#35;</text>
+      Outbox send state: 1=Pending, 2=Sent, 3=Confirmed, 4=Failed.</title><text id='lc&#95;consumer&#46;outbox&#46;status' x='80' y='161'>status</text></g></a>
+<text x='224' y='157' text-anchor='end' class='colType'>&#35;</text>  <g><title>&#x1F50D;  idx_outbox_send_status ( status, next_retry_at ) </title><use x='59' y='166' href='#idx'/></g><a href='#lc_consumer.outbox.next_retry_at'><g><title>&#10697;  next_retry_at
+     datetime(6)
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Scheduled timestamp for next retry attempt.</title><text id='lc&#95;consumer&#46;outbox&#46;next&#95;retry&#95;at' x='80' y='180'>next&#95;retry&#95;at</text></g></a>
+<text x='224' y='176' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.outbox.last_error'><g><title>&#10697;  last_error
+     text
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Last captured error message for troubleshooting.</title><text id='lc&#95;consumer&#46;outbox&#46;last&#95;error' x='80' y='199'>last&#95;error</text></g></a>
+<text x='224' y='195' text-anchor='end' class='colType'>t</text>  <use x='58' y='205' href='#nn'/><a href='#lc_consumer.outbox.modified'><g><title>&#10697;  modified
+     * datetime default current_timestamp()
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      UTC timestamp when the row was last updated.</title><text id='lc&#95;consumer&#46;outbox&#46;modified' x='80' y='218'>modified</text></g></a>
+<text x='224' y='214' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.outbox.next_event'><g><title>&#10697;  next_event
+     int</title><text id='lc&#95;consumer&#46;outbox&#46;next&#95;event' x='80' y='237'>next&#95;event</text></g></a>
+<text x='224' y='233' text-anchor='end' class='colType'>&#35;</text>
+<!-- == Table 'outbox_history' == -->
+<rect id='depict_lc&#95;consumer&#46;outbox&#95;history' class='entity' style='stroke:#F9FAFC' x='95' y='276' width='133' height='209' rx='4' ry='4' />
+<rect x='95' y='276' width='133' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_BED3F4);'/>
+<rect x='95' y='280' width='133' height='29' style='stroke-width:0;fill:url(#tbg_BED3F4);'/>
+<a href='#lc_consumer.outbox_history'><g><title>Table lc_consumer.outbox_history
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Immutable attempt history for outbox sends, responses, and failures.</title><text id='depict&#45;lc&#95;consumer&#46;outbox&#95;history' x='113' y='298' class='tableHeader' style='fill:#414348;'>outbox&#95;history</text></g></a>
+  <use x='96' y='319' href='#nn'/><g><title>&#x1F511;  Pk pk_outbox_history ( id ) </title><use x='97' y='318' href='#pk'/></g><a href='#lc_consumer.outbox_history.id'><g><title>&#10697;  id
+     * bigint
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Internal surrogate identifier.</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;id' x='118' y='332' class='colPk'>id</text></g></a>
+<text x='224' y='328' text-anchor='end' class='colType'>&#35;</text>  <use x='96' y='338' href='#nn'/><g><title>&#x1F50D;  idx_outbox_history_outbox_sent ( inbox_id, modified ) &#x1F50D;  Unq unq_outbox_attempt ( inbox_id, attempt_no ) </title><use x='97' y='337' href='#unq'/></g><a href='#lc_consumer.outbox_history.inbox_id'><g><title>&#10697;  inbox_id
+     * bigint
+ &#8599; inbox( id )
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Inbox record identifier (FK to outbox.inbox_id).</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;inbox&#95;id' x='118' y='351' onmouseover="hghl(['outbox_history_fk_outbox_history_inbox','lc_consumer.inbox.id'])" onmouseout="uhghl(['outbox_history_fk_outbox_history_inbox','lc_consumer.inbox.id'])">inbox&#95;id</text></g></a>
+<a href='#lc_consumer.outbox_history.inbox_id'><g><title>&#x1F517;  References inbox ( inbox_id -&gt; id ) </title><use x='214' y='337' href='#fk'/></g></a>
+  <use x='96' y='357' href='#nn'/><a href='#lc_consumer.outbox_history.outcome'><g><title>&#10697;  outcome
+     * tinyint
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Attempt outcome: 1=Delivered, 2=Processed, 3=Retry, 4=Failed.</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;outcome' x='118' y='370'>outcome</text></g></a>
+<text x='224' y='366' text-anchor='end' class='colType'>&#35;</text>  <use x='96' y='376' href='#nn'/><a href='#lc_consumer.outbox_history.status'><g><title>&#10697;  status
+     * tinyint
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Attempt send state: 1=Pending, 2=Sent, 3=Confirmed, 4=Failed.</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;status' x='118' y='389'>status</text></g></a>
+<text x='224' y='385' text-anchor='end' class='colType'>&#35;</text>  <use x='96' y='395' href='#nn'/><g><title>&#x1F50D;  Unq unq_outbox_attempt ( inbox_id, attempt_no ) </title><use x='97' y='394' href='#unq'/></g><a href='#lc_consumer.outbox_history.attempt_no'><g><title>&#10697;  attempt_no
+     * int
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Monotonic attempt sequence number.</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;attempt&#95;no' x='118' y='408'>attempt&#95;no</text></g></a>
+<text x='224' y='404' text-anchor='end' class='colType'>&#35;</text>  <use x='96' y='414' href='#nn'/><g><title>&#x1F50D;  idx_outbox_history_outbox_sent ( inbox_id, modified ) </title><use x='97' y='413' href='#idx'/></g><a href='#lc_consumer.outbox_history.modified'><g><title>&#10697;  modified
+     * datetime default current_timestamp()
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      UTC timestamp when the row was last updated.</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;modified' x='118' y='427'>modified</text></g></a>
+<text x='224' y='423' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.outbox_history.response'><g><title>&#10697;  response
+     longtext
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Raw response payload captured from engine/API (JSON). response payload _json</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;response' x='118' y='446'>response</text></g></a>
+<text x='224' y='442' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.outbox_history.error'><g><title>&#10697;  error
+     text
+ ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+      Error details captured for this send attempt.</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;error' x='118' y='465'>error</text></g></a>
+<text x='224' y='461' text-anchor='end' class='colType'>t</text>
 <!-- == Table 'inbox' == -->
-<rect id='depict_lc&#95;consumer&#46;inbox' class='entity' style='stroke:#F9FAFC' x='304' y='67' width='171' height='304' rx='4' ry='4' />
+<rect id='depict_lc&#95;consumer&#46;inbox' class='entity' style='stroke:#F9FAFC' x='304' y='67' width='171' height='323' rx='4' ry='4' />
 <rect x='304' y='67' width='171' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_BED3F4);'/>
 <rect x='304' y='71' width='171' height='29' style='stroke-width:0;fill:url(#tbg_BED3F4);'/>
 <a href='#lc_consumer.inbox'><g><title>Table lc_consumer.inbox
@@ -552,15 +700,15 @@ on delete cascade</title></path>
       Canonical consumer-side record for one engine-raised transition or hook workload.</title><text id='depict&#45;lc&#95;consumer&#46;inbox' x='368' y='89' class='tableHeader' style='fill:#414348;'>inbox</text></g></a>
   <use x='305' y='110' href='#nn'/><g><title>&#x1F511;  Pk pk_inbox ( id ) </title><use x='306' y='109' href='#pk'/></g><a href='#lc_consumer.inbox.id'><g><title>&#10697;  id
      * bigint
+ &#8601; inbox_action( inbox_id )
  &#8601; inbox_status( inbox_id )
  &#8601; outbox( inbox_id )
- &#8601; inbox_action( inbox_id )
  &#8601; outbox_history( inbox_id )
  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Internal surrogate identifier.</title><text id='lc&#95;consumer&#46;inbox&#46;id' x='327' y='123' onmouseover="hghl(['inbox_status_fk_inbox_status_inbox','lc_consumer.inbox_status.inbox_id','outbox_fk_outbox_inbox','lc_consumer.outbox.inbox_id','inbox_action_fk_inbox_step_inbox','lc_consumer.inbox_action.inbox_id','outbox_history_fk_outbox_history_inbox','lc_consumer.outbox_history.inbox_id'])" onmouseout="uhghl(['inbox_status_fk_inbox_status_inbox','lc_consumer.inbox_status.inbox_id','outbox_fk_outbox_inbox','lc_consumer.outbox.inbox_id','inbox_action_fk_inbox_step_inbox','lc_consumer.inbox_action.inbox_id','outbox_history_fk_outbox_history_inbox','lc_consumer.outbox_history.inbox_id'])" class='colPk'>id</text></g></a>
-<a href='#lc_consumer.inbox.id'><g><title>&#x1F517;  Referred by inbox_status ( inbox_id -&gt; id ) 
+      Internal surrogate identifier.</title><text id='lc&#95;consumer&#46;inbox&#46;id' x='327' y='123' onmouseover="hghl(['inbox_action_fk_inbox_step_inbox','lc_consumer.inbox_action.inbox_id','inbox_status_fk_inbox_status_inbox','lc_consumer.inbox_status.inbox_id','outbox_fk_outbox_inbox','lc_consumer.outbox.inbox_id','outbox_history_fk_outbox_history_inbox','lc_consumer.outbox_history.inbox_id'])" onmouseout="uhghl(['inbox_action_fk_inbox_step_inbox','lc_consumer.inbox_action.inbox_id','inbox_status_fk_inbox_status_inbox','lc_consumer.inbox_status.inbox_id','outbox_fk_outbox_inbox','lc_consumer.outbox.inbox_id','outbox_history_fk_outbox_history_inbox','lc_consumer.outbox_history.inbox_id'])" class='colPk'>id</text></g></a>
+<a href='#lc_consumer.inbox.id'><g><title>&#x1F517;  Referred by inbox_action ( inbox_id -&gt; id ) 
+Referred by inbox_status ( inbox_id -&gt; id ) 
 Referred by outbox ( inbox_id -&gt; id ) 
-Referred by inbox_action ( inbox_id -&gt; id ) 
 Referred by outbox_history ( inbox_id -&gt; id ) </title><use x='461' y='109' href='#ref'/></g></a>
   <use x='305' y='129' href='#nn'/><g><title>&#x1F50D;  Unq unq_inbox_ack_guid ( ack_guid ) </title><use x='306' y='128' href='#unq'/></g><a href='#lc_consumer.inbox.ack_guid'><g><title>&#10697;  ack_guid
      * varchar(64)
@@ -610,151 +758,11 @@ Referred by outbox_history ( inbox_id -&gt; id ) </title><use x='461' y='109' hr
      * bigint
  &#8599; instance( id )</title><text id='lc&#95;consumer&#46;inbox&#46;instance&#95;id' x='327' y='351' onmouseover="hghl(['inbox_fk_inbox_instance','lc_consumer.instance.id'])" onmouseout="uhghl(['inbox_fk_inbox_instance','lc_consumer.instance.id'])">instance&#95;id</text></g></a>
 <a href='#lc_consumer.inbox.instance_id'><g><title>&#x1F517;  References instance ( instance_id -&gt; id ) </title><use x='461' y='337' href='#fk'/></g></a>
-
-<!-- == Table 'outbox_history' == -->
-<rect id='depict_lc&#95;consumer&#46;outbox&#95;history' class='entity' style='stroke:#F9FAFC' x='95' y='276' width='133' height='209' rx='4' ry='4' />
-<rect x='95' y='276' width='133' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_BED3F4);'/>
-<rect x='95' y='280' width='133' height='29' style='stroke-width:0;fill:url(#tbg_BED3F4);'/>
-<a href='#lc_consumer.outbox_history'><g><title>Table lc_consumer.outbox_history
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Immutable attempt history for outbox sends, responses, and failures.</title><text id='depict&#45;lc&#95;consumer&#46;outbox&#95;history' x='113' y='298' class='tableHeader' style='fill:#414348;'>outbox&#95;history</text></g></a>
-  <use x='96' y='319' href='#nn'/><g><title>&#x1F511;  Pk pk_outbox_history ( id ) </title><use x='97' y='318' href='#pk'/></g><a href='#lc_consumer.outbox_history.id'><g><title>&#10697;  id
-     * bigint
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Internal surrogate identifier.</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;id' x='118' y='332' class='colPk'>id</text></g></a>
-<text x='224' y='328' text-anchor='end' class='colType'>&#35;</text>  <use x='96' y='338' href='#nn'/><g><title>&#x1F50D;  idx_outbox_history_outbox_sent ( inbox_id, modified ) &#x1F50D;  Unq unq_outbox_attempt ( inbox_id, attempt_no ) </title><use x='97' y='337' href='#unq'/></g><a href='#lc_consumer.outbox_history.inbox_id'><g><title>&#10697;  inbox_id
-     * bigint
- &#8599; inbox( id )
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Inbox record identifier (FK to outbox.inbox_id).</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;inbox&#95;id' x='118' y='351' onmouseover="hghl(['outbox_history_fk_outbox_history_inbox','lc_consumer.inbox.id'])" onmouseout="uhghl(['outbox_history_fk_outbox_history_inbox','lc_consumer.inbox.id'])">inbox&#95;id</text></g></a>
-<a href='#lc_consumer.outbox_history.inbox_id'><g><title>&#x1F517;  References inbox ( inbox_id -&gt; id ) </title><use x='214' y='337' href='#fk'/></g></a>
-  <use x='96' y='357' href='#nn'/><a href='#lc_consumer.outbox_history.outcome'><g><title>&#10697;  outcome
-     * tinyint
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Attempt outcome: 1=Delivered, 2=Processed, 3=Retry, 4=Failed.</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;outcome' x='118' y='370'>outcome</text></g></a>
-<text x='224' y='366' text-anchor='end' class='colType'>&#35;</text>  <use x='96' y='376' href='#nn'/><a href='#lc_consumer.outbox_history.status'><g><title>&#10697;  status
-     * tinyint
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Attempt send state: 1=Pending, 2=Sent, 3=Confirmed, 4=Failed.</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;status' x='118' y='389'>status</text></g></a>
-<text x='224' y='385' text-anchor='end' class='colType'>&#35;</text>  <use x='96' y='395' href='#nn'/><g><title>&#x1F50D;  Unq unq_outbox_attempt ( inbox_id, attempt_no ) </title><use x='97' y='394' href='#unq'/></g><a href='#lc_consumer.outbox_history.attempt_no'><g><title>&#10697;  attempt_no
-     * int
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Monotonic attempt sequence number.</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;attempt&#95;no' x='118' y='408'>attempt&#95;no</text></g></a>
-<text x='224' y='404' text-anchor='end' class='colType'>&#35;</text>  <use x='96' y='414' href='#nn'/><g><title>&#x1F50D;  idx_outbox_history_outbox_sent ( inbox_id, modified ) </title><use x='97' y='413' href='#idx'/></g><a href='#lc_consumer.outbox_history.modified'><g><title>&#10697;  modified
-     * datetime default current_timestamp()
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      UTC timestamp when the row was last updated.</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;modified' x='118' y='427'>modified</text></g></a>
-<text x='224' y='423' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.outbox_history.response'><g><title>&#10697;  response
-     longtext
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Raw response payload captured from engine/API (JSON). response payload _json</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;response' x='118' y='446'>response</text></g></a>
-<text x='224' y='442' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.outbox_history.error'><g><title>&#10697;  error
-     text
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Error details captured for this send attempt.</title><text id='lc&#95;consumer&#46;outbox&#95;history&#46;error' x='118' y='465'>error</text></g></a>
-<text x='224' y='461' text-anchor='end' class='colType'>t</text>
-<!-- == Table 'outbox' == -->
-<rect id='depict_lc&#95;consumer&#46;outbox' class='entity' style='stroke:#F9FAFC' x='57' y='67' width='171' height='171' rx='4' ry='4' />
-<rect x='57' y='67' width='171' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_BED3F4);'/>
-<rect x='57' y='71' width='171' height='29' style='stroke-width:0;fill:url(#tbg_BED3F4);'/>
-<a href='#lc_consumer.outbox'><g><title>Table lc_consumer.outbox
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Outbound acknowledgement queue from consumer to engine with retry scheduling.</title><text id='depict&#45;lc&#95;consumer&#46;outbox' x='117' y='89' class='tableHeader' style='fill:#414348;'>outbox</text></g></a>
-  <use x='58' y='110' href='#nn'/><g><title>&#x1F511;  Pk pk_outbox ( inbox_id ) </title><use x='59' y='109' href='#pk'/></g><a href='#lc_consumer.outbox.inbox_id'><g><title>&#10697;  inbox_id
-     * bigint
- &#8599; inbox( id )
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Inbox record identifier (FK to inbox.id).</title><text id='lc&#95;consumer&#46;outbox&#46;inbox&#95;id' x='80' y='123' onmouseover="hghl(['outbox_fk_outbox_inbox','lc_consumer.inbox.id'])" onmouseout="uhghl(['outbox_fk_outbox_inbox','lc_consumer.inbox.id'])" class='colPk'>inbox&#95;id</text></g></a>
-<a href='#lc_consumer.outbox.inbox_id'><g><title>&#x1F517;  References inbox ( inbox_id -&gt; id ) </title><use x='214' y='109' href='#fk'/></g></a>
-  <a href='#lc_consumer.outbox.current_outcome'><g><title>&#10697;  current_outcome
+  <a href='#lc_consumer.inbox.hook_type'><g><title>&#10697;  hook_type
      tinyint
  ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Current outcome: 1=Delivered, 2=Processed, 3=Retry, 4=Failed.</title><text id='lc&#95;consumer&#46;outbox&#46;current&#95;outcome' x='80' y='142'>current&#95;outcome</text></g></a>
-<text x='224' y='138' text-anchor='end' class='colType'>&#35;</text>  <use x='58' y='148' href='#nn'/><g><title>&#x1F50D;  idx_outbox_send_status ( status, next_retry_at ) </title><use x='59' y='147' href='#idx'/></g><a href='#lc_consumer.outbox.status'><g><title>&#10697;  status
-     * tinyint default 1
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Outbox send state: 1=Pending, 2=Sent, 3=Confirmed, 4=Failed.</title><text id='lc&#95;consumer&#46;outbox&#46;status' x='80' y='161'>status</text></g></a>
-<text x='224' y='157' text-anchor='end' class='colType'>&#35;</text>  <g><title>&#x1F50D;  idx_outbox_send_status ( status, next_retry_at ) </title><use x='59' y='166' href='#idx'/></g><a href='#lc_consumer.outbox.next_retry_at'><g><title>&#10697;  next_retry_at
-     datetime(6)
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Scheduled timestamp for next retry attempt.</title><text id='lc&#95;consumer&#46;outbox&#46;next&#95;retry&#95;at' x='80' y='180'>next&#95;retry&#95;at</text></g></a>
-<text x='224' y='176' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.outbox.last_error'><g><title>&#10697;  last_error
-     text
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Last captured error message for troubleshooting.</title><text id='lc&#95;consumer&#46;outbox&#46;last&#95;error' x='80' y='199'>last&#95;error</text></g></a>
-<text x='224' y='195' text-anchor='end' class='colType'>t</text>  <use x='58' y='205' href='#nn'/><a href='#lc_consumer.outbox.modified'><g><title>&#10697;  modified
-     * datetime default current_timestamp()
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      UTC timestamp when the row was last updated.</title><text id='lc&#95;consumer&#46;outbox&#46;modified' x='80' y='218'>modified</text></g></a>
-<text x='224' y='214' text-anchor='end' class='colType'>t</text>
-<!-- == Table 'business_action' == -->
-<rect id='depict_lc&#95;consumer&#46;business&#95;action' class='entity' style='stroke:#F9FAFC' x='570' y='409' width='133' height='209' rx='4' ry='4' />
-<rect x='570' y='409' width='133' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_C1D8EE);'/>
-<rect x='570' y='413' width='133' height='29' style='stroke-width:0;fill:url(#tbg_C1D8EE);'/>
-<a href='#lc_consumer.business_action'><g><title>Table lc_consumer.business_action
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Idempotent record of business side-effects executed by a consumer for a workflow instance.</title><text id='depict&#45;lc&#95;consumer&#46;business&#95;action' x='585' y='431' class='tableHeader' style='fill:#414448;'>business&#95;action</text></g></a>
-  <use x='571' y='452' href='#nn'/><g><title>&#x1F511;  Pk pk_business_action ( id ) </title><use x='572' y='451' href='#pk'/></g><a href='#lc_consumer.business_action.id'><g><title>&#10697;  id
-     * bigint
- &#8601; inbox_action( action_id )
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Internal surrogate identifier.</title><text id='lc&#95;consumer&#46;business&#95;action&#46;id' x='593' y='465' onmouseover="hghl(['inbox_action_fk_inbox_action_business_action','lc_consumer.inbox_action.action_id'])" onmouseout="uhghl(['inbox_action_fk_inbox_action_business_action','lc_consumer.inbox_action.action_id'])" class='colPk'>id</text></g></a>
-<a href='#lc_consumer.business_action.id'><g><title>&#x1F517;  Referred by inbox_action ( action_id -&gt; id ) </title><use x='689' y='451' href='#ref'/></g></a>
-  <use x='571' y='471' href='#nn'/><g><title>&#x1F50D;  Unq unq_business_action ( instance_id, action_code ) </title><use x='572' y='470' href='#unq'/></g><a href='#lc_consumer.business_action.instance_id'><g><title>&#10697;  instance_id
-     * bigint
- &#8599; instance( id )</title><text id='lc&#95;consumer&#46;business&#95;action&#46;instance&#95;id' x='593' y='484' onmouseover="hghl(['business_action_fk_business_action_instance','lc_consumer.instance.id'])" onmouseout="uhghl(['business_action_fk_business_action_instance','lc_consumer.instance.id'])">instance&#95;id</text></g></a>
-<a href='#lc_consumer.business_action.instance_id'><g><title>&#x1F517;  References instance ( instance_id -&gt; id ) </title><use x='689' y='470' href='#fk'/></g></a>
-  <use x='571' y='490' href='#nn'/><g><title>&#x1F50D;  Unq unq_business_action ( instance_id, action_code ) </title><use x='572' y='489' href='#unq'/></g><a href='#lc_consumer.business_action.action_code'><g><title>&#10697;  action_code
-     * int
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Business action code (example: 100=SendLoginCredentials, 200=SendWarningEmail).</title><text id='lc&#95;consumer&#46;business&#95;action&#46;action&#95;code' x='593' y='503'>action&#95;code</text></g></a>
-<text x='699' y='499' text-anchor='end' class='colType'>&#35;</text>  <use x='571' y='509' href='#nn'/><a href='#lc_consumer.business_action.status'><g><title>&#10697;  status
-     * int
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Action execution state: 1=Pending, 2=Running, 3=Completed, 4=Failed.</title><text id='lc&#95;consumer&#46;business&#95;action&#46;status' x='593' y='522'>status</text></g></a>
-<text x='699' y='518' text-anchor='end' class='colType'>&#35;</text>  <use x='571' y='528' href='#nn'/><a href='#lc_consumer.business_action.started_at'><g><title>&#10697;  started_at
-     * datetime
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Execution start timestamp.</title><text id='lc&#95;consumer&#46;business&#95;action&#46;started&#95;at' x='593' y='541'>started&#95;at</text></g></a>
-<text x='699' y='537' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.business_action.completed_at'><g><title>&#10697;  completed_at
-     datetime(6)
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Execution completion timestamp.</title><text id='lc&#95;consumer&#46;business&#95;action&#46;completed&#95;at' x='593' y='560'>completed&#95;at</text></g></a>
-<text x='699' y='556' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.business_action.result_json'><g><title>&#10697;  result_json
-     longtext
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Structured execution result payload (JSON).</title><text id='lc&#95;consumer&#46;business&#95;action&#46;result&#95;json' x='593' y='579'>result&#95;json</text></g></a>
-<text x='699' y='575' text-anchor='end' class='colType'>t</text>  <a href='#lc_consumer.business_action.last_error'><g><title>&#10697;  last_error
-     text</title><text id='lc&#95;consumer&#46;business&#95;action&#46;last&#95;error' x='593' y='598'>last&#95;error</text></g></a>
-<text x='699' y='594' text-anchor='end' class='colType'>t</text>
-<!-- == Table 'instance' == -->
-<rect id='depict_lc&#95;consumer&#46;instance' class='entity' style='stroke:#F9FAFC' x='323' y='428' width='133' height='171' rx='4' ry='4' />
-<rect x='323' y='428' width='133' height='8' rx='4' ry='4' style='stroke-width:0;fill:url(#ttl_C1D8EE);'/>
-<rect x='323' y='432' width='133' height='29' style='stroke-width:0;fill:url(#tbg_C1D8EE);'/>
-<a href='#lc_consumer.instance'><g><title>Table lc_consumer.instance
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      Consumer-side mirror of engine workflow instances. One row per engine instance guid.</title><text id='depict&#45;lc&#95;consumer&#46;instance' x='360' y='450' class='tableHeader' style='fill:#414448;'>instance</text></g></a>
-  <use x='324' y='471' href='#nn'/><g><title>&#x1F50D;  Unq unq_instance_guid ( guid ) </title><use x='325' y='470' href='#unq'/></g><a href='#lc_consumer.instance.guid'><g><title>&#10697;  guid
-     * varchar(42)
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      instance guid (not generated here.. coming from the engine).. stored here as a duplicate only for proper sql queries and also for generating reports and easy tracking.</title><text id='lc&#95;consumer&#46;instance&#46;guid' x='346' y='484'>guid</text></g></a>
-<text x='452' y='480' text-anchor='end' class='colType'>t</text>  <use x='324' y='490' href='#nn'/><g><title>&#x1F511;  Pk pk_instance ( id ) </title><use x='325' y='489' href='#pk'/></g><a href='#lc_consumer.instance.id'><g><title>&#10697;  id
-     * bigint
- &#8601; business_action( instance_id )
- &#8601; inbox( instance_id )</title><text id='lc&#95;consumer&#46;instance&#46;id' x='346' y='503' onmouseover="hghl(['business_action_fk_business_action_instance','lc_consumer.business_action.instance_id','inbox_fk_inbox_instance','lc_consumer.inbox.instance_id'])" onmouseout="uhghl(['business_action_fk_business_action_instance','lc_consumer.business_action.instance_id','inbox_fk_inbox_instance','lc_consumer.inbox.instance_id'])" class='colPk'>id</text></g></a>
-<a href='#lc_consumer.instance.id'><g><title>&#x1F517;  Referred by business_action ( instance_id -&gt; id ) 
-Referred by inbox ( instance_id -&gt; id ) </title><use x='442' y='489' href='#ref'/></g></a>
-  <use x='324' y='509' href='#nn'/><g><title>&#x1F50D;  idx_instance ( def_name, entity_guid ) &#x1F50D;  idx_instance_0 ( entity_guid, def_name ) </title><use x='325' y='508' href='#idx'/></g><a href='#lc_consumer.instance.def_name'><g><title>&#10697;  def_name
-     * varchar(120)</title><text id='lc&#95;consumer&#46;instance&#46;def&#95;name' x='346' y='522'>def&#95;name</text></g></a>
-<text x='452' y='518' text-anchor='end' class='colType'>t</text>  <use x='324' y='528' href='#nn'/><a href='#lc_consumer.instance.def_version'><g><title>&#10697;  def_version
-     * smallint default 1</title><text id='lc&#95;consumer&#46;instance&#46;def&#95;version' x='346' y='541'>def&#95;version</text></g></a>
-<text x='452' y='537' text-anchor='end' class='colType'>&#35;</text>  <use x='324' y='547' href='#nn'/><g><title>&#x1F50D;  idx_instance ( def_name, entity_guid ) &#x1F50D;  idx_instance_0 ( entity_guid, def_name ) </title><use x='325' y='546' href='#idx'/></g><a href='#lc_consumer.instance.entity_guid'><g><title>&#10697;  entity_guid
-     * varchar(42)</title><text id='lc&#95;consumer&#46;instance&#46;entity&#95;guid' x='346' y='560'>entity&#95;guid</text></g></a>
-<text x='452' y='556' text-anchor='end' class='colType'>t</text>  <use x='324' y='566' href='#nn'/><a href='#lc_consumer.instance.created'><g><title>&#10697;  created
-     * datetime
- ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-      When this instance was created at the engine side, mirrored into the consumer database.</title><text id='lc&#95;consumer&#46;instance&#46;created' x='346' y='579'>created</text></g></a>
-<text x='452' y='575' text-anchor='end' class='colType'>t</text>
+      1=Gate, 0=Effect. NULL for Transition rows.</title><text id='lc&#95;consumer&#46;inbox&#46;hook&#95;type' x='327' y='370'>hook&#95;type</text></g></a>
+<text x='471' y='366' text-anchor='end' class='colType'>&#35;</text>
 </g></svg></div>
 <script type='text/javascript'>
 var svgContainers = document.getElementsByClassName("svgContainer");
@@ -1021,16 +1029,22 @@ function searchSVG( searchValue) {
 		<td class='dataType'> BIGINT  </td>
 		<td>  </td>
 	</tr>
+	<tr>
+		<td>&nbsp;</td>
+		<td><a name='lc_consumer.inbox.hook_type'>hook&#95;type</a></td>
+		<td class='dataType'> TINYINT  </td>
+		<td> 1&#61;Gate&#44; 0&#61;Effect&#46; NULL for Transition rows&#46; </td>
+	</tr>
 <tr><th colspan='4'>Indexes</th></tr>
 	<tr>		<td><svg xmlns="http://www.w3.org/2000/svg" width='14' height='14'><use href='#pk'/></svg></td><td>pk&#95;inbox</td>
 		<td>Primary Key ON id</td>
 		<td>  </td>
 	</tr>
-	<tr>		<td><svg xmlns="http://www.w3.org/2000/svg" width='14' height='14'><use href='#idx'/></svg></td><td>idx&#95;workflow&#95;entity&#95;def</td>
+	<tr>		<td><svg xmlns="http://www.w3.org/2000/svg" width='14' height='14'><use href='#idx'/></svg></td><td>idx&#95;inbox&#95;instance</td>
 		<td>Index ON instance&#95;id</td>
 		<td>  </td>
 	</tr>
-	<tr>		<td><svg xmlns="http://www.w3.org/2000/svg" width='14' height='14'><use href='#unq'/></svg></td><td>unq&#95;workflow&#95;ack&#95;guid</td>
+	<tr>		<td><svg xmlns="http://www.w3.org/2000/svg" width='14' height='14'><use href='#unq'/></svg></td><td>unq&#95;inbox&#95;ack&#95;guid</td>
 		<td>Unique Key ON ack&#95;guid</td>
 		<td>  </td>
 	</tr>
@@ -1050,6 +1064,11 @@ function searchSVG( searchValue) {
 	</tr>
 <tr><th colspan='4'>Referring Foreign Key</th></tr>
 	<tr>
+		<td><svg xmlns="http://www.w3.org/2000/svg" width='14' height='14'><use href='#ref'/></svg></td><td>fk_inbox_step_inbox</td>
+		<td > id &#8601; <a href='#lc&#95;consumer&#46;inbox&#95;action'  onclick="window.scrollTo(389, 266);var nodes = document.getElementsByClassName('palpable');for (var i = 0; i < nodes.length; i++) { nodes[i].classList.remove('palpable');}; document.getElementById('depict_lc_consumer.inbox_action').classList.add('palpable'); return false;">&#10063; inbox&#95;action</a>(inbox&#95;id) on delete cascade </td>
+		<td>  </td>
+	</tr>
+	<tr>
 		<td><svg xmlns="http://www.w3.org/2000/svg" width='14' height='14'><use href='#ref'/></svg></td><td>fk_inbox_status_inbox</td>
 		<td > id &#8601; <a href='#lc&#95;consumer&#46;inbox&#95;status'  onclick="window.scrollTo(370, 57);var nodes = document.getElementsByClassName('palpable');for (var i = 0; i < nodes.length; i++) { nodes[i].classList.remove('palpable');}; document.getElementById('depict_lc_consumer.inbox_status').classList.add('palpable'); return false;">&#10063; inbox&#95;status</a>(inbox&#95;id) on delete cascade </td>
 		<td>  </td>
@@ -1057,11 +1076,6 @@ function searchSVG( searchValue) {
 	<tr>
 		<td><svg xmlns="http://www.w3.org/2000/svg" width='14' height='14'><use href='#ref'/></svg></td><td>fk_outbox_inbox</td>
 		<td > id &#8601; <a href='#lc&#95;consumer&#46;outbox'  onclick="window.scrollTo(60, 76);var nodes = document.getElementsByClassName('palpable');for (var i = 0; i < nodes.length; i++) { nodes[i].classList.remove('palpable');}; document.getElementById('depict_lc_consumer.outbox').classList.add('palpable'); return false;">&#10063; outbox</a>(inbox&#95;id) on delete cascade </td>
-		<td>  </td>
-	</tr>
-	<tr>
-		<td><svg xmlns="http://www.w3.org/2000/svg" width='14' height='14'><use href='#ref'/></svg></td><td>fk_inbox_step_inbox</td>
-		<td > id &#8601; <a href='#lc&#95;consumer&#46;inbox&#95;action'  onclick="window.scrollTo(389, 266);var nodes = document.getElementsByClassName('palpable');for (var i = 0; i < nodes.length; i++) { nodes[i].classList.remove('palpable');}; document.getElementById('depict_lc_consumer.inbox_action').classList.add('palpable'); return false;">&#10063; inbox&#95;action</a>(inbox&#95;id) on delete cascade </td>
 		<td>  </td>
 	</tr>
 	<tr>
@@ -1229,9 +1243,9 @@ function searchSVG( searchValue) {
 	</tr>
 	<tr>
 		<td><span class='text-danger'>*</span></td>
-		<td><a name='lc_consumer.instance.def_version'>def&#95;version</a></td>
-		<td class='dataType'> SMALLINT  DEFAULT 1 </td>
-		<td>  </td>
+		<td><a name='lc_consumer.instance.def_version_value'>def&#95;version&#95;value</a></td>
+		<td class='dataType'> INT  DEFAULT 1 </td>
+		<td> The actuval version value </td>
 	</tr>
 	<tr>
 		<td><span class='text-danger'>*</span><svg xmlns="http://www.w3.org/2000/svg" width='14' height='14'><use href='#idx'/></svg></td>
@@ -1321,6 +1335,12 @@ function searchSVG( searchValue) {
 		<td><a name='lc_consumer.outbox.modified'>modified</a></td>
 		<td class='dataType'> DATETIME ON UPDATE current&#95;timestamp&#40;&#41; DEFAULT current_timestamp() </td>
 		<td> UTC timestamp when the row was last updated&#46; </td>
+	</tr>
+	<tr>
+		<td>&nbsp;</td>
+		<td><a name='lc_consumer.outbox.next_event'>next&#95;event</a></td>
+		<td class='dataType'> INT  </td>
+		<td>  </td>
 	</tr>
 <tr><th colspan='4'>Indexes</th></tr>
 	<tr>		<td><svg xmlns="http://www.w3.org/2000/svg" width='14' height='14'><use href='#pk'/></svg></td><td>pk&#95;outbox</td>

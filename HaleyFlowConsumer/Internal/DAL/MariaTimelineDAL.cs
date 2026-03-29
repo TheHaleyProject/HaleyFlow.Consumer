@@ -54,6 +54,7 @@ namespace Haley.Internal {
                     };
                 }
 
+                var rawHookType = r.GetNullableByte(KEY_HOOK_TYPE);
                 items.Add(new ConsumerTimelineItem {
                     InboxId        = inboxId,
                     AckGuid        = r.GetString(KEY_ACK_GUID) ?? string.Empty,
@@ -61,6 +62,7 @@ namespace Haley.Internal {
                     HandlerVersion = r.GetNullableInt(KEY_HANDLER_VERSION),
                     EventCode      = r.GetNullableInt(KEY_EVENT_CODE),
                     Route          = r.GetString(KEY_ROUTE),
+                    HookType       = rawHookType.HasValue ? (HookType?)rawHookType.Value : null,
                     RunCount       = r.GetNullableInt(KEY_RUN_COUNT) ?? 1,
                     Occurred       = r.GetDateTime(KEY_OCCURRED) ?? r.GetDateTime(KEY_CREATED) ?? default,
                     Created        = r.GetDateTime(KEY_CREATED) ?? r.GetDateTime(KEY_OCCURRED) ?? default,

@@ -178,8 +178,9 @@
 				<identity><![CDATA[AUTO_INCREMENT]]></identity>
 			</column>
 			<column name="def_name" type="VARCHAR" length="120" mandatory="y" />
-			<column name="def_version" type="SMALLINT" mandatory="y" >
+			<column name="def_version_value" prior="def_version" type="INT" mandatory="y" >
 				<defo><![CDATA[1]]></defo>
+				<comment><![CDATA[The actuval version value]]></comment>
 			</column>
 			<column name="entity_guid" type="VARCHAR" length="42" mandatory="y" />
 			<column name="created" type="DATETIME" mandatory="y" >

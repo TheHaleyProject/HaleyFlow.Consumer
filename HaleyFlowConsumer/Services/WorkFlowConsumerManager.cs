@@ -423,7 +423,7 @@ namespace Haley.Services {
             };
 
             if (evt is ILifeCycleTransitionEvent te) { record.EventCode = te.EventCode; record.DispatchMode = te.DispatchMode; }
-            if (evt is ILifeCycleHookEvent he) { record.Route = he.Route; record.RunCount = he.RunCount; }
+            if (evt is ILifeCycleHookEvent he) { record.Route = he.Route; record.RunCount = he.RunCount; record.HookType = he.HookType; }
 
             return record;
         }
