@@ -158,6 +158,7 @@ namespace Haley.Utils {
 
         private static IServiceCollection AddWorkflowRelayServiceCore(IServiceCollection services) {
             services.TryAddSingleton(sp => sp.GetRequiredService<IOptions<RelayServiceOptions>>().Value);
+            services.TryAddSingleton<IWorkflowRelayStateStore, InMemoryWorkflowRelayStateStore>();
             services.TryAddSingleton<WorkflowRelayHost>();
             services.TryAddSingleton<IWorkflowRelayService>(sp => sp.GetRequiredService<WorkflowRelayHost>());
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WorkflowRelayHost>(sp => sp.GetRequiredService<WorkflowRelayHost>()));

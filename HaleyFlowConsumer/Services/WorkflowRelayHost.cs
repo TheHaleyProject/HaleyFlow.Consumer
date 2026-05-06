@@ -23,11 +23,13 @@ namespace Haley.Services {
     public sealed class WorkflowRelayHost : IHostedService, IWorkflowRelayService {
         private readonly IServiceProvider _sp;
         private readonly RelayServiceOptions _options;
+        private readonly IWorkflowRelayStateStore _stateStore;
         private readonly Dictionary<string, WorkflowRelayBase> _index = new(StringComparer.OrdinalIgnoreCase);
 
-        public WorkflowRelayHost(IServiceProvider sp, RelayServiceOptions options) {
-            _sp      = sp      ?? throw new ArgumentNullException(nameof(sp));
-            _options = options ?? new RelayServiceOptions();
+        public WorkflowRelayHost(IServiceProvider sp, RelayServiceOptions options, IWorkflowRelayStateStore stateStore) {
+            _sp         = sp         ?? throw new ArgumentNullException(nameof(sp));
+            _options    = options    ?? new RelayServiceOptions();
+            _stateStore = stateStore ?? throw new ArgumentNullException(nameof(stateStore));
         }
 
         public Task StartAsync(CancellationToken ct) {
@@ -70,22 +72,38 @@ namespace Haley.Services {
         public async Task<IFeedback> InitiateAsync(FlowInitiateRequest request, CancellationToken ct = default) {
             if (request == null) throw new ArgumentNullException(nameof(request));
 
+            if (string.IsNullOrWhiteSpace(request.WorkflowName))
+                return Feedback.Fail($"{HaleyFlowErrorCodes.BackfillMissingWorkflowName}: WorkflowName is required.");
+
+            if (string.IsNullOrWhiteSpace(request.EntityId))
+                return Feedback.Fail($"{HaleyFlowErrorCodes.BackfillMissingEntityRef}: EntityId is required.");
+
             if (!_index.TryGetValue(request.WorkflowName, out var relayBase))
                 return Feedback.Fail($"{HaleyFlowErrorCodes.RelayHostNoRelay}: No relay registered for workflow '{request.WorkflowName}'.");
 
             if (!int.TryParse(request.StartEvent, out var startEventCode))
                 return Feedback.Fail($"{HaleyFlowErrorCodes.RelayHostInvalidStartEvent}: StartEvent '{request.StartEvent}' is not a valid event code for relay mode.");
 
+            var previousState = request.CurrentState?.Trim();
+            if (string.IsNullOrWhiteSpace(previousState) && request.UseRelayStateStore) {
+                previousState = await _stateStore.GetCurrentStateAsync(request.WorkflowName, request.EntityId, request.EnvCode, ct);
+            }
+
             var ctx = new RelayContext {
                 EntityRef = request.EntityId,
+                CurrentState = previousState ?? string.Empty,
                 Actor     = request.Actor,
                 Payload   = request.Payload,
             };
 
             var result = await relayBase.Relay.NextAsync(ctx, startEventCode, ct);
+            if (result.Advanced && request.UseRelayStateStore && !string.IsNullOrWhiteSpace(result.NewState)) {
+                await _stateStore.SaveCurrentStateAsync(request.WorkflowName, request.EntityId, request.EnvCode, result.NewState, ct);
+            }
+
             return result.Advanced
-                ? Feedback.Ok(new { result.NewState })
-                : Feedback.Fail(result.Reason ?? "Relay blocked.", new { result.Reason });
+                ? Feedback.Ok(new { result.NewState, PreviousState = previousState })
+                : Feedback.Fail(result.Reason ?? "Relay blocked.", new { result.Reason, CurrentState = ctx.CurrentState, PreviousState = previousState });
         }
     }
 }
