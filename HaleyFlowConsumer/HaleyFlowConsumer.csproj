@@ -16,8 +16,8 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageReleaseNotes>Pilot release</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/TheHaleyProject/HaleyFlow.Consumer</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/TheHaleyProject/HaleyFlow.Consumer</RepositoryUrl>
+    <PackageProjectUrl>$(ProjectBaseUrl)Flow.Consumer</PackageProjectUrl>
+    <RepositoryUrl>$(ProjectBaseUrl)Flow.Consumer</RepositoryUrl>
     <OpenApiGenerateDocuments>false</OpenApiGenerateDocuments>
     <Description>Workflow engine consumer to be used in the client side</Description>
   </PropertyGroup>
