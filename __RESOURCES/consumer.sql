@@ -16,9 +16,6 @@
 
 
 -- Dumping database structure for lc_consumer
-CREATE DATABASE IF NOT EXISTS `lc_consumer`; /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
-USE `lc_consumer`;
-
 -- Dumping structure for table lc_consumer.business_action
 CREATE TABLE IF NOT EXISTS `business_action` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'Internal surrogate identifier.',
