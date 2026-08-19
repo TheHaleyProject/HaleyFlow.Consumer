@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <HaleyFlowConsumerDatabaseRoot Condition="'$(HaleyFlowConsumerDatabaseRoot)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\__RESOURCES'))</HaleyFlowConsumerDatabaseRoot>
+    <HaleyFlowConsumerDatabaseSource>$(HaleyFlowConsumerDatabaseRoot)</HaleyFlowConsumerDatabaseSource>
+  </PropertyGroup>
+
+  <Target Name="ValidateHaleyFlowConsumerDatabaseSource" BeforeTargets="BeforeBuild" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Error Condition="!Exists('$(HaleyFlowConsumerDatabaseSource)\consumer.sql')" Text="Haley.Flow.Consumer database source was not found at '$(HaleyFlowConsumerDatabaseSource)\consumer.sql'. Restore HaleyFlow.Consumer/__RESOURCES or set HaleyFlowConsumerDatabaseRoot." />
+  </Target>
+
+  <ItemGroup Condition="Exists('$(HaleyFlowConsumerDatabaseSource)\consumer.sql')">
+    <EmbeddedResource Include="$(HaleyFlowConsumerDatabaseSource)\consumer.sql" Link="Scripts\consumer.sql" LogicalName="Haley.Scripts.consumer.sql" />
+  </ItemGroup>
+</Project>

@@ -1,5 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\HaleyProject\HaleyVersion.Props" />
+  <Import Project="Database\Database.Source.props" />
   <PropertyGroup>
     <TargetFrameworks>net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -27,7 +28,6 @@
       <PackagePath></PackagePath>
       <Pack>True</Pack>
     </None>
-    <EmbeddedResource Include="..\__RESOURCES\consumer.sql" Link="Scripts\consumer.sql" />
   </ItemGroup>
 
   <ItemGroup>
