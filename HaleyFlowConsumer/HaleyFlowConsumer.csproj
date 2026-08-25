@@ -1,5 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="..\..\HaleyProject\HaleyVersion.Props" />
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <HaleyProject Condition="'$(HaleyProject)' == ''">$(MSBuildProjectDirectory)\..\..</HaleyProject>
+  </PropertyGroup>
+  <Import Project="$(HaleyProject)\HaleyProject\Haley.Source.Props" />
+  <Import Project="$(HaleyProject)\HaleyProject\Haley.Version.Props" />
+  <Import Project="$(HaleyProject)\HaleyProject\Haley.Paths.Props" />
   <Import Project="Database\Database.Source.props" />
   <PropertyGroup>
     <TargetFrameworks>net8.0</TargetFrameworks>
@@ -53,12 +58,10 @@
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
 
-  <Import Project="$(SolutionDir)ProjectReferences_$(SolutionName).txt" Condition="Exists('$(SolutionDir)ProjectReferences_$(SolutionName).txt')" />
-
   <!--<Choose>
-    <When Condition="Exists($(HaleyEvents))">
+    <When Condition="Exists('$(HaleyEventsProj)')">
       <ItemGroup>
-        <ProjectReference Include="$(HaleyEvents)\HaleyEvents.csproj">
+        <ProjectReference Include="$(HaleyEventsProj)">
           <Name>HaleyEvents</Name>
         </ProjectReference>
       </ItemGroup>
@@ -71,9 +74,9 @@
   </Choose>-->
 
   <Choose>
-    <When Condition="Exists($(HaleyHelpersDB))">
+    <When Condition="Exists('$(HaleyHelpersDBProj)')">
       <ItemGroup>
-        <ProjectReference Include="$(HaleyHelpersDB)\HaleyHelpersDB.csproj">
+        <ProjectReference Include="$(HaleyHelpersDBProj)">
           <Name>HaleyHelpersDB</Name>
         </ProjectReference>
       </ItemGroup>
@@ -86,9 +89,9 @@
   </Choose>
 
   <Choose>
-    <When Condition="Exists($(HaleyAbstractionsCore))">
+    <When Condition="Exists('$(HaleyAbstractionsCoreProj)')">
       <ItemGroup>
-        <ProjectReference Include="$(HaleyAbstractionsCore)\HaleyAbstractionsCore.csproj">
+        <ProjectReference Include="$(HaleyAbstractionsCoreProj)">
           <Name>HaleyAbstractionsCore</Name>
         </ProjectReference>
       </ItemGroup>
